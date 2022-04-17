@@ -9,8 +9,9 @@ public class test {
         MyContext context = MyContext.getInstance();
         Module module=new Module();
         context.getValSymTab().add(new HashMap<>());
-
-        context.getGlobalValSymTab().put("a",new Function(new Type(),"a",module));
+        Function f = new Function(new Type(),"a",module);
+        context.getGlobalValSymTab().put("a",f);
         Instruction I=new Instructions.AllocaInst(new Type(),"a",2);
+        System.out.println(f.getFuncNode().getParent().getVal());
     }
 }

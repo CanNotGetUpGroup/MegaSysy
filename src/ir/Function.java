@@ -13,8 +13,10 @@ public class Function extends Value {
 
     public Function(Type type, String name, Module module) {
         super(type, name);
+        Parent = module;
+        bbList = new IList<>(this);
+        funcNode = new IListNode<>(this);
         //TODO: 添加到module
-
     }
 
     public ArrayList<Argument> getArguments() {

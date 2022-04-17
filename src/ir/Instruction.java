@@ -24,6 +24,7 @@ public abstract class Instruction extends User {
 
     public Instruction(Type type, String name , int numOperands) {
         super(type, name, numOperands);
+        instNode = new IListNode<>(this);
     }
 
     /**

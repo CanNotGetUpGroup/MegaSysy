@@ -1,6 +1,7 @@
 package ir;
 
 import java.util.LinkedList;
+import java.util.logging.Logger;
 
 public abstract class Value {
     private LinkedList<Use> UseList;

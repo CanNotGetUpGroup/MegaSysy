@@ -18,6 +18,8 @@ public class BasicBlock extends Value {
     public BasicBlock(Type type, String name, Function parent) {
         super(type, name);
         Parent = parent;
+        instList = new IList<>(this);
+        bbNode = new IListNode<>(this);
         //TODO: 插入到parent末尾
     }
 
