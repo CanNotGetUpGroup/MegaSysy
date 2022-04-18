@@ -1,4 +1,4 @@
-// Generated from D:/JavaProject/AntlrMega\Sysy.g4 by ANTLR 4.9.2
+// Generated from D:/JavaProject/MegaSysy\Sysy.g4 by ANTLR 4.9.2
 package frontend;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -227,6 +227,36 @@ public interface SysyListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitPrimaryExp(SysyParser.PrimaryExpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link SysyParser#number}.
+	 * @param ctx the parse tree
+	 */
+	void enterNumber(SysyParser.NumberContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link SysyParser#number}.
+	 * @param ctx the parse tree
+	 */
+	void exitNumber(SysyParser.NumberContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link SysyParser#iNT_CONST}.
+	 * @param ctx the parse tree
+	 */
+	void enterINT_CONST(SysyParser.INT_CONSTContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link SysyParser#iNT_CONST}.
+	 * @param ctx the parse tree
+	 */
+	void exitINT_CONST(SysyParser.INT_CONSTContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link SysyParser#fLOAT_CONST}.
+	 * @param ctx the parse tree
+	 */
+	void enterFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link SysyParser#fLOAT_CONST}.
+	 * @param ctx the parse tree
+	 */
+	void exitFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link SysyParser#unaryExp}.
 	 * @param ctx the parse tree

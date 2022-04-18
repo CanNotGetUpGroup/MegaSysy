@@ -15,6 +15,9 @@ public abstract class Instructions {
             super(type, name, numOperands);
         }
 
+        public AllocaInst(Type type, int numOperands) {
+            super(type, numOperands);
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -27,6 +30,10 @@ public abstract class Instructions {
         public LoadInst(Type type, String name, int numOperands) {
             super(type, name, numOperands);
         }
+
+        public LoadInst(Type type, int numOperands) {
+            super(type, numOperands);
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -38,6 +45,10 @@ public abstract class Instructions {
         public StoreInst(Type type, String name, int numOperands) {
             super(type, name, numOperands);
         }
+
+        public StoreInst(Type type, int numOperands) {
+            super(type, numOperands);
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -48,6 +59,10 @@ public abstract class Instructions {
     public static class FenceInst extends Instruction {
         public FenceInst(Type type, String name, int numOperands) {
             super(type, name, numOperands);
+        }
+
+        public FenceInst(Type type, int numOperands) {
+            super(type, numOperands);
         }
     }
 
@@ -62,6 +77,10 @@ public abstract class Instructions {
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, name, numOperands);
         }
+
+        public GetElementPtrInst(Type type, int numOperands) {
+            super(type, numOperands);
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -75,6 +94,10 @@ public abstract class Instructions {
     public static class ICmpInst extends CmpInst {
         public ICmpInst(String name,Predicate pred, Value LHS,Value RHS) {
             super(LHS.getType(),name,pred,LHS,RHS);
+        }
+
+        public ICmpInst(Predicate pred, Value LHS,Value RHS) {
+            super(LHS.getType(),pred,LHS,RHS);
         }
     }
 }

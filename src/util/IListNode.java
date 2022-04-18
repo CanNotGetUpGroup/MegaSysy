@@ -9,6 +9,11 @@ public class IListNode<T, P> {
 
     public IListNode(T val) {
         Val = val;
+        Prev=Next=null;
+    }
+
+    public IListNode() {
+        Prev=Next=null;
     }
 
     public IListNode<T, P> getPrev() {
@@ -50,9 +55,33 @@ public class IListNode<T, P> {
     }
 
     public void remove(){
+        assert !isBorder();
         IList<T,P> p=getParent();
         p.setList_size(p.getList_size()-1);
         //TODO
+        IListNode<T,P> tmp=this.Prev;
+        this.Prev=null;
+        tmp.setNext(this.Next);
+        this.Next.setPrev(tmp);
+        this.Next=null;
+    }
+
+    public void insertBefore(IListNode<T,P> node){
+        if(node==null) return;
+        IListNode<T,P> tmp=this.Prev;
+        this.Prev=node;
+        node.setNext(this);
+        tmp.setNext(node);
+        node.setPrev(tmp);
+    }
+
+    public void insertIntoListEnd(IList<T,P> list){
+        if(list==null) return;
+        insertBefore(list.getTail());
+    }
+
+    public boolean isBorder(){
+        return Prev==null||Next==null;
     }
 
 }

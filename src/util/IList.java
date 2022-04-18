@@ -3,14 +3,16 @@ package util;
 import ir.Value;
 
 public class IList<T, P> {
-    private IListNode<T, P> head;
-    private IListNode<T, P> tail;
+    private IListNode<T, P> head=new IListNode<>();
+    private IListNode<T, P> tail=new IListNode<>();
     private P Val;
     private int list_size;
 
     public IList(P val) {
         Val = val;
         list_size=0;
+        head.setNext(tail);
+        tail.setPrev(head);
     }
 
     public IListNode<T, P> getHead() {
@@ -43,5 +45,13 @@ public class IList<T, P> {
 
     public void setList_size(int list_size) {
         this.list_size = list_size;
+    }
+
+    public IListNode<T,P> getFirst(){
+        return head.getNext().equals(tail)?null:head.getNext();
+    }
+
+    public IListNode<T,P> getLast(){
+        return tail.getPrev().equals(head)?null:tail.getPrev();
     }
 }

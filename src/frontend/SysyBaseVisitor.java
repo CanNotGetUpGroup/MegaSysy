@@ -1,4 +1,5 @@
-package frontend;// Generated from D:/JavaProject/AntlrMega\Sysy.g4 by ANTLR 4.9.2
+// Generated from D:/JavaProject/MegaSysy\Sysy.g4 by ANTLR 4.9.2
+package frontend;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
 /**
@@ -164,6 +165,27 @@ public class SysyBaseVisitor<T> extends AbstractParseTreeVisitor<T> implements S
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitPrimaryExp(SysyParser.PrimaryExpContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitNumber(SysyParser.NumberContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitINT_CONST(SysyParser.INT_CONSTContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

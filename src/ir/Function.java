@@ -1,22 +1,25 @@
 package ir;
 
+import ir.DerivedTypes.FunctionType;
 import util.IList;
 import util.IListNode;
 
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
-public class Function extends Value {
+public class Function extends Constant {
     private ArrayList<Argument> Arguments;
     private Module Parent;
-    private IList<BasicBlock, Function> bbList;
     private IListNode<Function, Module> funcNode;
+    private IList<BasicBlock, Function> bbList;
 
-    public Function(Type type, String name, Module module) {
+    public Function(FunctionType type, String name, Module module) {
         super(type, name);
         Parent = module;
-        bbList = new IList<>(this);
         funcNode = new IListNode<>(this);
-        //TODO: 添加到module
+        bbList = new IList<>(this);
+        //添加到module
+        funcNode.insertIntoListEnd(Parent.getFuncList());
     }
 
     public ArrayList<Argument> getArguments() {

@@ -1,4 +1,4 @@
-// Generated from D:/JavaProject/AntlrMega\Sysy.g4 by ANTLR 4.9.2
+// Generated from D:/JavaProject/MegaSysy\Sysy.g4 by ANTLR 4.9.2
 package frontend;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -275,6 +275,42 @@ public class SysyBaseListener implements SysyListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitPrimaryExp(SysyParser.PrimaryExpContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterNumber(SysyParser.NumberContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitNumber(SysyParser.NumberContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterINT_CONST(SysyParser.INT_CONSTContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitINT_CONST(SysyParser.INT_CONSTContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

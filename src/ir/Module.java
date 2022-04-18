@@ -3,21 +3,22 @@ package ir;
 import util.IList;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 
 public class Module {
-    private ArrayList<GlobalValue> globalValues;
+    private ArrayList<GlobalVariable> globalVariables;
     private IList<Function, Module> funcList;
+    private static final Module module = new Module();
 
-    public Module() {
-        this.globalValues = new ArrayList<>();
+    private Module() {
+        this.globalVariables = new ArrayList<>();
         this.funcList = new IList<>(this);
 
     }
 
-    public ArrayList<GlobalValue> getGlobalValues() {
-        return globalValues;
+    public static Module getInstance() { return module; };
+
+    public ArrayList<GlobalVariable> getGlobalVariables() {
+        return globalVariables;
     }
 
     public IList<Function, Module> getFuncList() {

@@ -27,4 +27,10 @@ public class CmpInst extends Instruction {
         super.setOperand(0,LHS);
         super.setOperand(1,RHS);
     }
+
+    public CmpInst(Type type,  Predicate pre, Value LHS, Value RHS) {
+        super(type, 2);
+        super.setOperand(0,LHS);
+        super.setOperand(1,RHS);
+    }
 }

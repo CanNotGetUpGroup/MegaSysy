@@ -5,22 +5,26 @@ import util.IListNode;
 
 public class BasicBlock extends Value {
     private Function Parent;
-    private IList<Instruction, BasicBlock> instList;
     private IListNode<BasicBlock, Function> bbNode;
+    private IList<Instruction, BasicBlock> instList;
 
 
     public BasicBlock(Type type, Function parent) {
         super(type);
         Parent = parent;
-        //TODO: 插入到parent末尾
+        bbNode = new IListNode<>(this);
+        instList = new IList<>(this);
+        //插入到parent末尾
+        bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
     public BasicBlock(Type type, String name, Function parent) {
         super(type, name);
         Parent = parent;
-        instList = new IList<>(this);
         bbNode = new IListNode<>(this);
-        //TODO: 插入到parent末尾
+        instList = new IList<>(this);
+        //插入到parent末尾
+        bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
     public Function getParent() {

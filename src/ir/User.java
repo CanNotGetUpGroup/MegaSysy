@@ -48,6 +48,10 @@ public abstract class User extends Value {
         this.OperandList = new ArrayList<>();
     }
 
+    public User(Type ty, Use Ops, int numOperands) {
+        super(ty);
+    }
+
     public User(Type ty,String name) {
         super(ty,name);
         this.numOperands = 0;
@@ -56,5 +60,11 @@ public abstract class User extends Value {
     public User(Type type, int numOperands) {
         super(type);
         this.numOperands = numOperands;
+    }
+
+    public User(Type type, ArrayList<Value> operandList) {
+        super(type);
+        OperandList = operandList;
+        numOperands=operandList.size();
     }
 }

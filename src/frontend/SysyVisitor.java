@@ -1,4 +1,4 @@
-// Generated from D:/JavaProject/AntlrMega\Sysy.g4 by ANTLR 4.9.2
+// Generated from D:/JavaProject/MegaSysy\Sysy.g4 by ANTLR 4.9.2
 package frontend;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -142,6 +142,24 @@ public interface SysyVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitPrimaryExp(SysyParser.PrimaryExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysyParser#number}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitNumber(SysyParser.NumberContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysyParser#iNT_CONST}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitINT_CONST(SysyParser.INT_CONSTContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysyParser#fLOAT_CONST}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link SysyParser#unaryExp}.
 	 * @param ctx the parse tree

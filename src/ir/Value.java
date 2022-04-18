@@ -33,16 +33,12 @@ public abstract class Value {
     }
 
     public void setName(String name) {
-        if (name != null) {
-            MyContext context = MyContext.getInstance();
-            Value find = context.lookup(name);
-            assert find == null || (!context.inGlobalArea() && (find instanceof GlobalValue || find instanceof Function));
-        }
         this.name = name;
     }
 
     public Value(Type type) {
         this.type = type;
+        setName("x"+String.valueOf(MyContext.valuePtr++));
     }
 
     public Value(Type type, String name) {

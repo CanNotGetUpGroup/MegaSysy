@@ -1,8 +1,8 @@
 package ir;
 
-public class GlobalValue extends Constant {
+public class GlobalVariable extends Constant {
     private Module parent;
-    private boolean isConstantGlobal;
+    private boolean isConstantGlobal; // Is this a global constant?
 
     public Module getParent() {
         return parent;
@@ -20,7 +20,7 @@ public class GlobalValue extends Constant {
         isConstantGlobal = constantGlobal;
     }
 
-    public GlobalValue(Type ty, int numOps, Module parent) {
+    public GlobalVariable(Type ty, int numOps, Module parent) {
         super(ty, numOps);
         this.parent = parent;
     }
@@ -28,7 +28,7 @@ public class GlobalValue extends Constant {
     /**
      * 插入在Moudle最后
      */
-    public GlobalValue(Type ty, int numOps, Module parent, boolean isConstantGlobal) {
+    public GlobalVariable(Type ty, int numOps, Module parent, boolean isConstantGlobal) {
         super(ty, numOps);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;
@@ -42,7 +42,7 @@ public class GlobalValue extends Constant {
      * @param isConstantGlobal 是否是constant
      * @param insertBefore  插入在该指令前
      */
-    public GlobalValue(Type ty, int numOps, Module parent, boolean isConstantGlobal, GlobalValue insertBefore) {
+    public GlobalVariable(Type ty, int numOps, Module parent, boolean isConstantGlobal, GlobalVariable insertBefore) {
         super(ty, numOps);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;

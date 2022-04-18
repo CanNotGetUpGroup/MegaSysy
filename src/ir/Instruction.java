@@ -22,6 +22,11 @@ public abstract class Instruction extends User {
         this.instNode = instNode;
     }
 
+    public Instruction(Type type , int numOperands) {
+        super(type, numOperands);
+        instNode = new IListNode<>(this);
+    }
+
     public Instruction(Type type, String name , int numOperands) {
         super(type, name, numOperands);
         instNode = new IListNode<>(this);
@@ -33,6 +38,7 @@ public abstract class Instruction extends User {
     public Instruction(Type type, int numOperands, Instruction InsertBefore ) {
         super(type, numOperands);
         //TODO: 插入在这个指令之前
+        instNode.insertBefore(InsertBefore.getInstNode());
     }
 
     /**
@@ -44,5 +50,6 @@ public abstract class Instruction extends User {
     public Instruction(Type type, int numOperands, BasicBlock InsertAtEnd ) {
         super(type, numOperands);
         //TODO: 插入在这个基本块的最后
+        instNode.insertIntoListEnd(InsertAtEnd.getInstList());
     }
 }
