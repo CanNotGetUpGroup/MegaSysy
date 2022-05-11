@@ -9,11 +9,9 @@ import ir.instructions.*;
 import util.MyIRBuilder;
 import util.SymbolTable;
 
-import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.logging.Logger;
 
 public class Visitor extends SysyBaseVisitor<Value> {
@@ -122,16 +120,23 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 }
                 arrayType = ArrayType.get(arrayType, ((ConstantInt) curVal).getVal());
             }
-            ctx.constInitVal().arrayType = arrayType;
-            Type ty=arrayType;
-            typeLinkedList=new ArrayList<>();
-            while(ty.isArrayTy()){
-                typeLinkedList.add(ty);
-                ty=((ArrayType)ty).getKidType();
+
+            typeArrayList =new ArrayList<>();
+            ArrayType Aty=arrayType;
+            while(Aty.getKidType().isArrayTy()){
+                typeArrayList.add(Aty);
+                Aty=(ArrayType) Aty.getKidType();
             }
-            typeLinkedList.add(ty);
-            depth=0;
+            tmpArrList=new ArrayList<>();
+            getDimInfo=false;
             visit(ctx.constInitVal());
+            getDimInfo=true;
+            visit(ctx.constInitVal());
+            //int a[2][2]={1,2,3}，生成的tmpArrList中只有{1,2,3}，补齐0
+            while(tmpArrList.size()<arrayType.getNumElements()*arrayType.getEleSize()){
+                tmpArrList.add(Constant.getNullValue(type));
+            }
+            curVal=changeArrType(arrayType,tmpArrList);
 
             if (symbolTable.inGlobalArea()) {
                 curVal = builder.createGlobalVariable(arrayType, module, (Constant) curVal, true);
@@ -151,8 +156,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
-    ArrayList<Type> typeLinkedList;
-    int depth;
+    ArrayList<ArrayType> typeArrayList;
+    ArrayList<Value> tmpArrList = null;
+    boolean getDimInfo;
 
     /**
      * constInitVal : constExp | LBRACE(constInitVal (COMMA constInitVal)*)?RBRACE;
@@ -162,77 +168,66 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (ctx.children.size() == 1) {//constExp
             visit(ctx.constExp());
         } else {
-            if (!ctx.arrayType.isArrayTy()) {
-                LogError("初始化类型与定义不符");
-            }
-            depth++;
-            ArrayType arrTy = (ArrayType) ctx.arrayType;
-            Type eleType = typeLinkedList.get(typeLinkedList.size()-1-depth);
-            Value tmpArr = null;
-            Type tmpArrTy = null;
-            ArrayList<Value> tmpArrList = null;
-            int arr_site = 0;
-            Type UpArrTy = null;
-            ArrayList<Value> UpArrList = new ArrayList<>();
-
-            int numEle = arrTy.getNumElements();
-            int eleSize = arrTy.getEleSize();
-            int pos = 0;
-            ArrayList<Value> V = new ArrayList<>();
-            for (int i = 0; i < ctx.constInitVal().size(); i++) {
-                ctx.constInitVal(i).arrayType = typeLinkedList.get(typeLinkedList.size()-1-depth);
-                if(ctx.constInitVal(i).children.size()==1){
-                    visit(ctx.constInitVal(i));
-                    if (!type.equals(curVal.getType()) && !(type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-                        LogError("赋值类型与定义不符");
+            if(!getDimInfo){
+                int kidDim=0;
+                for (int i = 0; i < ctx.constInitVal().size(); i++) {
+                    if(ctx.constInitVal(i).children.size()!=1){
+                        visit(ctx.constInitVal(i));
+                        kidDim=Math.max(kidDim,((ArrayType)ctx.constInitVal(i).arrayType).getDim());
                     }
-                    //整数转浮点数
-                    if (type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-                        curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
-                    }
-
-                    if (ctx.constInitVal(i).arrayType.isArrayTy()) {
-                        if (tmpArrList == null) {
-                            tmpArrList = new ArrayList<>();
-                            tmpArrTy = ctx.constInitVal(i).arrayType;
-                            while(((ArrayType)tmpArrTy).getKidType().isArrayTy()){
-                                tmpArrTy=((ArrayType) tmpArrTy).getKidType();
-                            }
-                        } else if (!curVal.getType().equals(tmpArrTy)) {
-                            LogError("数组初始化未对齐");
-                        }
-                        tmpArrList.add(curVal);
-                        arr_site++;
-                        if (arr_site % ((ArrayType)tmpArrTy).getNumElements() == 0) {
-
-                            tmpArr = ConstantArray.get((ArrayType)tmpArrTy, tmpArrList);
-                            tmpArrList = null;
-                            UpArrList.add(tmpArr);
-                        }
-                    } else {
-                        V.add(curVal);
-                        UpArrList.add(curVal);
-                    }
-                }else{
-                    visit(ctx.constInitVal(i));
-
                 }
-
+                assert typeArrayList.size()-1-kidDim>0;
+                ctx.arrayType= typeArrayList.get(typeArrayList.size()-1-kidDim);
+            }else{
+                ArrayType arrTy = (ArrayType) ctx.arrayType;
+                int numEle = arrTy.getNumElements();
+                int eleSize = arrTy.getEleSize();
+                ArrayList<Value> V = new ArrayList<>();
+                for (int i = 0; i < ctx.constInitVal().size(); i++) {
+                    if(ctx.constInitVal(i).children.size()==1){
+                        visit(ctx.constInitVal(i));
+                        if (!type.equals(curVal.getType()) && !(type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
+                            LogError("赋值类型与定义不符");
+                        }
+                        //整数转浮点数
+                        if (type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
+                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
+                        }
+                        V.add(curVal);
+                    }else{
+                        //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
+                        //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
+                        for(int j=V.size()%eleSize;j>0;j=(j+1)%eleSize){
+                            V.add(Constant.getNullValue(type));
+                        }
+                        visit(ctx.constInitVal(i));
+                        V.addAll(tmpArrList);
+                    }
+                }
+                while(V.size()<numEle*eleSize){
+                    V.add(Constant.getNullValue(type));
+                }
+                tmpArrList=V;
             }
-            curVal = ConstantArray.get(curVal.getType(), V);
-            depth--;
         }
         return curVal;
     }
 
-    public boolean checkConstArrayInit(ArrayType ATy, ConstantArray constantArray) {
-        ArrayList<Value> valList = constantArray.getOperandList();
-        Type eleTy = ATy.getKidType();
-
-        for (Value v : valList) {
-
+    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V) {
+        ArrayList<Value> ret=new ArrayList<>();
+        int eleSize=target.getEleSize();
+        int numEle=target.getNumElements();
+        if(target.getKidType().isArrayTy()){
+            for(int i=0;i<numEle;i++){
+                ret.add(changeArrType((ArrayType) target.getKidType(),new ArrayList<>(V.subList(i*eleSize,(i+1)*eleSize))));
+            }
+        }else{
+            for(int i=0;i<numEle;i++){
+                ret.add(V.get(i));
+            }
         }
-        return true;
+
+        return ConstantArray.get(target,ret);
     }
 
     /**
@@ -278,13 +273,27 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 arrayType = ArrayType.get(arrayType, ((ConstantInt) curVal).getVal());
             }
             if (ctx.initVal() != null) {
+                typeArrayList =new ArrayList<>();
+                ArrayType Aty=arrayType;
+                while(Aty.getKidType().isArrayTy()){
+                    typeArrayList.add(Aty);
+                    Aty=(ArrayType) Aty.getKidType();
+                }
+                tmpArrList=new ArrayList<>();
+                getDimInfo=false;
                 visit(ctx.initVal());
+                getDimInfo=true;
+                visit(ctx.initVal());
+                //int a[2][2]={1,2,3}，生成的tmpArrList中只有{1,2,3}，补齐0
+                while(tmpArrList.size()<arrayType.getNumElements()*arrayType.getEleSize()){
+                    tmpArrList.add(Constant.getNullValue(type));
+                }
                 if (symbolTable.inGlobalArea()) {
+                    curVal = changeArrType(arrayType,tmpArrList);//全局数组初始化一定是常量
                     curVal = builder.createGlobalVariable(arrayType, module, (Constant) curVal, false);
                     symbolTable.addValue(name, curVal);
                 } else {
                     Value alloca = builder.createAlloca(arrayType);
-
                     //TODO
 
                 }
@@ -329,19 +338,47 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (ctx.children.size() == 1) {//exp
             visit(ctx.exp());
         } else {
-            ArrayList<Value> V = new ArrayList<>();
-            for (int i = 0; i < ctx.initVal().size(); i++) {
-                visit(ctx.initVal(i));
-                if (!type.equals(curVal.getType()) && !(type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-                    LogError("赋值类型与定义不符");
+            if(!getDimInfo){
+                int kidDim=0;
+                for (int i = 0; i < ctx.initVal().size(); i++) {
+                    if(ctx.initVal(i).children.size()!=1){
+                        visit(ctx.initVal(i));
+                        kidDim=Math.max(kidDim,((ArrayType)ctx.initVal(i).arrayType).getDim());
+                    }
                 }
-                //TODO:整数转浮点数
-                if (type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-                    curVal = builder.createCast(Instruction.Ops.IntToPtr, curVal, Type.getFloatTy());
+                assert typeArrayList.size()-1-kidDim>0;
+                ctx.arrayType= typeArrayList.get(typeArrayList.size()-1-kidDim);
+            }else{
+                ArrayType arrTy = (ArrayType) ctx.arrayType;
+                int numEle = arrTy.getNumElements();
+                int eleSize = arrTy.getEleSize();
+                ArrayList<Value> V = new ArrayList<>();
+                for (int i = 0; i < ctx.initVal().size(); i++) {
+                    if(ctx.initVal(i).children.size()==1){
+                        visit(ctx.initVal(i));
+                        if (!type.equals(curVal.getType()) && !(type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
+                            LogError("赋值类型与定义不符");
+                        }
+                        //整数转浮点数
+                        if (type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
+                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
+                        }
+                        V.add(curVal);
+                    }else{
+                        //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
+                        //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
+                        for(int j=V.size()%eleSize;j>0;j=(j+1)%eleSize){
+                            V.add(Constant.getNullValue(type));
+                        }
+                        visit(ctx.initVal(i));
+                        V.addAll(tmpArrList);
+                    }
                 }
-                V.add(curVal);
+                while(V.size()<numEle*eleSize){
+                    V.add(Constant.getNullValue(type));
+                }
+                tmpArrList=V;
             }
-            curVal = ConstantArray.get(curVal.getType(), V);
         }
         return curVal;
     }

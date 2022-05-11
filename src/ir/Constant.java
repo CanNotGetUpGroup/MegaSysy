@@ -39,6 +39,8 @@ public abstract class Constant extends User {
                     return Constants.ConstantInt.const1_0();
             case FloatTyID:
                 return Constants.ConstantFP.const_0();
+            case ArrayTyID:
+                return ConstantArray.getZeroArr((DerivedTypes.ArrayType) ty);
             default:
                 return null;
         }
@@ -62,6 +64,9 @@ public abstract class Constant extends User {
         }
         if(this instanceof ConstantFP){
             return ((ConstantFP)this).isZero();
+        }
+        if(this instanceof ConstantArray){
+            return ((ConstantArray)this).isZero();
         }
         return false;
     }

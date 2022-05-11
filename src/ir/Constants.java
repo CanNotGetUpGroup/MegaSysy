@@ -172,18 +172,63 @@ public class Constants {
     //===----------------------------------------------------------------------===//
     /// ConstantArray - Constant Array Declarations
     ///
-    public static class ConstantArray extends ConstantAggregate {
+    public static class ConstantArray extends Constant {
         public ConstantArray(ArrayType ty, ArrayList<Value> V) {
             super(ty, V);
             //TODO:存入MyContext
         }
 
-        public static Constant get(ArrayType ty, ArrayList<Value> V) {
-            if (V.isEmpty()) {
-                return ConstantAggregateZero.get(ty);
+        public static ConstantArray get(ArrayType ty, ArrayList<Value> V) {
+            for (Value v : V) {
+                assert v instanceof Constant;
             }
             //TODO:检查是否存在
             return null;
+        }
+
+        public ArrayType getArrType(){
+            return (ArrayType) getType();
+        }
+
+        public ArrayList<Value> getArr(){
+            return getOperandList();
+        }
+
+        /**
+         * 生成类型为ty的全0数组
+         * @param ty
+         * @return
+         */
+        public static ConstantArray getZeroArr(ArrayType ty){
+            ArrayList<Value> V=new ArrayList<>();
+            if(!ty.getKidType().isArrayTy()){
+                for(int i=0;i<ty.getNumElements();i++){
+                    V.add(Constant.getNullValue(ty.getKidType()));
+                }
+            }else{
+                ConstantArray tmp=getZeroArr((ArrayType) ty.getKidType());
+                for(int i=0;i<ty.getNumElements();i++){
+                    V.add(tmp);
+                }
+            }
+            return get(ty,V);
+        }
+
+        public boolean isZero() {
+            for(Value v:getArr()){
+                if(v instanceof ConstantInt || v instanceof ConstantFP){
+                    if(!((Constant)v).isNullValue()){
+                        return false;
+                    }
+                }else if(v instanceof ConstantArray){
+                    if(!((ConstantArray)v).isZero()){
+                        return false;
+                    }
+                }else {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 

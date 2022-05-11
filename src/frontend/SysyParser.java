@@ -900,6 +900,7 @@ public class SysyParser extends Parser {
 	}
 
 	public static class InitValContext extends ParserRuleContext {
+		public Type arrayType;
 		public ExpContext exp() {
 			return getRuleContext(ExpContext.class,0);
 		}
