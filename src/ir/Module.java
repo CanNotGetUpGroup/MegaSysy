@@ -12,7 +12,6 @@ public class Module {
     private Module() {
         this.globalVariables = new ArrayList<>();
         this.funcList = new IList<>(this);
-
     }
 
     public static Module getInstance() { return module; };

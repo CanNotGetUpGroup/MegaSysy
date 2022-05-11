@@ -25,25 +25,53 @@ public class Constants {
     public static class ConstantInt extends ConstantData {
         private int val;
 
-        private ConstantInt(IntegerType ty, int val) {
+        public ConstantInt(Type ty, int val) {
             super(ty);
             this.val = val;
-            context.IntConstants.put(val, this);
+            if(ty.isInt32Ty()) context.IntConstants.put(val, this);
         }
 
         /**
          * 获取一个值为v的ConstantInt对象，若MyContext中已存在，则直接返回
          */
         public static ConstantInt get(int v) {
-            return context.IntConstants.getOrDefault(v, new ConstantInt(Type.getIntegerTy(), v));
+            return context.IntConstants.getOrDefault(v, new ConstantInt(Type.getInt32Ty(), v));
+        }
+
+        public static ConstantInt get(Type ty, int v) {
+            if (ty.equals(Type.getInt1Ty())) {
+                if (v == 0){
+                    if(context.int1_0==null){
+                        context.int1_0=new ConstantInt(Type.getInt1Ty(), 0);
+                    }
+                    return context.int1_0;
+                }
+                else{
+                    if(context.int1_1==null){
+                        context.int1_1=new ConstantInt(Type.getInt1Ty(), 1);
+                    }
+                    return context.int1_1;
+                }
+            }
+            return context.IntConstants.getOrDefault(v, new ConstantInt(ty, v));
         }
 
         /**
          * 常量0
          */
         public static ConstantInt const_0() {
-            return get(0);
+            return get(Type.getInt32Ty(), 0);
         }
+
+        public static ConstantInt const1_0() {
+            return get(Type.getInt1Ty(), 0);
+        }
+
+        public static ConstantInt const1_1() {
+            return get(Type.getInt1Ty(), 1);
+        }
+
+        public boolean isZero() {return val==0;}
 
         public int getVal() {
             return val;
@@ -83,6 +111,8 @@ public class Constants {
         public static ConstantFP const_0() {
             return get(0);
         }
+
+        public boolean isZero() {return val==0;}
 
         public float getVal() {
             return val;
@@ -149,7 +179,7 @@ public class Constants {
         }
 
         public static Constant get(ArrayType ty, ArrayList<Value> V) {
-            if(V.isEmpty()){
+            if (V.isEmpty()) {
                 return ConstantAggregateZero.get(ty);
             }
             //TODO:检查是否存在
@@ -157,5 +187,17 @@ public class Constants {
         }
     }
 
+    //===----------------------------------------------------------------------===//
+    /// A constant value that is initialized with an expression using
+    /// other constant values.
+    ///
+    /// This class uses the standard Instruction opcodes to define the various
+    /// constant expressions.  The Opcode field for the ConstantExpr class is
+    /// maintained in the Value::SubclassData field.
+    public static class ConstantExpr extends Constant {
+        public ConstantExpr(Type ty) {
+            super(ty);
+        }
 
+    }
 }

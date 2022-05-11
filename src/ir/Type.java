@@ -24,10 +24,20 @@ public class Type {
     /// the pointee of a pointer, the element type of an array, etc. This pointer
     /// may be 0 for types that don't contain other types (Integer, Double,
     /// Float).
-    private ArrayList<Type> containedTys;
+    private ArrayList<Type> containedTys=new ArrayList<>();
+    private int hashcode;
 
-    public Type(TypeID tid) {
+    public int getHashcode() {
+        return hashcode;
+    }
+
+    public void setHashcode(int hashcode) {
+        this.hashcode = hashcode;
+    }
+
+    public Type(TypeID tid,int hashcode) {
         ID=tid;
+        this.hashcode=hashcode;
     }
 
     public TypeID getID() {
@@ -49,8 +59,11 @@ public class Type {
     /**
      * factory functions
      */
-    public static IntegerType getIntegerTy(){
-        return MyContext.IntegerTy;
+    public static Type getInt32Ty(){
+        return MyContext.Int32Ty;
+    }
+    public static Type getInt1Ty(){
+        return MyContext.Int1Ty;
     }
     public static Type getFloatTy(){
         return MyContext.FloatTy;
@@ -58,6 +71,7 @@ public class Type {
     public static Type getVoidTy(){
         return MyContext.VoidTy;
     }
+    public static Type getLabelTy() {return MyContext.LabelTy;}
     public static Type getArrayTy(Type ElementType, int numElements){
         return ArrayType.get(ElementType,  numElements);
     }
@@ -72,19 +86,25 @@ public class Type {
      * judge functions
      */
     /// Return true if this is 'label'.
-    boolean isLabelTy() { return getID() == TypeID.LabelTyID; }
+    public boolean isLabelTy() { return getID() == TypeID.LabelTyID; }
     /// True if this is an instance of IntegerType.
-    boolean isIntegerTy() { return getID() == TypeID.IntegerTyID; }
+    public boolean isIntegerTy() { return getID() == TypeID.IntegerTyID; }
+    /// True if this is an instance of FloatType.
+    public boolean isFloatTy() { return getID() == TypeID.FloatTyID; }
     /// Return true if this is an integer type or a pointer type.
-    boolean isIntOrPtrTy() { return isIntegerTy() || isPointerTy(); }
+    public boolean isIntOrPtrTy() { return isIntegerTy() || isPointerTy(); }
     /// True if this is an instance of FunctionType.
-    boolean isFunctionTy() { return getID() == TypeID.FunctionTyID; }
+    public boolean isFunctionTy() { return getID() == TypeID.FunctionTyID; }
     /// True if this is an instance of ArrayType.
-    boolean isArrayTy() { return getID() == TypeID.ArrayTyID; }
+    public boolean isArrayTy() { return getID() == TypeID.ArrayTyID; }
     /// True if this is an instance of PointerType.
-    boolean isPointerTy() { return getID() == TypeID.PointerTyID; }
+    public boolean isPointerTy() { return getID() == TypeID.PointerTyID; }
     /// True if this is an instance of VectorType.
-    boolean isVectorTy() {
+    public boolean isVectorTy() {
         return getID() == TypeID.ScalableVectorTyID || getID() == TypeID.FixedVectorTyID;
     }
+
+    public boolean isInt1Ty() {return equals(getInt1Ty());}
+
+    public boolean isInt32Ty() {return equals(getInt32Ty());}
 }

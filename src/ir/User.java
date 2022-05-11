@@ -30,6 +30,27 @@ public abstract class User extends Value {
     public void setOperand(int i,Value Val){
         assert (i<numOperands);
         OperandList.set(i,Val);
+        if(Val!=null){
+            Val.addUse(new Use(this,Val,i));
+        }
+    }
+
+    public void addOperand(Value Val){
+        OperandList.add(Val);
+        if(Val!=null){
+            Val.addUse(new Use(this,Val,OperandList.size()-1));
+        }
+        this.numOperands=OperandList.size();
+    }
+
+    public void addAllOperand(ArrayList<Value> Val){
+        if(Val!=null){
+            for(Value v:Val){
+                OperandList.add(v);
+                v.addUse(new Use(this,v,OperandList.size()-1));
+            }
+        }
+        this.numOperands=OperandList.size();
     }
 
     public Value opBegin(){
@@ -54,17 +75,19 @@ public abstract class User extends Value {
 
     public User(Type ty,String name) {
         super(ty,name);
+        OperandList=new ArrayList<>();
         this.numOperands = 0;
     }
 
     public User(Type type, int numOperands) {
         super(type);
+        OperandList=new ArrayList<>();
         this.numOperands = numOperands;
     }
 
     public User(Type type, ArrayList<Value> operandList) {
         super(type);
-        OperandList = operandList;
-        numOperands=operandList.size();
+        OperandList=new ArrayList<>();
+        addAllOperand(operandList);
     }
 }

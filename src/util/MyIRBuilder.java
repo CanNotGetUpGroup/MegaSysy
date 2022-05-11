@@ -1,90 +1,521 @@
 package util;
 
 import ir.*;
-import ir.Constants.*;
+import ir.Module;
+import ir.instructions.BinaryInstruction;
+import ir.instructions.CastInst;
+import ir.instructions.CmpInst;
 import ir.instructions.CmpInst.*;
 import ir.instructions.Instructions.*;
 
+import java.util.ArrayList;
+
+/**
+ * 创建、插入各种Instruction
+ */
 public class MyIRBuilder {
-    private static final MyIRBuilder myIRBuilder=new MyIRBuilder();
+    private static final MyIRBuilder myIRBuilder = new MyIRBuilder();
     public BasicBlock BB;
-    private IListNode<Instruction,BasicBlock> InsertPt;
+    private IListNode<Instruction, BasicBlock> InsertPt;
     private MyContext context = MyContext.getInstance();
 
-    public static MyIRBuilder getInstance(){return myIRBuilder;}
+    public static MyIRBuilder getInstance() {
+        return myIRBuilder;
+    }
 
-    public void InsertHelper(Instruction I, String Name, BasicBlock basicBlock, IListNode<Instruction,BasicBlock> insertPt) {
-        if(basicBlock!=null) {
+    public void InsertHelper(Instruction I, String Name, BasicBlock basicBlock, IListNode<Instruction, BasicBlock> insertPt) {
+        if (basicBlock != null) {
             //插入到基本块指定位置
             insertPt.insertBefore(I.getInstNode());
         }
-        I.setName(Name);
+        if (Name != null) I.setName(Name);
+    }
+
+    public Value insert(Constant C) {
+        return C;
+    }
+
+    public Value insert(Value V) {
+        if (V instanceof Instruction) {
+            insert((Instruction) V);
+        }
+        return V;
     }
 
     public Instruction insert(Instruction I) {
-        InsertHelper(I,"",BB,InsertPt);
+        InsertHelper(I, null, BB, InsertPt);
         return I;
     }
 
-    public Instruction insert(Instruction I,String name) {
-        InsertHelper(I,name,BB,InsertPt);
+    public Instruction insert(Instruction I, String name) {
+        InsertHelper(I, name, BB, InsertPt);
         return I;
     }
 
-    public void setInsertPoint(BasicBlock b){
-        BB=b;
-        InsertPt=b.getInstList().getTail();
+    public void setInsertPoint(BasicBlock b) {
+        BB = b;
+        InsertPt = b.getInstList().getTail();
     }
 
-    public void setInsertPoint(Instruction I){
-        BB=I.getParent();
-        InsertPt=I.getInstNode();
+    public void setInsertPoint(Instruction I) {
+        BB = I.getParent();
+        InsertPt = I.getInstNode();
     }
 
-//    public GlobalValue createGlobalString() {
+    public BasicBlock createBasicBlock(String name, Function parent) {
+        BasicBlock BB = BasicBlock.create(name, parent);
+        setInsertPoint(BB);
+        return BB;
+    }
+
+    public void unifyType(Value L, Value R){
+        if(!L.getType().equals(R.getType())){
+            if(L.getType().isInt1Ty()){
+                if(R.getType().isInt32Ty()){
+                    L=createZExt(L,Type.getInt32Ty());
+                }else if(R.getType().isFloatTy()){
+                    L=createSIToFP(L,Type.getFloatTy());
+                }
+            }else if(L.getType().isInt32Ty()){
+                if(R.getType().isFloatTy()){
+                    L=createSIToFP(L,Type.getFloatTy());
+                }else if(R.getType().isInt1Ty()){
+                    unifyType(R,L);
+                }
+            }else if(R.getType().isFloatTy()){
+                unifyType(R,L);
+            }
+        }
+    }
+
+    /**
+     * Instructions factory functions
+     */
+
+    /**
+     * 新建全局变量
+     */
+    public GlobalVariable createGlobalVariable(Type ty, Module parent, Constant InitVal, boolean isConstantGlobal) {
+        return GlobalVariable.create(ty, parent, InitVal, isConstantGlobal);
+    }
+
+    /**
+     * 新建函数
+     */
+    public Function createFunction(DerivedTypes.FunctionType type, String name, Module module) {
+        return Function.create(type, name, module);
+    }
+
+    //===--------------------------------------------------------------------===//
+    // Intrinsic creation methods
+    //===--------------------------------------------------------------------===//
+
+    /// create and insert a memset to the specified pointer and the
+    /// specified value.
+    ///
+    /// If the pointer isn't an i8*, it will be converted. If a TBAA tag is
+    /// specified, it will be added to the instruction. Likewise with alias.scope
+    /// and noalias tags.
+
+//    CallInst createMemSet(Value Ptr, Value Val, int Size) {
 //
 //    }
-//
-//    public ConstantInt getInt32() {
+
+    //===--------------------------------------------------------------------===//
+    // Instruction creation methods: Terminators
+    //===--------------------------------------------------------------------===//
+
+    public Instruction createRet(Value V) {
+        return insert(ReturnInst.create(V));
+    }
+
+    public Instruction createRetVoid() {
+        return insert(ReturnInst.create());
+    }
+
+    public Instruction createBr(BasicBlock Dest) {
+        return insert(BranchInst.create(Dest));
+    }
+
+    // create a conditional 'br Cond, TrueDest, FalseDest'
+    // instruction.
+    public Instruction createCondBr(Value Cond, BasicBlock True, BasicBlock False) {
+        return insert(BranchInst.create(True, False, Cond));
+    }
+
+//    public CallBrInst createCallBr(DerivedTypes.FunctionType Ty, Value Callee, BasicBlock DefaultDest,
+//                                   ArrayList<BasicBlock> IndirectDests,ArrayList<Value> Args){
 //
 //    }
-//
-//    public AllocaInst createAlloca(Type ty) {
-//
+
+    //===--------------------------------------------------------------------===//
+    // Instruction creation methods: Binary Operators
+    //===--------------------------------------------------------------------===//
+
+    public Value createBinary(Instruction.Ops op,Value L ,Value R){
+        // 转换类型
+        unifyType(L,R);
+        if(L.getType().isFloatTy()){
+            if(op.equals(Instruction.Ops.Add)){
+                op= Instruction.Ops.FAdd;
+            }else if(op.equals(Instruction.Ops.Sub)){
+                op=Instruction.Ops.FSub;
+            }else if(op.equals(Instruction.Ops.Mul)){
+                op=Instruction.Ops.FMul;
+            }else if(op.equals(Instruction.Ops.SDiv)){
+                op=Instruction.Ops.FDiv;
+            }else if(op.equals(Instruction.Ops.SRem)){
+                op=Instruction.Ops.FRem;
+            }
+        }
+        switch (op){
+            case Add:
+                return createAdd(L,R);
+            case Sub:
+                return createSub(L,R);
+            case Mul:
+                return createMul(L,R);
+            case SDiv:
+                return createSDiv(L,R);
+            case SRem:
+                return createSRem(L,R);
+            case FAdd:
+                return createFAdd(L,R);
+            case FSub:
+                return createFSub(L,R);
+            case FMul:
+                return createFMul(L,R);
+            case FDiv:
+                return createFDiv(L,R);
+            case FRem:
+                return createFRem(L,R);
+        }
+        return null;
+    }
+
+    public Value foldConstant(Instruction.Ops Opc, Value L, Value R) {
+        if (!(L instanceof Constant && R instanceof Constant)) {
+            return null;
+        }
+        return insert(Folder.createBinOp(Opc, (Constant) L, (Constant) R));
+    }
+
+    public Value createAdd(Value LHS, Value RHS) {
+        if (LHS instanceof Constant && RHS instanceof Constant) {
+            return insert(Folder.createAdd((Constant) LHS, (Constant) RHS));
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.Add,LHS,RHS));
+    }
+
+    public Value createSub(Value LHS, Value RHS) {
+        if (LHS instanceof Constant && RHS instanceof Constant) {
+            return insert(Folder.createSub((Constant) LHS, (Constant) RHS));
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.Sub,LHS,RHS));
+    }
+
+    public Value createMul(Value LHS, Value RHS) {
+        if (LHS instanceof Constant && RHS instanceof Constant) {
+            return insert(Folder.createMul((Constant) LHS, (Constant) RHS));
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.Mul,LHS,RHS));
+    }
+
+    public Value createSDiv(Value LHS, Value RHS) {
+        if (LHS instanceof Constant && RHS instanceof Constant) {
+            return insert(Folder.createSDiv((Constant) LHS, (Constant) RHS));
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.SDiv,LHS,RHS));
+    }
+
+    public Value createSRem(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.SRem, LHS, RHS);
+        if (V != null) {
+            return V;
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
+    }
+
+    public Value createFAdd(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.FAdd, LHS, RHS);
+        if (V != null) {
+            return V;
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.FAdd,LHS,RHS));
+    }
+
+    public Value createFSub(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.FSub, LHS, RHS);
+        if (V != null) {
+            return V;
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.FSub,LHS,RHS));
+    }
+
+    public Value createFMul(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.FMul, LHS, RHS);
+        if (V != null) {
+            return V;
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.FMul,LHS,RHS));
+    }
+
+    public Value createFDiv(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.FDiv, LHS, RHS);
+        if (V != null) {
+            return V;
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.FDiv,LHS,RHS));
+    }
+
+    public Value createFRem(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.FRem, LHS, RHS);
+        if (V != null) {
+            return V;
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.FRem,LHS,RHS));
+    }
+
+    public Value createAnd(Value LHS, Value RHS) {
+        if (RHS instanceof Constant) {
+            // LHS & -1 -> LHS
+            if(RHS instanceof Constants.ConstantInt && ((Constants.ConstantInt)RHS).getVal()==-1){
+                return LHS;
+            }
+            if(LHS instanceof Constant){
+                return insert(Folder.createAnd((Constant) LHS, (Constant) RHS));
+            }
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.And,LHS,RHS));
+    }
+
+    public Value createOr(Value LHS, Value RHS) {
+        if (RHS instanceof Constant) {
+            // LHS | 0 -> LHS
+            if(RHS instanceof Constants.ConstantInt && ((Constants.ConstantInt)RHS).getVal()==0){
+                return LHS;
+            }
+            if(LHS instanceof Constant){
+                return insert(Folder.createOr((Constant) LHS, (Constant) RHS));
+            }
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.And,LHS,RHS));
+    }
+
+    public Value createLogicalAnd(Value LHS, Value RHS) {
+        return createSelect(LHS,RHS, Constants.ConstantInt.getNullValue(RHS.getType()));
+    }
+
+    public Value createLogicalOr(Value LHS, Value RHS) {
+        return createSelect(LHS, Constants.ConstantInt.getAllOnesValue(RHS.getType()),RHS);
+    }
+
+    public Value createNot(Value V){
+        if(V instanceof Constant){
+            return insert(Folder.createNot((Constant)V));
+        }
+        return insert(BinaryInstruction.createNot(V));
+    }
+
+    //===--------------------------------------------------------------------===//
+    // Instruction creation methods: Memory Instructions
+    //===--------------------------------------------------------------------===//
+
+    public Instruction createAlloca(Type Ty) {
+        return insert(new AllocaInst(Ty));
+    }
+
+    public Value createLoad(Type Ty, Value Ptr) {
+        return insert(new LoadInst(Ty, Ptr));
+    }
+
+    public Instruction createStore(Value Val, Value Ptr) {
+        return insert(new StoreInst(Val, Ptr));
+    }
+
+    public Instruction createGEP(Value Ptr, ArrayList<Value> IdxList) {
+        return insert(GetElementPtrInst.create(null, Ptr, IdxList));
+    }
+
+
+    public Instruction createGEP(Type Ty, Value Ptr, ArrayList<Value> IdxList) {
+        return insert(GetElementPtrInst.create(Ty, Ptr, IdxList));
+    }
+
+    //===--------------------------------------------------------------------===//
+    // Instruction creation methods: Cast/Conversion Operators
+    //===--------------------------------------------------------------------===//
+
+    /**
+     * 若V为常量，则自动进行转换，直接返回转换的结果
+     */
+    public Value createCast(Instruction.Ops Op, Value V, Type DestTy) {
+        if (V.getType().equals(DestTy)) {
+            return V;
+        }
+        if (V instanceof Constant) {
+            return insert(Folder.createCast(Op, (Constant) V, DestTy));
+        }
+        return insert(CastInst.create(Op, V, DestTy));
+    }
+
+    public Value createZExt(Value V, Type DestTy) {
+        return createCast(Instruction.Ops.ZExt, V, DestTy);
+    }
+
+//    Value createFPExt(Value V, Type DestTy) {
+//        return createCast(Instruction.CastOps.FPExt, V, DestTy);
 //    }
-//
-//    public Value createZExt(Value V, Type DestTy, String name) {
-//
-//    }
 
-    public Value createICmp(Predicate P, Value LHS, Value RHS, String name) {
-        //TODO: 常量折叠
-        return insert(new ICmpInst(name,P,LHS,RHS),name);
+    Value createFPToSI(Value V, Type DestTy) {
+        return createCast(Instruction.Ops.FPToSI, V, DestTy);
     }
 
-    public Value createICmpEQ(Value LHS, Value RHS, String name) {
-        return createICmp(Predicate.ICMP_EQ,LHS,RHS,name);
+    Value createSIToFP(Value V, Type DestTy) {
+        return createCast(Instruction.Ops.SIToFP, V, DestTy);
     }
 
-    public Value createICmpNE(Value LHS, Value RHS, String name) {
-        return createICmp(Predicate.ICMP_NE,LHS,RHS,name);
+    //===--------------------------------------------------------------------===//
+    // Instruction creation methods: Compare Instructions
+    //===--------------------------------------------------------------------===//
+
+    /**
+     * 若LHS和RHS都为常量，则经过常量折叠，直接返回比较的结果
+     */
+    public Value createCmp(Predicate Pred, Value L, Value R) {
+        // 类型转换
+        unifyType(L,R);
+        if(L.getType().isFloatTy()){
+            if(Pred.equals(Predicate.ICMP_EQ)){
+                Pred= Predicate.FCMP_UEQ;
+            }else if(Pred.equals(Predicate.ICMP_NE)){
+                Pred=Predicate.FCMP_UNE;
+            }else if(Pred.equals(Predicate.ICMP_SGE)){
+                Pred=Predicate.FCMP_UGE;
+            }else if(Pred.equals(Predicate.ICMP_SGT)){
+                Pred=Predicate.FCMP_UGT;
+            }else if(Pred.equals(Predicate.ICMP_SLE)){
+                Pred=Predicate.FCMP_ULE;
+            }else if(Pred.equals(Predicate.ICMP_SLT)){
+                Pred=Predicate.FCMP_ULT;
+            }
+        }
+        return CmpInst.isFPPredicate(Pred)
+                ? createFCmp(Pred, L, R)
+                : createICmp(Pred, L, R);
     }
 
-    public Value createICmpSGE(Value LHS, Value RHS, String name) {
-        return createICmp(Predicate.ICMP_SGE,LHS,RHS,name);
+    public Value createICmp(Predicate P, Value LHS, Value RHS) {
+        //常量折叠
+        if (LHS instanceof Constant && RHS instanceof Constant) {
+            return insert(Folder.createIcmp(P, (Constant) LHS, (Constant) RHS));
+        }
+        return insert(new ICmpInst(P, LHS, RHS));
     }
 
-    public Value createICmpSGT(Value LHS, Value RHS, String name) {
-        return createICmp(Predicate.ICMP_SGT,LHS,RHS,name);
+    // create a quiet floating-point comparison (i.e. one that raises an FP
+    // exception only in the case where an input is a signaling NaN).
+    // Note that this differs from createFCmpS only if IsFPConstrained is true.
+    public Value createFCmp(Predicate P, Value LHS, Value RHS) {
+        if (LHS instanceof Constant && RHS instanceof Constant) {
+            return insert(Folder.createFcmp(P, (Constant) LHS, (Constant) RHS));
+        }
+        return insert(new FCmpInst(P, LHS, RHS));
     }
 
-    public Value createICmpSLE(Value LHS, Value RHS, String name) {
-        return createICmp(Predicate.ICMP_SLE,LHS,RHS,name);
+    public Value createICmpEQ(Value LHS, Value RHS) {
+        return createICmp(Predicate.ICMP_EQ, LHS, RHS);
     }
 
-    public Value createICmpSLT(Value LHS, Value RHS, String name) {
-        return createICmp(Predicate.ICMP_SLT,LHS,RHS,name);
+    public Value createICmpNE(Value LHS, Value RHS) {
+        return createICmp(Predicate.ICMP_NE, LHS, RHS);
     }
 
+    public Value createICmpSGE(Value LHS, Value RHS) {
+        return createICmp(Predicate.ICMP_SGE, LHS, RHS);
+    }
+
+    public Value createICmpSGT(Value LHS, Value RHS) {
+        return createICmp(Predicate.ICMP_SGT, LHS, RHS);
+    }
+
+    public Value createICmpSLE(Value LHS, Value RHS) {
+        return createICmp(Predicate.ICMP_SLE, LHS, RHS);
+    }
+
+    public Value createICmpSLT(Value LHS, Value RHS) {
+        return createICmp(Predicate.ICMP_SLT, LHS, RHS);
+    }
+
+    public Value createFCmpOEQ(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_OEQ, LHS, RHS);
+    }
+
+    public Value createFCmpOGT(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_OGT, LHS, RHS);
+    }
+
+    public Value createFCmpOGE(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_OGE, LHS, RHS);
+    }
+
+    public Value createFCmpOLT(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_OLT, LHS, RHS);
+    }
+
+    public Value createFCmpOLE(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_OLE, LHS, RHS);
+    }
+
+    public Value createFCmpONE(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_ONE, LHS, RHS);
+    }
+
+    public Value createFCmpORD(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_ORD, LHS, RHS);
+    }
+
+    public Value createFCmpUNO(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_UNO, LHS, RHS);
+    }
+
+    public Value createFCmpUEQ(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_UEQ, LHS, RHS);
+    }
+
+    public Value createFCmpUGT(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_UGT, LHS, RHS);
+    }
+
+    public Value createFCmpUGE(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_UGE, LHS, RHS);
+    }
+
+    public Value createFCmpULT(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_ULT, LHS, RHS);
+    }
+
+    public Value createFCmpULE(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_ULE, LHS, RHS);
+    }
+
+    public Value createFCmpUNE(Value LHS, Value RHS) {
+        return createFCmp(Predicate.FCMP_UNE, LHS, RHS);
+    }
+
+    //===--------------------------------------------------------------------===//
+    // Instruction creation methods: Other Instructions
+    //===--------------------------------------------------------------------===//
+
+    public Instruction createCall(Function F, ArrayList<Value> Args) {
+        return insert(CallInst.create(F, Args));
+    }
+
+    public Value createSelect(Value C, Value True, Value False) {
+        if(C instanceof Constant && True instanceof Constant && False instanceof Constant){
+            return insert(Folder.createSelect((Constant) C,(Constant)True,(Constant)False));
+        }
+        return insert(SelectInst.create(C,True,False));
+    }
 
 }

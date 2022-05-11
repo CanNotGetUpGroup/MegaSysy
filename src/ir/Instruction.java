@@ -4,7 +4,22 @@ import util.IListNode;
 
 public abstract class Instruction extends User {
     private BasicBlock Parent;
-    private IListNode<Instruction,BasicBlock> instNode;
+    private IListNode<Instruction, BasicBlock> instNode;
+    private Ops op;//指令类型
+
+    public enum Ops {
+        //Term
+        Ret, Br, Switch,CallBr,
+        //Unary
+        //Binary
+        Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem,And,Or,Xor,
+        //Memory
+        Alloca, Load, Store, GetElementPtr, Fence,
+        //Cast
+        ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr,
+        //Other
+        ICmp, FCmp, Call, Select,
+    }
 
     public BasicBlock getParent() {
         return Parent;
@@ -22,34 +37,69 @@ public abstract class Instruction extends User {
         this.instNode = instNode;
     }
 
-    public Instruction(Type type , int numOperands) {
+    public Ops getOp() {
+        return op;
+    }
+
+    public void setOp(Ops op) {
+        this.op = op;
+    }
+
+    public Instruction(Type type, Ops op, int numOperands) {
         super(type, numOperands);
+        this.op = op;
         instNode = new IListNode<>(this);
     }
 
-    public Instruction(Type type, String name , int numOperands) {
+    public Instruction(Type type, Ops op, String name, int numOperands) {
         super(type, name, numOperands);
+        this.op = op;
         instNode = new IListNode<>(this);
     }
 
     /**
      * @param InsertBefore 插入在这个指令之前
      */
-    public Instruction(Type type, int numOperands, Instruction InsertBefore ) {
+    public Instruction(Type type, Ops op, int numOperands, Instruction InsertBefore) {
         super(type, numOperands);
+        this.op = op;
         //TODO: 插入在这个指令之前
         instNode.insertBefore(InsertBefore.getInstNode());
     }
 
     /**
-     *
-     * @param type 类型
+     * @param type        类型
      * @param numOperands 参数数量
      * @param InsertAtEnd 插入在这个基本块的最后
      */
-    public Instruction(Type type, int numOperands, BasicBlock InsertAtEnd ) {
+    public Instruction(Type type, Ops op, int numOperands, BasicBlock InsertAtEnd) {
         super(type, numOperands);
+        this.op = op;
         //TODO: 插入在这个基本块的最后
         instNode.insertIntoListEnd(InsertAtEnd.getInstList());
+    }
+
+    // x op (y op z) === (x op y) op z
+    public static boolean isAssociative(Ops Opcode) {
+        switch (Opcode){
+            case Add: case FAdd:
+            case Mul: case FMul:
+            case And: case Or:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // (x op y) === (y op x)
+    public static boolean isCommutative(Ops Opcode){
+        switch (Opcode){
+            case Add: case FAdd:
+            case Mul: case FMul:
+            case And: case Or: case Xor:
+                return true;
+            default:
+                return false;
+        }
     }
 }

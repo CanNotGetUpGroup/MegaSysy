@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import java.util.logging.Logger;
 
 public abstract class Value {
-    private LinkedList<Use> UseList;
+    private LinkedList<Use> UseList;//自己在哪些地方被使用
     private Type type;
     private String name;
 
@@ -36,6 +36,10 @@ public abstract class Value {
         this.name = name;
     }
 
+    /**
+     * 自动生成名称
+     * @param type
+     */
     public Value(Type type) {
         this.type = type;
         setName("x"+String.valueOf(MyContext.valuePtr++));
@@ -64,7 +68,13 @@ public abstract class Value {
         UseList.removeIf(use -> use.getU() == (U));
     }
 
+    /**
+     * 将所有引用this的operand转换为引用V，并清除this的UseList，为V的UseList加上对应的Use
+     */
     public void replaceAllUsesWith(Value V) {
-
+        for(Use use:UseList){
+            use.getU().setOperand(use.getOperandNo(),V);
+        }
+        UseList.clear();
     }
 }

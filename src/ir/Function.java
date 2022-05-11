@@ -13,6 +13,17 @@ public class Function extends Constant {
     private IListNode<Function, Module> funcNode;
     private IList<BasicBlock, Function> bbList;
 
+    /**
+     * 生成一个Function对象
+     * @param type
+     * @param name
+     * @param module
+     * @return
+     */
+    public static Function create(FunctionType type,String name,Module module){
+        return new Function(type, name, module);
+    }
+
     public Function(FunctionType type, String name, Module module) {
         super(type, name);
         Parent = module;

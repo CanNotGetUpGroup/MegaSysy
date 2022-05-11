@@ -1,5 +1,7 @@
 // Generated from D:/JavaProject/MegaSysy\Sysy.g4 by ANTLR 4.9.2
 package frontend;
+import ir.DerivedTypes;
+import ir.Type;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -554,6 +556,7 @@ public class SysyParser extends Parser {
 	}
 
 	public static class ConstInitValContext extends ParserRuleContext {
+		public Type arrayType;
 		public ConstExpContext constExp() {
 			return getRuleContext(ConstExpContext.class,0);
 		}
