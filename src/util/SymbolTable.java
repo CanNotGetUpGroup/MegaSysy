@@ -20,6 +20,7 @@ public class SymbolTable {
     private SymbolTable() {
         ValSymTab = new ArrayList<>();
         GlobalValSymTab=new HashMap<>();
+        NameValTab=new HashMap<>();
     }
 
     public HashMap<String, Value> getCurTable(){

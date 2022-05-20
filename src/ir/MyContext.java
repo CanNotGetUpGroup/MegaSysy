@@ -13,6 +13,7 @@ public class MyContext {
     private MyContext() {
         IntConstants = new HashMap<>();
         FPConstants = new HashMap<>();
+        ArrayConstants=new HashMap<>();
         arrayTypes = new HashMap<>();
         functionTypes = new HashMap<>();
         pointerTypes = new HashMap<>();
@@ -37,6 +38,7 @@ public class MyContext {
      */
     public HashMap<Integer, ConstantInt> IntConstants;
     public HashMap<Float, ConstantFP> FPConstants;
+    public HashMap<Integer, ConstantArray> ArrayConstants;
     public ConstantInt int1_0;
     public ConstantInt int1_1;
 

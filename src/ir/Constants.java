@@ -32,6 +32,20 @@ public class Constants {
         }
 
         /**
+         * 不带类型
+         * @return
+         */
+        @Override
+        public String getName() {
+            return String.valueOf(this.getVal());
+        }
+
+        @Override
+        public String toString() {
+            return (getType().isInt32Ty()?"i32 ":"i1 ") + this.getVal();
+        }
+
+        /**
          * 获取一个值为v的ConstantInt对象，若MyContext中已存在，则直接返回
          */
         public static ConstantInt get(int v) {
@@ -98,6 +112,16 @@ public class Constants {
             context.FPConstants.put(val, this);
         }
 
+        @Override
+        public String getName() {
+            return String.valueOf(this.getVal());
+        }
+
+        @Override
+        public String toString() {
+            return "float " + this.getVal();
+        }
+
         /**
          * 获取一个值为v的ConstantFP对象，若MyContext中已存在，则直接返回
          */
@@ -128,48 +152,6 @@ public class Constants {
     }
 
     //===----------------------------------------------------------------------===//
-    /// All zero aggregate value
-    ///
-    public static class ConstantAggregateZero extends ConstantData {
-        private ConstantAggregateZero(Type ty) {
-            super(ty);
-            //TODO:存入MyContext
-        }
-
-        public static ConstantAggregateZero get(Type ty) {
-            assert ty.isArrayTy() || ty.isVectorTy();
-            //TODO:检查是否存在
-            return null;
-        }
-    }
-
-    /// Base class for aggregate constants (with operands).
-    ///
-    /// These constants are aggregates of other constants, which are stored as
-    /// operands.
-    ///
-    /// Subclasses are \a ConstantStruct, \a ConstantArray, and \a
-    /// ConstantVector.
-    ///
-    /// \note Some subclasses of \a ConstantData are semantically aggregates --
-    /// such as \a ConstantDataArray -- but are not subclasses of this because they
-    /// use operands.
-    public static class ConstantAggregate extends Constant {
-        private ConstantAggregate(Type ty, ArrayList<Value> V) {
-            super(ty, V);
-            for (Value v : V) {
-                assert ty == v.getType();
-            }
-            //TODO:存入MyContext
-        }
-
-        public static ConstantAggregate get(Type ty, ArrayList<Value> V) {
-            //TODO:检查是否存在
-            return new ConstantAggregate(ty, V);
-        }
-    }
-
-    //===----------------------------------------------------------------------===//
     /// ConstantArray - Constant Array Declarations
     ///
     public static class ConstantArray extends Constant {
@@ -182,8 +164,47 @@ public class Constants {
             for (Value v : V) {
                 assert v instanceof Constant;
             }
-            //TODO:检查是否存在
-            return null;
+            int hash = hash(ty,V);
+            if (context.ArrayConstants.containsKey(hash)) {
+                return context.ArrayConstants.get(hash);
+            }
+            //存入MyContext
+            ConstantArray tmp = new ConstantArray(ty,V);
+            context.ArrayConstants.put(hash, tmp);
+            return tmp;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(this.getType().toString()).append(" ");
+            if(isZero()){
+                sb.append("zeroinitializer");
+            }else{
+                sb.append("[");
+                for (int i = 0; i < getOperandList().size(); i++) {
+                    sb.append(getOperandList().get(i).toString()).append(",");
+                }
+                sb.deleteCharAt(sb.length() - 1);
+                sb.append("]");
+            }
+            return sb.toString();
+        }
+
+        @Override
+        public String getName() {
+            StringBuilder sb = new StringBuilder();
+            if(isZero()){
+                sb.append("zeroinitializer");
+            }else{
+                sb.append("[");
+                for (int i = 0; i < getOperandList().size(); i++) {
+                    sb.append(getOperandList().get(i).toString()).append(",");
+                }
+                sb.deleteCharAt(sb.length() - 1);
+                sb.append("]");
+            }
+            return sb.toString();
         }
 
         public ArrayType getArrType(){
@@ -229,6 +250,20 @@ public class Constants {
                 }
             }
             return true;
+        }
+
+        public static int hash(ArrayType ty, ArrayList<Value> V) {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ty.getHashcode();
+            for(Value v:V){
+                if(v instanceof ConstantInt||v instanceof ConstantFP){
+                    result = prime * result + v.hashCode();
+                }else if(v instanceof ConstantArray){
+                    result = prime * result + hash(((ConstantArray) v).getArrType(),((ConstantArray) v).getArr());
+                }
+            }
+            return result;
         }
     }
 

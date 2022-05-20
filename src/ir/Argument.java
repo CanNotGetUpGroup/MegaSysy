@@ -31,4 +31,9 @@ public class Argument extends Value {
     public void setArgNo(int argNo) {
         this.argNo = argNo;
     }
+
+    @Override
+    public String toString() {
+        return getType() + " " + getName();
+    }
 }

@@ -12,6 +12,7 @@ public class Function extends Constant {
     private Module Parent;
     private IListNode<Function, Module> funcNode;
     private IList<BasicBlock, Function> bbList;
+    private boolean isDefined=true;
 
     /**
      * 生成一个Function对象
@@ -27,10 +28,49 @@ public class Function extends Constant {
     public Function(FunctionType type, String name, Module module) {
         super(type, name);
         Parent = module;
-        funcNode = new IListNode<>(this);
+        funcNode = new IListNode<>(this,module.getFuncList());
         bbList = new IList<>(this);
         //添加到module
         funcNode.insertIntoListEnd(Parent.getFuncList());
+        Arguments=new ArrayList<>();
+    }
+
+    @Override
+    public FunctionType getType() {
+        return (FunctionType) super.getType();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if(isDefined){
+            sb.append("define dso_local ")
+                    .append(this.getType().getReturnType())
+                    .append(" @")
+                    .append(this.getName())
+                    .append("(");
+            for(Argument arg:Arguments){
+                sb.append(arg).append(",");
+            }
+            if (Arguments.size() != 0) {
+                sb.deleteCharAt(sb.length() - 1);
+            }
+            sb.append(")");
+        }else{
+            sb.append("declare ")
+                    .append(this.getType().getReturnType())
+                    .append(" @")
+                    .append(this.getName())
+                    .append("(");
+            for(int i=0;i<getType().getParamNum();i++){
+                sb.append(getType().getParamType(i)).append(",");
+            }
+            if (getType().getParamNum() != 0) {
+                sb.deleteCharAt(sb.length() - 1);
+            }
+            sb.append(")");
+        }
+        return sb.toString();
     }
 
     public ArrayList<Argument> getArguments() {
@@ -63,5 +103,13 @@ public class Function extends Constant {
 
     public void setFuncNode(IListNode<Function, Module> funcNode) {
         this.funcNode = funcNode;
+    }
+
+    public boolean isDefined() {
+        return isDefined;
+    }
+
+    public void setDefined(boolean defined) {
+        isDefined = defined;
     }
 }

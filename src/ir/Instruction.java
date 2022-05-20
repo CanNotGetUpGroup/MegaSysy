@@ -1,6 +1,7 @@
 package ir;
 
 import util.IListNode;
+import util.MyIRBuilder;
 
 public abstract class Instruction extends User {
     private BasicBlock Parent;
@@ -48,13 +49,13 @@ public abstract class Instruction extends User {
     public Instruction(Type type, Ops op, int numOperands) {
         super(type, numOperands);
         this.op = op;
-        instNode = new IListNode<>(this);
+        instNode = new IListNode<>(this, MyIRBuilder.getInstance().BB.getInstList());
     }
 
     public Instruction(Type type, Ops op, String name, int numOperands) {
         super(type, name, numOperands);
         this.op = op;
-        instNode = new IListNode<>(this);
+        instNode = new IListNode<>(this, MyIRBuilder.getInstance().BB.getInstList());
     }
 
     /**
@@ -81,25 +82,17 @@ public abstract class Instruction extends User {
 
     // x op (y op z) === (x op y) op z
     public static boolean isAssociative(Ops Opcode) {
-        switch (Opcode){
-            case Add: case FAdd:
-            case Mul: case FMul:
-            case And: case Or:
-                return true;
-            default:
-                return false;
-        }
+        return switch (Opcode) {
+            case Add, FAdd, Mul, FMul, And, Or -> true;
+            default -> false;
+        };
     }
 
     // (x op y) === (y op x)
     public static boolean isCommutative(Ops Opcode){
-        switch (Opcode){
-            case Add: case FAdd:
-            case Mul: case FMul:
-            case And: case Or: case Xor:
-                return true;
-            default:
-                return false;
-        }
+        return switch (Opcode) {
+            case Add, FAdd, Mul, FMul, And, Or, Xor -> true;
+            default -> false;
+        };
     }
 }

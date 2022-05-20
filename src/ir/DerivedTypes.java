@@ -15,6 +15,11 @@ public abstract class DerivedTypes {
         public IntegerType(int hashcode) {
             super(TypeID.IntegerTyID, hashcode);
         }
+
+        @Override
+        public String toString() {
+            return this.isInt32Ty()?"i32":"i1";
+        }
     }
 
     /// Class to represent array types.
@@ -39,6 +44,11 @@ public abstract class DerivedTypes {
                 dim = eleTy.getDim() + 1;
                 eleSize = eleTy.getEleSize() * eleTy.getNumElements();
             }
+        }
+
+        @Override
+        public String toString() {
+            return "[" + NumElements + " x " + getKidType().toString() + "]";
         }
 
         public int getNumElements() {
@@ -154,6 +164,10 @@ public abstract class DerivedTypes {
             return getContainedTys().get(i + 1);
         }
 
+        public int getParamNum(){
+            return getContainedTys().size()-1;
+        }
+
         public Type getReturnType() {
             return getContainedTys().get(0);
         }
@@ -185,6 +199,11 @@ public abstract class DerivedTypes {
             ArrayList<Type> contain = getContainedTys();
             contain.add(pointType);
             PointeeTy = pointType;
+        }
+
+        @Override
+        public String toString() {
+            return PointeeTy.toString() + "*";
         }
 
         public static PointerType get(Type pointType) {

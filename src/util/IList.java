@@ -1,5 +1,7 @@
 package util;
 
+import ir.BasicBlock;
+import ir.Function;
 import ir.Value;
 
 public class IList<T, P> {
@@ -13,6 +15,8 @@ public class IList<T, P> {
         list_size=0;
         head.setNext(tail);
         tail.setPrev(head);
+        head.setParent(this);
+        tail.setParent(this);
     }
 
     public IListNode<T, P> getHead() {
@@ -48,10 +52,10 @@ public class IList<T, P> {
     }
 
     public IListNode<T,P> getFirst(){
-        return head.getNext().equals(tail)?null:head.getNext();
+        return head.getNext();
     }
 
     public IListNode<T,P> getLast(){
-        return tail.getPrev().equals(head)?null:tail.getPrev();
+        return tail.getPrev();
     }
 }

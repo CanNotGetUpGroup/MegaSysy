@@ -1,7 +1,5 @@
 // Generated from D:/JavaProject/MegaSysy\Sysy.g4 by ANTLR 4.9.2
 package frontend;
-import ir.DerivedTypes;
-import ir.Type;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -556,7 +554,7 @@ public class SysyParser extends Parser {
 	}
 
 	public static class ConstInitValContext extends ParserRuleContext {
-		public Type arrayType;
+		public ir.Type arrayType;
 		public ConstExpContext constExp() {
 			return getRuleContext(ConstExpContext.class,0);
 		}
@@ -900,7 +898,7 @@ public class SysyParser extends Parser {
 	}
 
 	public static class InitValContext extends ParserRuleContext {
-		public Type arrayType;
+		public ir.Type arrayType;
 		public ExpContext exp() {
 			return getRuleContext(ExpContext.class,0);
 		}
@@ -1670,6 +1668,8 @@ public class SysyParser extends Parser {
 	}
 
 	public static class CondContext extends ParserRuleContext {
+		public ir.BasicBlock trueBlock;
+		public ir.BasicBlock falseBlock;
 		public LOrExpContext lOrExp() {
 			return getRuleContext(LOrExpContext.class,0);
 		}
@@ -2636,6 +2636,8 @@ public class SysyParser extends Parser {
 	}
 
 	public static class LAndExpContext extends ParserRuleContext {
+		public ir.BasicBlock trueBlock;
+		public ir.BasicBlock falseBlock;
 		public EqExpContext eqExp() {
 			return getRuleContext(EqExpContext.class,0);
 		}
@@ -2720,6 +2722,8 @@ public class SysyParser extends Parser {
 	}
 
 	public static class LOrExpContext extends ParserRuleContext {
+		public ir.BasicBlock trueBlock;
+		public ir.BasicBlock falseBlock;
 		public LAndExpContext lAndExp() {
 			return getRuleContext(LAndExpContext.class,0);
 		}

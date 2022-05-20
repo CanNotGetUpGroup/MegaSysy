@@ -1,6 +1,6 @@
 package ir;
 
-public class GlobalVariable extends Constant {
+public class GlobalVariable extends User {
     private Module parent;
     private boolean isConstantGlobal; // Is this a global constant?
 
@@ -28,7 +28,7 @@ public class GlobalVariable extends Constant {
      * @return
      */
     public static GlobalVariable create(Type ty, Module parent, boolean isConstantGlobal){
-        return new GlobalVariable(ty, parent,null, isConstantGlobal);
+        return new GlobalVariable("",ty, parent,null, isConstantGlobal);
     }
 
     /**
@@ -39,8 +39,8 @@ public class GlobalVariable extends Constant {
      * @param isConstantGlobal
      * @return
      */
-    public static GlobalVariable create(Type ty, Module parent,Constant InitVal, boolean isConstantGlobal){
-        return new GlobalVariable(ty, parent,InitVal, isConstantGlobal);
+    public static GlobalVariable create(String name,Type ty, Module parent,Constant InitVal, boolean isConstantGlobal){
+        return new GlobalVariable(name,ty, parent,InitVal, isConstantGlobal);
     }
 
     public GlobalVariable(Type ty, Module parent) {
@@ -51,15 +51,15 @@ public class GlobalVariable extends Constant {
     /**
      * 插入在Moudle最后
      */
-    public GlobalVariable(Type ty, Module parent,Constant InitVal, boolean isConstantGlobal) {
-        super(ty, 0);
+    public GlobalVariable(String name,Type ty, Module parent,Constant InitVal, boolean isConstantGlobal) {
+        super(DerivedTypes.PointerType.get(ty),name, 0);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;
         if(InitVal!=null){
             assert InitVal.getType().equals(ty);
-            OperandList.add(InitVal);
+            addOperand(InitVal);
         }else {
-            OperandList.add(Constant.getNullValue(ty));
+            addOperand(Constant.getNullValue(ty));
         }
         parent.getGlobalVariables().add(this);
     }
@@ -73,9 +73,14 @@ public class GlobalVariable extends Constant {
      * @param insertBefore  插入在该指令前
      */
     public GlobalVariable(Type ty, int numOps, Module parent, boolean isConstantGlobal, GlobalVariable insertBefore) {
-        super(ty, numOps);
+        super(DerivedTypes.PointerType.get(ty), numOps);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;
         //TODO:插入在该指令前
+    }
+
+    @Override
+    public String toString() {
+        return getName()+" = common dso_local global "+getOperand(0);
     }
 }

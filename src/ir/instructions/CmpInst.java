@@ -38,16 +38,28 @@ public class CmpInst extends Instruction {
         FCMP_TRUE, ///< Always true (always folded)
     }
 
-    public CmpInst(Type type,Ops op, String name,  Predicate pre, Value LHS, Value RHS) {
+    private Predicate predicate;
+
+    public Predicate getPredicate() {
+        return predicate;
+    }
+
+    public void setPredicate(Predicate predicate) {
+        this.predicate = predicate;
+    }
+
+    public CmpInst(Type type, Ops op, String name, Predicate pre, Value LHS, Value RHS) {
         super(type,op,name, 2);
-        super.setOperand(0,LHS);
-        super.setOperand(1,RHS);
+        addOperand(LHS);
+        addOperand(RHS);
+        predicate=pre;
     }
 
     public CmpInst(Type type,Ops op,  Predicate pre, Value LHS, Value RHS) {
         super(type,op, 2);
-        super.setOperand(0,LHS);
-        super.setOperand(1,RHS);
+        addOperand(LHS);
+        addOperand(RHS);
+        predicate=pre;
     }
 
     public static boolean isFPPredicate(Predicate P){

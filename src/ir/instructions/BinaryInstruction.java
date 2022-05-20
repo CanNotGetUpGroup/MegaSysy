@@ -27,4 +27,58 @@ public class BinaryInstruction extends Instruction {
         Constant C= Constants.ConstantInt.const1_1();
         return create(Ops.Xor,Op,C);
     }
+
+    @Override
+    public String toString(){
+        StringBuilder sb=new StringBuilder();
+        sb.append(getName()).append(" = ");
+        switch (getOp()) {
+            default:
+                break;
+            case Sub:
+                sb.append("sub ");
+                break;
+            case Add:
+                sb.append("add ");
+                break;
+            case Mul:
+                sb.append("mul ");
+                break;
+            case SDiv:
+                sb.append("sdiv ");
+                break;
+            case SRem:
+                sb.append("srem ");
+                break;
+            case And:
+                sb.append("and ");
+                break;
+            case Or:
+                sb.append("or ");
+                break;
+            case Xor:
+                sb.append("xor ");
+                break;
+            case FSub:
+                sb.append("fsub ");
+                break;
+            case FAdd:
+                sb.append("fadd ");
+                break;
+            case FMul:
+                sb.append("fmul ");
+                break;
+            case FDiv:
+                sb.append("fdiv ");
+                break;
+            case FRem:
+                sb.append("frem ");
+                break;
+        }
+        sb.append(getType()).append(" ");
+        sb.append(getOperand(0).getName()).append(", ");
+        sb.append(getOperand(1).getName());
+
+        return sb.toString();
+    }
 }

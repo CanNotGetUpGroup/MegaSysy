@@ -26,7 +26,7 @@ public class MyIRBuilder {
     public void InsertHelper(Instruction I, String Name, BasicBlock basicBlock, IListNode<Instruction, BasicBlock> insertPt) {
         if (basicBlock != null) {
             //插入到基本块指定位置
-            insertPt.insertBefore(I.getInstNode());
+            I.getInstNode().insertBefore(insertPt);
         }
         if (Name != null) I.setName(Name);
     }
@@ -64,7 +64,11 @@ public class MyIRBuilder {
 
     public BasicBlock createBasicBlock(String name, Function parent) {
         BasicBlock BB = BasicBlock.create(name, parent);
-        setInsertPoint(BB);
+        return BB;
+    }
+
+    public BasicBlock createBasicBlock( Function parent) {
+        BasicBlock BB = BasicBlock.create(parent);
         return BB;
     }
 
@@ -95,8 +99,8 @@ public class MyIRBuilder {
     /**
      * 新建全局变量
      */
-    public GlobalVariable createGlobalVariable(Type ty, Module parent, Constant InitVal, boolean isConstantGlobal) {
-        return GlobalVariable.create(ty, parent, InitVal, isConstantGlobal);
+    public GlobalVariable createGlobalVariable(String name,Type ty, Module parent, Constant InitVal, boolean isConstantGlobal) {
+        return GlobalVariable.create(name,ty, parent, InitVal, isConstantGlobal);
     }
 
     /**
@@ -104,6 +108,12 @@ public class MyIRBuilder {
      */
     public Function createFunction(DerivedTypes.FunctionType type, String name, Module module) {
         return Function.create(type, name, module);
+    }
+
+    public Function createFunction(DerivedTypes.FunctionType type, String name, Module module,boolean isDefined) {
+        Function tmp=Function.create(type, name, module);
+        tmp.setDefined(isDefined);
+        return tmp;
     }
 
     //===--------------------------------------------------------------------===//
@@ -299,15 +309,27 @@ public class MyIRBuilder {
                 return insert(Folder.createOr((Constant) LHS, (Constant) RHS));
             }
         }
-        return insert(BinaryInstruction.create(Instruction.Ops.And,LHS,RHS));
+        return insert(BinaryInstruction.create(Instruction.Ops.Or,LHS,RHS));
     }
 
     public Value createLogicalAnd(Value LHS, Value RHS) {
-        return createSelect(LHS,RHS, Constants.ConstantInt.getNullValue(RHS.getType()));
+        if(!LHS.getType().isInt1Ty()){
+            LHS=createCmp(Predicate.ICMP_NE,LHS, Constants.ConstantInt.const_0());
+        }
+        if(!RHS.getType().isInt1Ty()){
+            RHS=createCmp(Predicate.ICMP_NE,RHS, Constants.ConstantInt.const_0());
+        }
+        return createSelect(LHS,RHS, Constant.getNullValue(RHS.getType()));
     }
 
     public Value createLogicalOr(Value LHS, Value RHS) {
-        return createSelect(LHS, Constants.ConstantInt.getAllOnesValue(RHS.getType()),RHS);
+        if(!LHS.getType().isInt1Ty()){
+            LHS=createCmp(Predicate.ICMP_NE,LHS, Constants.ConstantInt.const_0());
+        }
+        if(!RHS.getType().isInt1Ty()){
+            RHS=createCmp(Predicate.ICMP_NE,RHS, Constants.ConstantInt.const_0());
+        }
+        return createSelect(LHS, Constant.getAllOnesValue(RHS.getType()),RHS);
     }
 
     public Value createNot(Value V){
@@ -327,6 +349,11 @@ public class MyIRBuilder {
 
     public Value createLoad(Type Ty, Value Ptr) {
         return insert(new LoadInst(Ty, Ptr));
+    }
+
+    public Value createLoad(Value Ptr) {
+        assert Ptr.getType().isPointerTy();
+        return insert(new LoadInst(((DerivedTypes.PointerType)Ptr.getType()).getElementType(), Ptr));
     }
 
     public Instruction createStore(Value Val, Value Ptr) {

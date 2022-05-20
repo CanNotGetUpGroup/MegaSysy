@@ -24,7 +24,7 @@ public class BasicBlock extends Value {
     public BasicBlock(Function parent) {
         super(Type.getLabelTy());
         Parent = parent;
-        bbNode = new IListNode<>(this);
+        bbNode = new IListNode<>(this,parent.getBbList());
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(Parent.getBbList());
@@ -33,10 +33,15 @@ public class BasicBlock extends Value {
     public BasicBlock(String name, Function parent) {
         super(Type.getLabelTy(), name);
         Parent = parent;
-        bbNode = new IListNode<>(this);
+        bbNode = new IListNode<>(this,parent.getBbList());
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(Parent.getBbList());
+    }
+
+    @Override
+    public String toString() {
+        return getName()+":";
     }
 
     public Function getParent() {

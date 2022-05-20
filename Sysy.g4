@@ -69,12 +69,12 @@ decl : constDecl | varDecl ;
 constDecl : CONST bType constDef ( COMMA constDef )* SEMICOLON;
 bType : INT | FLOAT;
 constDef : IDENT (LBRACKET constExp RBRACKET )* EQ constInitVal;
-constInitVal :
+constInitVal returns [ir.Type arrayType] :
     constExp | LBRACE(constInitVal (COMMA constInitVal)*)?RBRACE;
 constExp : addExp ;
 varDecl : bType varDef ( COMMA varDef )* SEMICOLON;
 varDef : IDENT (LBRACKET constExp RBRACKET )* | IDENT (LBRACKET constExp RBRACKET)*  EQ initVal;
-initVal : exp | LBRACE (initVal (COMMA initVal)*)? RBRACE;
+initVal returns [ir.Type arrayType] : exp | LBRACE (initVal (COMMA initVal)*)? RBRACE;
 funcDef : funcType IDENT LPAREN (funcFParams)? RPAREN  block;
 funcType : INT|VOID|FLOAT;
 funcFParams : funcFParam ( COMMA funcFParam )*;
@@ -90,7 +90,7 @@ stmt:lVal EQ exp SEMICOLON
     | CONTINUE SEMICOLON
     | RETURN (exp)? SEMICOLON ;
 exp : addExp;
-cond : lOrExp;
+cond returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock] : lOrExp;
 lVal : IDENT (LBRACKET exp RBRACKET )*;
 primaryExp : LPAREN exp RPAREN | lVal | number ;
 number : iNT_CONST|fLOAT_CONST;
@@ -103,5 +103,7 @@ mulExp  : unaryExp | mulExp (MUL | DIV | MOD) unaryExp;
 addExp  : mulExp | addExp (ADD | SUB)  mulExp;
 relExp  : addExp | relExp (SLT | SGT | SLE | SGE)  addExp;
 eqExp : relExp | eqExp (EEQ | UEQ)  relExp;
-lAndExp : eqExp | lAndExp AND eqExp;
-lOrExp  : lAndExp | lOrExp OR lAndExp;
+lAndExp returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock] :
+    eqExp | lAndExp AND eqExp;
+lOrExp returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock]  :
+    lAndExp | lOrExp OR lAndExp;

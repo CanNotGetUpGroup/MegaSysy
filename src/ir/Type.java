@@ -40,6 +40,22 @@ public class Type {
         this.hashcode=hashcode;
     }
 
+    @Override
+    public String toString() {
+        switch (ID){
+            case VoidTyID -> {
+                return "void";
+            }
+            case FloatTyID -> {
+                return "float";
+            }
+            case LabelTyID -> {
+                return "label";
+            }
+        }
+        return "undef";
+    }
+
     public TypeID getID() {
         return ID;
     }
@@ -91,6 +107,8 @@ public class Type {
     public boolean isIntegerTy() { return getID() == TypeID.IntegerTyID; }
     /// True if this is an instance of FloatType.
     public boolean isFloatTy() { return getID() == TypeID.FloatTyID; }
+    /// True if this is an instance of VoidType.
+    public boolean isVoidTy() { return getID() == TypeID.VoidTyID; }
     /// Return true if this is an integer type or a pointer type.
     public boolean isIntOrPtrTy() { return isIntegerTy() || isPointerTy(); }
     /// True if this is an instance of FunctionType.

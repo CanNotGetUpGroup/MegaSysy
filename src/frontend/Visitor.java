@@ -12,10 +12,11 @@ import util.SymbolTable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.logging.Logger;
 
 public class Visitor extends SysyBaseVisitor<Value> {
-    static MyIRBuilder builder;
+    static MyIRBuilder builder = MyIRBuilder.getInstance();
     MyContext context = MyContext.getInstance();
     SymbolTable symbolTable = SymbolTable.getInstance();
     Module module = Module.getInstance();
@@ -31,8 +32,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 
     Value LogError(String str) {
         logger.severe(str);
-        System.exit(1);
-        return null;
+        throw new RuntimeException("str");
     }
 
     @Override
@@ -49,13 +49,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
         param_memset.add(Type.getInt32Ty());
         param_memset.add(Type.getInt32Ty());
 
-        symbolTable.addValue("getint", builder.createFunction(FunctionType.get(Type.getInt32Ty()), "getint", module));
-        symbolTable.addValue("getarray", builder.createFunction(FunctionType.get(Type.getInt32Ty(), param_array), "getarray", module));
-        symbolTable.addValue("getch", builder.createFunction(FunctionType.get(Type.getInt32Ty()), "getch", module));
-        symbolTable.addValue("putint", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_int), "putint", module));
-        symbolTable.addValue("putch", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_int), "putch", module));
-        symbolTable.addValue("putarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_array), "putarray", module));
-        symbolTable.addValue("memset", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_memset), "memset", module));
+        symbolTable.addValue("getint", builder.createFunction(FunctionType.get(Type.getInt32Ty()), "getint", module, false));
+        symbolTable.addValue("getarray", builder.createFunction(FunctionType.get(Type.getInt32Ty(), param_array), "getarray", module, false));
+        symbolTable.addValue("getch", builder.createFunction(FunctionType.get(Type.getInt32Ty()), "getch", module, false));
+        symbolTable.addValue("putint", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_int), "putint", module, false));
+        symbolTable.addValue("putch", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_int), "putch", module, false));
+        symbolTable.addValue("putarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_array), "putarray", module, false));
+        symbolTable.addValue("memset", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_memset), "memset", module, false));
 
         return super.visitProgram(ctx);
     }
@@ -120,31 +120,51 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 }
                 arrayType = ArrayType.get(arrayType, ((ConstantInt) curVal).getVal());
             }
-
-            typeArrayList =new ArrayList<>();
-            ArrayType Aty=arrayType;
-            while(Aty.getKidType().isArrayTy()){
-                typeArrayList.add(Aty);
-                Aty=(ArrayType) Aty.getKidType();
+            ArrayType Aty;
+            if (!symbolTable.inGlobalArea()) {
+                Value alloca = builder.createAlloca(arrayType);
+                symbolTable.addValue(name, alloca);
+                Aty = (ArrayType) arrayType.getKidType();
+                ((Instructions.AllocaInst) alloca).setUndef(false);
+                //利用memset初始化数组为0
+                gep = builder.createGEP(alloca, new ArrayList<>() {{
+                    add(ConstantInt.const_0());
+                    add(ConstantInt.const_0());
+                }});
+                while (Aty.getKidType().isArrayTy()) {
+                    gep = builder.createGEP(gep, new ArrayList<>() {{
+                        add(ConstantInt.const_0());
+                        add(ConstantInt.const_0());
+                    }});
+                    Aty = (ArrayType) Aty.getKidType();
+                }
+                ArrayList<Value> Args = new ArrayList<>();
+                Args.add(gep);
+                Args.add(Constant.getNullValue(type));
+                Args.add(ConstantInt.get(arrayType.getNumElements() * arrayType.getEleSize() * 4));
+                builder.createCall(symbolTable.getFunction("memset"), Args);
             }
-            tmpArrList=new ArrayList<>();
-            getDimInfo=false;
+
+            typeArrayList = new ArrayList<>();
+            Aty = arrayType;
+            while (Aty.getKidType().isArrayTy()) {
+                typeArrayList.add(Aty);
+                Aty = (ArrayType) Aty.getKidType();
+            }
+            tmpArrList = new ArrayList<>();
+            getDimInfo = false;
             visit(ctx.constInitVal());
-            getDimInfo=true;
+            getDimInfo = true;
             visit(ctx.constInitVal());
             //int a[2][2]={1,2,3}，生成的tmpArrList中只有{1,2,3}，补齐0
-            while(tmpArrList.size()<arrayType.getNumElements()*arrayType.getEleSize()){
+            while (tmpArrList.size() < arrayType.getNumElements() * arrayType.getEleSize()) {
                 tmpArrList.add(Constant.getNullValue(type));
             }
-            curVal=changeArrType(arrayType,tmpArrList);
+            curVal = changeArrType(arrayType, tmpArrList);
 
             if (symbolTable.inGlobalArea()) {
-                curVal = builder.createGlobalVariable(arrayType, module, (Constant) curVal, true);
+                curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, true);
                 symbolTable.addValue(name, curVal);
-            } else {
-                Value val = builder.createAlloca(arrayType);
-                //TODO
-
             }
         } else {
             visit(ctx.constInitVal());
@@ -157,7 +177,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
     }
 
     ArrayList<ArrayType> typeArrayList;
+    Value gep;
     ArrayList<Value> tmpArrList = null;
+
     boolean getDimInfo;
 
     /**
@@ -168,23 +190,23 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (ctx.children.size() == 1) {//constExp
             visit(ctx.constExp());
         } else {
-            if(!getDimInfo){
-                int kidDim=0;
+            if (!getDimInfo) {
+                int kidDim = 0;
                 for (int i = 0; i < ctx.constInitVal().size(); i++) {
-                    if(ctx.constInitVal(i).children.size()!=1){
+                    if (ctx.constInitVal(i).children.size() != 1) {
                         visit(ctx.constInitVal(i));
-                        kidDim=Math.max(kidDim,((ArrayType)ctx.constInitVal(i).arrayType).getDim());
+                        kidDim = Math.max(kidDim, ((ArrayType) ctx.constInitVal(i).arrayType).getDim());
                     }
                 }
-                assert typeArrayList.size()-1-kidDim>0;
-                ctx.arrayType= typeArrayList.get(typeArrayList.size()-1-kidDim);
-            }else{
+                assert typeArrayList.size() - 1 - kidDim > 0;
+                ctx.arrayType = typeArrayList.get(typeArrayList.size() - 1 - kidDim);
+            } else {
                 ArrayType arrTy = (ArrayType) ctx.arrayType;
                 int numEle = arrTy.getNumElements();
                 int eleSize = arrTy.getEleSize();
                 ArrayList<Value> V = new ArrayList<>();
                 for (int i = 0; i < ctx.constInitVal().size(); i++) {
-                    if(ctx.constInitVal(i).children.size()==1){
+                    if (ctx.constInitVal(i).children.size() == 1) {
                         visit(ctx.constInitVal(i));
                         if (!type.equals(curVal.getType()) && !(type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
                             LogError("赋值类型与定义不符");
@@ -193,41 +215,53 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         if (type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
                             curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
                         }
+                        if (!symbolTable.inGlobalArea()) {
+                            if (!(curVal instanceof ConstantInt && ((ConstantInt) curVal).isZero())) {
+                                if (V.isEmpty()) {
+                                    builder.createStore(curVal, gep);
+                                } else {
+                                    Value ptr = builder.createGEP(gep, new ArrayList<>() {{
+                                        add(ConstantInt.get(V.size()));
+                                    }});
+                                    builder.createStore(curVal, ptr);
+                                }
+                            }
+                        }
                         V.add(curVal);
-                    }else{
+                    } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
-                        for(int j=V.size()%eleSize;j>0;j=(j+1)%eleSize){
+                        for (int j = V.size() % eleSize; j > 0; j = (j + 1) % eleSize) {
                             V.add(Constant.getNullValue(type));
                         }
                         visit(ctx.constInitVal(i));
                         V.addAll(tmpArrList);
                     }
                 }
-                while(V.size()<numEle*eleSize){
+                while (V.size() < numEle * eleSize) {
                     V.add(Constant.getNullValue(type));
                 }
-                tmpArrList=V;
+                tmpArrList = V;
             }
         }
         return curVal;
     }
 
     public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V) {
-        ArrayList<Value> ret=new ArrayList<>();
-        int eleSize=target.getEleSize();
-        int numEle=target.getNumElements();
-        if(target.getKidType().isArrayTy()){
-            for(int i=0;i<numEle;i++){
-                ret.add(changeArrType((ArrayType) target.getKidType(),new ArrayList<>(V.subList(i*eleSize,(i+1)*eleSize))));
+        ArrayList<Value> ret = new ArrayList<>();
+        int eleSize = target.getEleSize();
+        int numEle = target.getNumElements();
+        if (target.getKidType().isArrayTy()) {
+            for (int i = 0; i < numEle; i++) {
+                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(i * eleSize, (i + 1) * eleSize))));
             }
-        }else{
-            for(int i=0;i<numEle;i++){
+        } else {
+            for (int i = 0; i < numEle; i++) {
                 ret.add(V.get(i));
             }
         }
 
-        return ConstantArray.get(target,ret);
+        return ConstantArray.get(target, ret);
     }
 
     /**
@@ -273,52 +307,82 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 arrayType = ArrayType.get(arrayType, ((ConstantInt) curVal).getVal());
             }
             if (ctx.initVal() != null) {
-                typeArrayList =new ArrayList<>();
-                ArrayType Aty=arrayType;
-                while(Aty.getKidType().isArrayTy()){
-                    typeArrayList.add(Aty);
-                    Aty=(ArrayType) Aty.getKidType();
+                ArrayType Aty;
+                if (!symbolTable.inGlobalArea()) {
+                    Value alloca = builder.createAlloca(arrayType);
+                    symbolTable.addValue(name, alloca);
+                    Aty = (ArrayType) arrayType.getKidType();
+                    ((Instructions.AllocaInst) alloca).setUndef(false);
+                    //利用memset初始化数组为0
+                    gep = builder.createGEP(alloca, new ArrayList<>() {{
+                        add(ConstantInt.const_0());
+                        add(ConstantInt.const_0());
+                    }});
+                    while (Aty.getKidType().isArrayTy()) {
+                        gep = builder.createGEP(gep, new ArrayList<>() {{
+                            add(ConstantInt.const_0());
+                            add(ConstantInt.const_0());
+                        }});
+                        Aty = (ArrayType) Aty.getKidType();
+                    }
+                    ArrayList<Value> Args = new ArrayList<>();
+                    Args.add(gep);
+                    Args.add(Constant.getNullValue(type));
+                    Args.add(ConstantInt.get(arrayType.getNumElements() * arrayType.getEleSize() * 4));
+                    builder.createCall(symbolTable.getFunction("memset"), Args);
                 }
-                tmpArrList=new ArrayList<>();
-                getDimInfo=false;
+
+                typeArrayList = new ArrayList<>();
+                Aty = arrayType;
+                while (Aty.getKidType().isArrayTy()) {
+                    typeArrayList.add(Aty);
+                    Aty = (ArrayType) Aty.getKidType();
+                }
+                tmpArrList = new ArrayList<>();
+                getDimInfo = false;
                 visit(ctx.initVal());
-                getDimInfo=true;
+                getDimInfo = true;
                 visit(ctx.initVal());
                 //int a[2][2]={1,2,3}，生成的tmpArrList中只有{1,2,3}，补齐0
-                while(tmpArrList.size()<arrayType.getNumElements()*arrayType.getEleSize()){
+                while (tmpArrList.size() < arrayType.getNumElements() * arrayType.getEleSize()) {
                     tmpArrList.add(Constant.getNullValue(type));
                 }
                 if (symbolTable.inGlobalArea()) {
-                    curVal = changeArrType(arrayType,tmpArrList);//全局数组初始化一定是常量
-                    curVal = builder.createGlobalVariable(arrayType, module, (Constant) curVal, false);
+                    curVal = changeArrType(arrayType, tmpArrList);//全局数组初始化一定是常量
+                    curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, false);
+                    symbolTable.addValue(name, curVal);
+                }
+            } else {
+                if (symbolTable.inGlobalArea()) {
+                    curVal = builder.createGlobalVariable("@" + name, arrayType, module, Constant.getNullValue(arrayType), false);
                     symbolTable.addValue(name, curVal);
                 } else {
                     Value alloca = builder.createAlloca(arrayType);
-                    //TODO
-
+                    symbolTable.addValue(name, alloca);
                 }
-            } else {
-
             }
         } else {
             if (ctx.initVal() != null) {
-                if (!curVal.getType().equals(type)) {
-                    LogError("赋值类型与定义不匹配");
-                }
                 if (symbolTable.inGlobalArea()) {
                     visit(ctx.initVal());
-                    Value val = builder.createGlobalVariable(type, module, (Constant) curVal, false);
+                    if (!curVal.getType().equals(type)) {
+                        LogError("赋值类型与定义不匹配");
+                    }
+                    Value val = builder.createGlobalVariable("@" + name, type, module, (Constant) curVal, false);
                     symbolTable.addValue(name, val);
                 } else {
                     Value alloca = builder.createAlloca(type);
                     symbolTable.addValue(name, alloca);
                     visit(ctx.initVal());
+                    if (!curVal.getType().equals(type)) {
+                        LogError("赋值类型与定义不匹配");
+                    }
                     builder.createStore(curVal, alloca);
-                    ((Instructions.AllocaInst) alloca).setUndef(true);
+                    ((Instructions.AllocaInst) alloca).setUndef(false);
                 }
             } else {
                 if (symbolTable.inGlobalArea()) {
-                    Value val = builder.createGlobalVariable(type, module, Constant.getNullValue(type), false);
+                    Value val = builder.createGlobalVariable("@" + name, type, module, Constant.getNullValue(type), false);
                     symbolTable.addValue(name, val);
                 } else {
                     Value alloca = builder.createAlloca(type);
@@ -338,23 +402,23 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (ctx.children.size() == 1) {//exp
             visit(ctx.exp());
         } else {
-            if(!getDimInfo){
-                int kidDim=0;
+            if (!getDimInfo) {
+                int kidDim = 0;
                 for (int i = 0; i < ctx.initVal().size(); i++) {
-                    if(ctx.initVal(i).children.size()!=1){
+                    if (ctx.initVal(i).children.size() != 1) {
                         visit(ctx.initVal(i));
-                        kidDim=Math.max(kidDim,((ArrayType)ctx.initVal(i).arrayType).getDim());
+                        kidDim = Math.max(kidDim, ((ArrayType) ctx.initVal(i).arrayType).getDim());
                     }
                 }
-                assert typeArrayList.size()-1-kidDim>0;
-                ctx.arrayType= typeArrayList.get(typeArrayList.size()-1-kidDim);
-            }else{
+                assert typeArrayList.size() - 1 - kidDim > 0;
+                ctx.arrayType = typeArrayList.get(typeArrayList.size() - 1 - kidDim);
+            } else {
                 ArrayType arrTy = (ArrayType) ctx.arrayType;
                 int numEle = arrTy.getNumElements();
                 int eleSize = arrTy.getEleSize();
                 ArrayList<Value> V = new ArrayList<>();
                 for (int i = 0; i < ctx.initVal().size(); i++) {
-                    if(ctx.initVal(i).children.size()==1){
+                    if (ctx.initVal(i).children.size() == 1) {
                         visit(ctx.initVal(i));
                         if (!type.equals(curVal.getType()) && !(type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
                             LogError("赋值类型与定义不符");
@@ -363,21 +427,33 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         if (type.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
                             curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
                         }
+                        if (!symbolTable.inGlobalArea()) {
+                            if (!(curVal instanceof ConstantInt && ((ConstantInt) curVal).isZero())) {
+                                if (V.isEmpty()) {
+                                    builder.createStore(curVal, gep);
+                                } else {
+                                    Value ptr = builder.createGEP(gep, new ArrayList<>() {{
+                                        add(ConstantInt.get(V.size()));
+                                    }});
+                                    builder.createStore(curVal, ptr);
+                                }
+                            }
+                        }
                         V.add(curVal);
-                    }else{
+                    } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
-                        for(int j=V.size()%eleSize;j>0;j=(j+1)%eleSize){
+                        for (int j = V.size() % eleSize; j > 0; j = (j + 1) % eleSize) {
                             V.add(Constant.getNullValue(type));
                         }
                         visit(ctx.initVal(i));
                         V.addAll(tmpArrList);
                     }
                 }
-                while(V.size()<numEle*eleSize){
+                while (V.size() < numEle * eleSize) {
                     V.add(Constant.getNullValue(type));
                 }
-                tmpArrList=V;
+                tmpArrList = V;
             }
         }
         return curVal;
@@ -392,6 +468,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         Type retType = type;
         enterBlock = false;
         String name = ctx.IDENT().getText();
+        MyContext.valuePtr = 0;
         if (ctx.funcFParams() != null) {
             visit(ctx.funcFParams());
         } else {
@@ -402,11 +479,11 @@ public class Visitor extends SysyBaseVisitor<Value> {
         symbolTable.addValue(name, curF);
         symbolTable.addLevel();
         BasicBlock BB = builder.createBasicBlock("entry", curF);
+        builder.setInsertPoint(BB);
         enterBlock = true;
         if (ctx.funcFParams() != null) {
             visit(ctx.funcFParams());
         }
-        enterBlock = false;
         visit(ctx.block());
         return null;
     }
@@ -473,7 +550,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitBlock(SysyParser.BlockContext ctx) {
-        symbolTable.addLevel();
+        if (enterBlock) enterBlock = false;
+        else symbolTable.addLevel();
         super.visitBlock(ctx);
         symbolTable.removeTop();
         return null;
@@ -486,6 +564,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitBlockItem(SysyParser.BlockItemContext ctx) {
         return super.visitBlockItem(ctx);
     }
+
+    LinkedList<LinkedList<Instructions.BranchInst>> breakStk = new LinkedList<>();
+    LinkedList<LinkedList<Instructions.BranchInst>> continueStk = new LinkedList<>();
 
     /**
      * stmt:lVal EQ exp SEMICOLON
@@ -501,8 +582,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitStmt(SysyParser.StmtContext ctx) {
         switch (ctx.children.size()) {
             case 4://LVal '=' Exp ';'
-                Value lhs = visit(ctx.lVal());
-                Value rhs = visit(ctx.exp());
+                visit(ctx.lVal());
+                Value lhs = curVal;
+                visit(ctx.exp());
+                Value rhs = curVal;
                 builder.createStore(rhs, lhs);
                 break;
             case 1:
@@ -514,9 +597,11 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 if (ctx.exp() != null) {//Exp;
                     visit(ctx.exp());
                 } else if (ctx.BREAK() != null) {//break;
-
+                    assert breakStk.peek() != null;
+                    breakStk.peek().add((Instructions.BranchInst) builder.createBr(null));
                 } else if (ctx.CONTINUE() != null) {//continue;
-
+                    assert continueStk.peek() != null;
+                    continueStk.peek().add((Instructions.BranchInst) builder.createBr(null));
                 } else {//return ';'
                     builder.createRetVoid();
                 }
@@ -524,9 +609,63 @@ public class Visitor extends SysyBaseVisitor<Value> {
             case 5:
             case 7:
                 if (ctx.IF() != null) {//'if' '(' Cond ')' Stmt [ 'else' Stmt ]
+                    Instruction TrueBr,FalseBr,CondBr;
+                    BasicBlock trueBlock,falseBlock,stmtBlock;
 
+                    visit(ctx.cond());
+                    trueBlock = builder.createBasicBlock(curF);
+                    CondBr = builder.createCondBr(curVal, trueBlock, null);
+                    builder.setInsertPoint(trueBlock);
+                    visit(ctx.stmt(0));
+                    TrueBr = builder.createBr(null);
+                    if (ctx.ELSE() != null) {
+                        falseBlock = builder.createBasicBlock(curF);
+                        ((Instructions.BranchInst)CondBr).setIfFalse(falseBlock);
+                        builder.setInsertPoint(falseBlock);
+                        visit(ctx.stmt(1));
+                        FalseBr = builder.createBr(null);
+
+                        stmtBlock = builder.createBasicBlock(curF);
+                        ((Instructions.BranchInst)TrueBr).setBr(stmtBlock);
+                        ((Instructions.BranchInst)FalseBr).setBr(stmtBlock);
+                        builder.setInsertPoint(stmtBlock);
+                    }else{
+                        stmtBlock = builder.createBasicBlock(curF);
+                        ((Instructions.BranchInst)CondBr).setIfFalse(stmtBlock);
+                        ((Instructions.BranchInst)TrueBr).setBr(stmtBlock);
+                        builder.setInsertPoint(stmtBlock);
+                    }
                 } else {//WHILE LPAREN  cond RPAREN  stmt
+                    Instruction cycBr,CondBr;
+                    BasicBlock trueBlock,falseBlock;
 
+                    breakStk.add(new LinkedList<>());//false
+                    continueStk.add(new LinkedList<>());//cond
+
+                    //判断
+                    BasicBlock condBlock = builder.createBasicBlock(curF);
+                    while(!continueStk.peek().isEmpty()){
+                        continueStk.peek().pop().setBr(condBlock);
+                    }
+                    builder.createBr(condBlock);
+                    builder.setInsertPoint(condBlock);
+                    visit(ctx.cond());
+                    trueBlock = builder.createBasicBlock(curF);
+                    CondBr = builder.createCondBr(curVal, trueBlock, null);
+                    //循环
+                    builder.setInsertPoint(trueBlock);
+                    visit(ctx.stmt(0));
+                    cycBr = builder.createBr(condBlock);
+                    //退出循环
+                    falseBlock = builder.createBasicBlock(curF);
+                    ((Instructions.BranchInst)CondBr).setIfFalse(falseBlock);
+                    while(!breakStk.peek().isEmpty()){
+                        breakStk.peek().pop().setBr(falseBlock);
+                    }
+                    builder.setInsertPoint(falseBlock);
+
+                    breakStk.pop();
+                    continueStk.pop();
                 }
                 break;
             case 3://'return' Exp ';'
@@ -550,7 +689,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitCond(SysyParser.CondContext ctx) {
-        return super.visitCond(ctx);
+        ctx.lOrExp().trueBlock = ctx.trueBlock;
+        ctx.lOrExp().falseBlock = ctx.falseBlock;
+        visit(ctx.lOrExp());
+        if (!curVal.getType().isInt1Ty()) {
+            curVal = builder.createCmp(CmpInst.Predicate.ICMP_NE, curVal, Constants.ConstantInt.const_0());
+        }
+        return null;
     }
 
     /**
@@ -563,8 +708,33 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (curVal == null) {
             return LogError("未找到名为: " + name + " 的变量");
         }
+        curVal = getLVal(curVal, ctx);
 
         return curVal;
+    }
+
+    public Value getLVal(Value V, SysyParser.LValContext ctx) {
+        Type ty = V.getType();
+        if (ty.isPointerTy()) {
+            PointerType pty = (PointerType) ty;
+            if (pty.getElementType().isPointerTy()) {
+                V = builder.createLoad(V);
+                V = getLVal(V, ctx);
+            } else if (pty.getElementType().isArrayTy()) {
+                for (int i = 0; i < ctx.exp().size(); i++) {
+                    visit(ctx.exp(i));
+                    V = builder.createGEP(V, new ArrayList<>() {{
+                        add(ConstantInt.const_0());
+                        add(curVal);
+                    }});
+                }
+//                V = getLVal(V, ctx);
+            }
+//            else if (pty.getElementType().isIntegerTy() || pty.getElementType().isFloatTy()) {
+//                V = builder.createLoad(V);
+//            }
+        }
+        return V;
     }
 
     /**
@@ -576,6 +746,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             visit(ctx.exp());
         } else if (ctx.lVal() != null) {
             visit(ctx.lVal());
+            if (curVal.getType().isPointerTy()) curVal=builder.createLoad(curVal);
         } else {
             visit(ctx.number());
         }
@@ -619,10 +790,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
             paramList = new ArrayList<>();
 
             if (F == null) {
-                LogError("未找到名为" + symbolTable.getName(F) + "的函数");
+                LogError("未找到名为" + name + "的函数");
             }
             FunctionType FT = (FunctionType) F.getType();
-            if (FT.getContainedTys().size() - 1 != ctx.children.size() - 2) {//参数数量不对
+            if (FT.getContainedTys().size() - 1 != ctx.children.size() - 3) {//参数数量不对
                 LogError("函数" + symbolTable.getName(F) + "参数数量不对");
             }
             if (ctx.funcRParams() != null) {//F(a,...)
@@ -768,6 +939,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
     @Override
     public Value visitLOrExp(SysyParser.LOrExpContext ctx) {
         if (ctx.children.size() == 1) {
+            ctx.lAndExp().trueBlock = ctx.trueBlock;
+            ctx.lAndExp().falseBlock = ctx.falseBlock;
             visit(ctx.lAndExp());
         } else {
             Value L, R;
