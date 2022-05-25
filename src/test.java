@@ -3,6 +3,7 @@ import ir.Module;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -29,5 +30,10 @@ public class test {
         DerivedTypes.PointerType PT3= DerivedTypes.PointerType.get(Type.getInt32Ty());
         System.out.println(PT1.equals(PT2));
         System.out.println(PT1.equals(PT3));
+
+        String text="0x7FFFFFFF";
+
+        int value=new BigInteger(text.substring(2),16).intValue();
+        System.out.println(value);
     }
 }

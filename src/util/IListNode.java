@@ -84,6 +84,13 @@ public class IListNode<T, P> {
         insertBefore(list.getTail());
     }
 
+    /**
+     * 删除后继结点
+     */
+    public void cutFollow(){
+        insertBefore(getParent().getTail());
+    }
+
     public boolean isBorder(){
         return Prev==null||Next==null;
     }

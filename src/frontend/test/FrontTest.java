@@ -1,5 +1,8 @@
-package frontend;
+package frontend.test;
 
+import frontend.SysyLexer;
+import frontend.SysyParser;
+import frontend.Visitor;
 import ir.Argument;
 import ir.Function;
 import ir.GlobalVariable;
@@ -19,8 +22,8 @@ import java.util.Scanner;
 
 public class FrontTest {
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName("src/frontend/input.txt"); // 获取输入流
-        FileWriter fw=new FileWriter("src/frontend/output.txt");
+        CharStream inputStream = CharStreams.fromFileName(args[0]); // 获取输入流
+        FileWriter fw=new FileWriter(args[1]);
         PrintWriter pw=new PrintWriter(fw);
 
         SysyLexer lexer = new SysyLexer(inputStream);

@@ -164,7 +164,7 @@ public abstract class Instructions {
             if (IdxList.isEmpty()) {
                 return Type;
             }
-            for (Value V : IdxList) {
+            for (Value V : IdxList.subList(1,IdxList.size())) {
                 if (!(V.getType().isIntegerTy())) {
                     Type = null;
                 }

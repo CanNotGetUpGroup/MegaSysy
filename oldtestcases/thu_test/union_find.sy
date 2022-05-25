@@ -22,14 +22,12 @@ int main() {
     int n = getint();
     int i = 0;
     int a[N], b[N];
-    starttime();
     while (i < n) {
         a[i] = getint();
         b[i] = getint();
         i = i + 1;
     }
 
-    starttime();
     init();
     i = 0;
     while (i < n) {
@@ -42,7 +40,6 @@ int main() {
         parent(i);
         i = i + 1;
     }
-    stoptime();
 
     i = 0;
     while (i < n) {

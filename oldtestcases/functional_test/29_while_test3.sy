@@ -14,11 +14,11 @@ int EightWhile() {
   while (a < 20) {
     a = a + 3;
     while(b < 10){
-      b = b + 1;
+      b = b+1;
       while(c == 7){
-        c = c - 1;
+        c = c-1;
         while(d < 20){
-          d = d + 3;
+          d = d+3;
           while(e > 1){
             e = e-1;
             while(f > 2){

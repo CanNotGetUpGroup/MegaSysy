@@ -81,6 +81,7 @@ public class GlobalVariable extends User {
 
     @Override
     public String toString() {
-        return getName()+" = common dso_local global "+getOperand(0);
+        if(isConstantGlobal) return getName()+" = dso_local constant "+getOperand(0);
+        return getName()+" = dso_local global "+getOperand(0);
     }
 }

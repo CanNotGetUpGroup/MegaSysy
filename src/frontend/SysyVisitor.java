@@ -185,11 +185,23 @@ public interface SysyVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitMulExp(SysyParser.MulExpContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link SysyParser#mulOp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMulOp(SysyParser.MulOpContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link SysyParser#addExp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitAddExp(SysyParser.AddExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysyParser#addOp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitAddOp(SysyParser.AddOpContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link SysyParser#relExp}.
 	 * @param ctx the parse tree
@@ -197,11 +209,23 @@ public interface SysyVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitRelExp(SysyParser.RelExpContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link SysyParser#relOp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitRelOp(SysyParser.RelOpContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link SysyParser#eqExp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
 	T visitEqExp(SysyParser.EqExpContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link SysyParser#eqOp}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitEqOp(SysyParser.EqOpContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link SysyParser#lAndExp}.
 	 * @param ctx the parse tree

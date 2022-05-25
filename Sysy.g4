@@ -37,27 +37,22 @@ BREAK: 'break';
 CONTINUE: 'continue';
 RETURN: 'return';
 IDENT: Nondigit (Nondigit|Digit)*;
-Decimal_floating_constant:
-    Fractional_constant (Exponent_part)? |
-    Digit_sequence Exponent_part;
-Hexadecimal_floating_constant:
-    ('0x'|'0X') Hexadecimal_fractional_constant Binary_exponent_part |
-    ('0x'|'0X') Hexadecimal_digit_sequence Binary_exponent_part;
 DEC_INT_CONST: [1-9][0-9]*;
 OCT_INT_CONST: '0'[0-7]*;
 HEX_INT_CONST: ('0x'|'0X')[0-9a-fA-F]+;
+Decimal_floating_constant:
+    Fractional_constant (('e'|'E') ('+'|'-')? Digit_sequence)? |
+    Digit_sequence ('e'|'E') ('+'|'-')? Digit_sequence;
+Hexadecimal_floating_constant:
+    ('0x'|'0X') Hexadecimal_fractional_constant ('p' ('+'|'-')? Digit_sequence | 'P' ('+'|'-')?) |
+    ('0x'|'0X') Hexadecimal_digit_sequence ('p' ('+'|'-')? Digit_sequence | 'P' ('+'|'-')?);
 Fractional_constant:
     (Digit_sequence)? '.' Digit_sequence |
     Digit_sequence '.';
-Exponent_part:
-    ('e'|'E') ('+'|'-')? Digit_sequence;
 Digit_sequence: [0-9]+;
 Hexadecimal_fractional_constant:
     (Hexadecimal_digit_sequence)? '.' Hexadecimal_digit_sequence |
     Hexadecimal_digit_sequence '.';
-Binary_exponent_part:
-    'p' ('+'|'-')? Digit_sequence |
-    'P' ('+'|'-')? ;
 Hexadecimal_digit_sequence: [0-9a-fA-F]+;
 Nondigit: [_a-zA-Z];
 Digit:  [0-9];
@@ -94,16 +89,20 @@ cond returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock] : lOrExp;
 lVal : IDENT (LBRACKET exp RBRACKET )*;
 primaryExp : LPAREN exp RPAREN | lVal | number ;
 number : iNT_CONST|fLOAT_CONST;
-iNT_CONST: DEC_INT_CONST | OCT_INT_CONST | HEX_INT_CONST;
-fLOAT_CONST: Decimal_floating_constant | Hexadecimal_floating_constant;
+iNT_CONST : DEC_INT_CONST | OCT_INT_CONST | HEX_INT_CONST;
+fLOAT_CONST : Decimal_floating_constant | Hexadecimal_floating_constant;
 unaryExp  : primaryExp | IDENT LPAREN(funcRParams)?RPAREN | unaryOp unaryExp;
 unaryOp : ADD | SUB | EXC;
 funcRParams    : exp ( COMMA exp )*;
-mulExp  : unaryExp | mulExp (MUL | DIV | MOD) unaryExp;
-addExp  : mulExp | addExp (ADD | SUB)  mulExp;
-relExp  : addExp | relExp (SLT | SGT | SLE | SGE)  addExp;
-eqExp : relExp | eqExp (EEQ | UEQ)  relExp;
+mulExp  : unaryExp (mulOp unaryExp)*;
+mulOp   : (MUL | DIV | MOD);
+addExp  : mulExp (addOp mulExp)*;
+addOp   : (ADD | SUB);
+relExp  : addExp (relOp addExp)*;
+relOp   : (SLT | SGT | SLE | SGE);
+eqExp   : relExp (eqOp relExp)*;
+eqOp    : (EEQ | UEQ);
 lAndExp returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock] :
-    eqExp | lAndExp AND eqExp;
+    eqExp (AND eqExp)*;
 lOrExp returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock]  :
-    lAndExp | lOrExp OR lAndExp;
+    lAndExp (OR lAndExp)*;
