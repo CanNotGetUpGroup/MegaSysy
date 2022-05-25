@@ -15,7 +15,7 @@ import java.io.PrintWriter;
 
 public class tmpTest {
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName("D:\\JavaProject\\MegaSysy\\oldtestcases\\functional_test\\107_long_code2.sy"); // 获取输入流
+        CharStream inputStream = CharStreams.fromFileName("D:\\JavaProject\\MegaSysy\\src\\frontend\\input.txt"); // 获取输入流
         FileWriter fw=new FileWriter("src/frontend/output.txt");
         PrintWriter pw=new PrintWriter(fw);
 

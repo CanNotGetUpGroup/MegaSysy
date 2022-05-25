@@ -26,10 +26,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
     Value curVal;
     Function curF;
     Type type;
-    Stack<FunctionType> fType=new Stack<>();
+    Stack<FunctionType> fType = new Stack<>();
     ArrayType arrayType; //声明的数组类型
     ArrayList<Type> paramTypes; //参数类型
-    Stack<ArrayList<Value>> paramList=new Stack<>(); //参数列表
+    Stack<ArrayList<Value>> paramList = new Stack<>(); //参数列表
     boolean enterBlock; //是否进入block，用于函数参数的初始化
 
     Logger logger = Logger.getLogger(Visitor.class.getName());
@@ -153,7 +153,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         add(ConstantInt.const_0());
                         add(ConstantInt.const_0());
                     }});
-                    if(((ArrayType)tmpTy).getKidType().isArrayTy()) tmpTy = ((ArrayType) tmpTy).getKidType();
+                    if (((ArrayType) tmpTy).getKidType().isArrayTy()) tmpTy = ((ArrayType) tmpTy).getKidType();
                     else break;
                 }
                 ArrayList<Value> Args = new ArrayList<>();
@@ -167,7 +167,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             Aty = arrayType;
             while (Aty.isArrayTy()) {
                 typeArrayList.add(Aty);
-                if(Aty.getKidType().isArrayTy()) Aty = (ArrayType) Aty.getKidType();
+                if (Aty.getKidType().isArrayTy()) Aty = (ArrayType) Aty.getKidType();
                 else break;
             }
             tmpArrList = new ArrayList<>();
@@ -342,7 +342,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                             add(ConstantInt.const_0());
                             add(ConstantInt.const_0());
                         }});
-                        if(((ArrayType)tmpTy).getKidType().isArrayTy()) tmpTy = ((ArrayType) tmpTy).getKidType();
+                        if (((ArrayType) tmpTy).getKidType().isArrayTy()) tmpTy = ((ArrayType) tmpTy).getKidType();
                         else break;
                     }
                     ArrayList<Value> Args = new ArrayList<>();
@@ -356,7 +356,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 Aty = arrayType;
                 while (Aty.isArrayTy()) {
                     typeArrayList.add(Aty);
-                    if(Aty.getKidType().isArrayTy()) Aty = (ArrayType) Aty.getKidType();
+                    if (Aty.getKidType().isArrayTy()) Aty = (ArrayType) Aty.getKidType();
                     else break;
                 }
                 tmpArrList = new ArrayList<>();
@@ -506,9 +506,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
             visit(ctx.funcFParams());
         }
         visit(ctx.block());
-        BasicBlock endBB=curF.getBbList().getLast().getVal();
-        IListNode<Instruction, BasicBlock> endInst=endBB.getInstList().getLast();
-        if(endInst==null||!(endInst.getVal() instanceof Instructions.ReturnInst)){
+        BasicBlock endBB = curF.getBbList().getLast().getVal();
+        IListNode<Instruction, BasicBlock> endInst = endBB.getInstList().getLast();
+        if (endInst == null || !(endInst.getVal() instanceof Instructions.ReturnInst)) {
             builder.createRet(Constant.getNullValue(retType));
         }
         return null;
@@ -591,8 +591,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return super.visitBlockItem(ctx);
     }
 
-    Stack<Stack<Instructions.BranchInst>> breakStk = new Stack<>();
-    Stack<Stack<Instructions.BranchInst>> continueStk = new Stack<>();
+    Stack<Stack<Instructions.BranchInst>> breakStk = new Stack<>();     //break回溯
+    Stack<Stack<Instructions.BranchInst>> continueStk = new Stack<>();  //continue回溯
+    Stack<Stack<Instructions.BranchInst>> trueStk = new Stack<>();      //||短路求值回溯
+    Stack<Stack<Instructions.BranchInst>> falseStk = new Stack<>();     //&&短路求值回溯
 
     /**
      * stmt:lVal EQ exp SEMICOLON
@@ -635,38 +637,54 @@ public class Visitor extends SysyBaseVisitor<Value> {
             case 5:
             case 7:
                 if (ctx.IF() != null) {//'if' '(' Cond ')' Stmt [ 'else' Stmt ]
-                    Instruction TrueBr,FalseBr,CondBr;
-                    BasicBlock trueBlock,falseBlock,stmtBlock;
+                    Instruction Stmt0Br, Stmt1Br, CondBr;
+                    BasicBlock stmt0Block, stmt1Block, stmtBlock;
+
+                    trueStk.add(new Stack<>());
+                    falseStk.add(new Stack<>());
 
                     visit(ctx.cond());
-                    trueBlock = builder.createBasicBlock(curF);
-                    CondBr = builder.createCondBr(curVal, trueBlock, null);
-                    builder.setInsertPoint(trueBlock);
+                    stmt0Block = builder.createBasicBlock(curF);
+                    CondBr = builder.createCondBr(curVal, stmt0Block, null);
+                    builder.setInsertPoint(stmt0Block);
                     visit(ctx.stmt(0));
-                    TrueBr = builder.createBr(null);
+                    Stmt0Br = builder.createBr(null);
                     if (ctx.ELSE() != null) {
-                        falseBlock = builder.createBasicBlock(curF);
-                        ((Instructions.BranchInst)CondBr).setIfFalse(falseBlock);
-                        builder.setInsertPoint(falseBlock);
+                        stmt1Block = builder.createBasicBlock(curF);
+                        ((Instructions.BranchInst) CondBr).setIfFalse(stmt1Block);
+                        builder.setInsertPoint(stmt1Block);
                         visit(ctx.stmt(1));
-                        FalseBr = builder.createBr(null);
+                        Stmt1Br = builder.createBr(null);
 
                         stmtBlock = builder.createBasicBlock(curF);
-                        ((Instructions.BranchInst)TrueBr).setBr(stmtBlock);
-                        ((Instructions.BranchInst)FalseBr).setBr(stmtBlock);
+                        ((Instructions.BranchInst) Stmt0Br).setBr(stmtBlock);
+                        ((Instructions.BranchInst) Stmt1Br).setBr(stmtBlock);
                         builder.setInsertPoint(stmtBlock);
-                    }else{
+                        while (!falseStk.peek().isEmpty()) {
+                            falseStk.peek().pop().setIfFalse(stmt1Block);
+                        }
+                    } else {
                         stmtBlock = builder.createBasicBlock(curF);
-                        ((Instructions.BranchInst)CondBr).setIfFalse(stmtBlock);
-                        ((Instructions.BranchInst)TrueBr).setBr(stmtBlock);
+                        ((Instructions.BranchInst) CondBr).setIfFalse(stmtBlock);
+                        ((Instructions.BranchInst) Stmt0Br).setBr(stmtBlock);
                         builder.setInsertPoint(stmtBlock);
+                        while (!falseStk.peek().isEmpty()) {
+                            falseStk.peek().pop().setIfFalse(stmtBlock);
+                        }
                     }
+                    while (!trueStk.peek().isEmpty()) {
+                        trueStk.peek().pop().setIfTrue(stmt0Block);
+                    }
+                    trueStk.pop();
+                    falseStk.pop();
                 } else {//WHILE LPAREN  cond RPAREN  stmt
-                    Instruction cycBr,CondBr;
-                    BasicBlock trueBlock,falseBlock;
+                    Instruction cycBr, CondBr;
+                    BasicBlock trueBlock, falseBlock;
 
                     breakStk.add(new Stack<>());//false
                     continueStk.add(new Stack<>());//cond
+                    trueStk.add(new Stack<>());
+                    falseStk.add(new Stack<>());
 
                     //判断
                     BasicBlock condBlock = builder.createBasicBlock(curF);
@@ -681,17 +699,26 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     cycBr = builder.createBr(condBlock);
                     //退出循环
                     falseBlock = builder.createBasicBlock(curF);
-                    ((Instructions.BranchInst)CondBr).setIfFalse(falseBlock);
-                    while(!continueStk.peek().isEmpty()){
+                    ((Instructions.BranchInst) CondBr).setIfFalse(falseBlock);
+                    while (!continueStk.peek().isEmpty()) {
                         continueStk.peek().pop().setBr(condBlock);
                     }
-                    while(!breakStk.peek().isEmpty()){
+                    while (!breakStk.peek().isEmpty()) {
                         breakStk.peek().pop().setBr(falseBlock);
                     }
                     builder.setInsertPoint(falseBlock);
 
                     breakStk.pop();
                     continueStk.pop();
+
+                    while (!trueStk.peek().isEmpty()) {
+                        trueStk.peek().pop().setIfTrue(trueBlock);
+                    }
+                    while (!falseStk.peek().isEmpty()) {
+                        falseStk.peek().pop().setIfFalse(falseBlock);
+                    }
+                    trueStk.pop();
+                    falseStk.pop();
                 }
                 break;
             case 3://'return' Exp ';'
@@ -743,7 +770,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         Type ty = V.getType();
         if (ty.isPointerTy()) {
             PointerType pty = (PointerType) ty;
-            if (pty.getElementType().isPointerTy()&&ctx.exp().size()!=0) {
+            if (pty.getElementType().isPointerTy() && ctx.exp().size() != 0) {
                 V = builder.createLoad(V);
                 visit(ctx.exp(0));
                 V = builder.createGEP(V, new ArrayList<>() {{
@@ -765,10 +792,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     }});
                 }
 //                V = getLVal(V, ctx);
-            }else if(pty.getElementType().isFloatTy()||pty.getElementType().isIntegerTy()){
-                if(ctx.exp().size()>1){
+            } else if (pty.getElementType().isFloatTy() || pty.getElementType().isIntegerTy()) {
+                if (ctx.exp().size() > 1) {
                     LogError("维数不对");
-                }else if(ctx.exp().size()==1){
+                } else if (ctx.exp().size() == 1) {
                     visit(ctx.exp(0));
                     V = builder.createGEP(V, new ArrayList<>() {{
                         add(curVal);
@@ -791,15 +818,14 @@ public class Visitor extends SysyBaseVisitor<Value> {
             visit(ctx.exp());
         } else if (ctx.lVal() != null) {
             visit(ctx.lVal());
-            if (curVal.getType().isPointerTy()){
-                PointerType pty=(PointerType)curVal.getType();
-                if(pty.getElementType().isArrayTy()) {
+            if (curVal.getType().isPointerTy()) {
+                PointerType pty = (PointerType) curVal.getType();
+                if (pty.getElementType().isArrayTy()) {
                     curVal = builder.createGEP(curVal, new ArrayList<>() {{
                         add(ConstantInt.const_0());
                         add(ConstantInt.const_0());
                     }});
-                }
-                else curVal=builder.createLoad(curVal);
+                } else curVal = builder.createLoad(curVal);
             }
         } else {
             visit(ctx.number());
@@ -846,9 +872,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 LogError("未找到名为" + name + "的函数");
             }
             FunctionType FT = (FunctionType) F.getType();
-            int argNum=0;
-            if(ctx.funcRParams()!=null){
-                argNum=ctx.funcRParams().exp().size();
+            int argNum = 0;
+            if (ctx.funcRParams() != null) {
+                argNum = ctx.funcRParams().exp().size();
             }
             if (FT.getContainedTys().size() - 1 != argNum) {//参数数量不对
                 LogError("函数" + symbolTable.getName(F) + "参数数量不对");
@@ -893,14 +919,14 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitMulExp(SysyParser.MulExpContext ctx) {
-        Value L=visit(ctx.unaryExp(0)), R;
-        for(int i=1;i<ctx.unaryExp().size();i++){
+        Value L = visit(ctx.unaryExp(0)), R;
+        for (int i = 1; i < ctx.unaryExp().size(); i++) {
             R = visit(ctx.unaryExp(i));
-            if (ctx.mulOp(i-1).MUL() != null) {
+            if (ctx.mulOp(i - 1).MUL() != null) {
                 L = builder.createBinary(Ops.Mul, L, R);
-            } else if (ctx.mulOp(i-1).DIV() != null) {
+            } else if (ctx.mulOp(i - 1).DIV() != null) {
                 L = builder.createBinary(Ops.SDiv, L, R);
-            } else if (ctx.mulOp(i-1).MOD() != null) {
+            } else if (ctx.mulOp(i - 1).MOD() != null) {
                 L = builder.createBinary(Ops.SRem, L, R);
             }
             curVal = L;
@@ -913,12 +939,12 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitAddExp(SysyParser.AddExpContext ctx) {
-        Value L=visit(ctx.mulExp(0)), R;
-        for(int i=1;i<ctx.mulExp().size();i++){
+        Value L = visit(ctx.mulExp(0)), R;
+        for (int i = 1; i < ctx.mulExp().size(); i++) {
             R = visit(ctx.mulExp(i));
-            if (ctx.addOp(i-1).ADD() != null) {
+            if (ctx.addOp(i - 1).ADD() != null) {
                 L = builder.createBinary(Ops.Add, L, R);
-            } else if (ctx.addOp(i-1).SUB() != null) {
+            } else if (ctx.addOp(i - 1).SUB() != null) {
                 L = builder.createBinary(Ops.Sub, L, R);
             }
             curVal = L;
@@ -931,16 +957,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitRelExp(SysyParser.RelExpContext ctx) {
-        Value L=visit(ctx.addExp(0)), R;
-        for(int i=1;i<ctx.addExp().size();i++){
+        Value L = visit(ctx.addExp(0)), R;
+        for (int i = 1; i < ctx.addExp().size(); i++) {
             R = visit(ctx.addExp(i));
-            if (ctx.relOp(i-1).SLT() != null) {
+            if (ctx.relOp(i - 1).SLT() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_SLT, L, R);
-            } else if (ctx.relOp(i-1).SGT() != null) {
+            } else if (ctx.relOp(i - 1).SGT() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_SGT, L, R);
-            } else if (ctx.relOp(i-1).SLE() != null) {
+            } else if (ctx.relOp(i - 1).SLE() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_SLE, L, R);
-            } else if (ctx.relOp(i-1).SGE() != null) {
+            } else if (ctx.relOp(i - 1).SGE() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_SGE, L, R);
             }
             curVal = L;
@@ -953,12 +979,12 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitEqExp(SysyParser.EqExpContext ctx) {
-        Value L=visit(ctx.relExp(0)), R;
-        for(int i=1;i<ctx.relExp().size();i++){
+        Value L = visit(ctx.relExp(0)), R;
+        for (int i = 1; i < ctx.relExp().size(); i++) {
             R = visit(ctx.relExp(i));
-            if (ctx.eqOp(i-1).EEQ() != null) {
+            if (ctx.eqOp(i - 1).EEQ() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_EQ, L, R);
-            } else if (ctx.eqOp(i-1).UEQ() != null) {
+            } else if (ctx.eqOp(i - 1).UEQ() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_NE, L, R);
             }
             curVal = L;
@@ -971,11 +997,18 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitLAndExp(SysyParser.LAndExpContext ctx) {
-        Value L=visit(ctx.eqExp(0)), R;
-        for(int i=1;i<ctx.eqExp().size();i++){
+        Value L = visit(ctx.eqExp(0)), R;
+        for (int i = 1; i < ctx.eqExp().size(); i++) {
+            BasicBlock LB=builder.createBasicBlock(curF);
+            if(!L.getType().isInt1Ty()){
+                L=builder.createCmp(CmpInst.Predicate.ICMP_NE,L, Constants.ConstantInt.const_0());
+            }
+            Instruction lBr=builder.createCondBr(L,LB,null);
+            falseStk.peek().add((Instructions.BranchInst) lBr);
+            builder.setInsertPoint(LB);
             R = visit(ctx.eqExp(i));
-            if (ctx.AND(i-1) != null) {
-                L = builder.createLogicalAnd(L, R);
+            if(!R.getType().isInt1Ty()){
+                R=builder.createCmp(CmpInst.Predicate.ICMP_NE,R, Constants.ConstantInt.const_0());
             }
             curVal = L;
         }
@@ -987,11 +1020,18 @@ public class Visitor extends SysyBaseVisitor<Value> {
      */
     @Override
     public Value visitLOrExp(SysyParser.LOrExpContext ctx) {
-        Value L=visit(ctx.lAndExp(0)), R;
-        for(int i=1;i<ctx.lAndExp().size();i++){
+        Value L = visit(ctx.lAndExp(0)), R;
+        for (int i = 1; i < ctx.lAndExp().size(); i++) {
+            BasicBlock LB=builder.createBasicBlock(curF);
+            if(!L.getType().isInt1Ty()){
+                L=builder.createCmp(CmpInst.Predicate.ICMP_NE,L, Constants.ConstantInt.const_0());
+            }
+            Instruction lBr=builder.createCondBr(L,null,LB);
+            trueStk.peek().add((Instructions.BranchInst) lBr);
+            builder.setInsertPoint(LB);
             R = visit(ctx.lAndExp(i));
-            if (ctx.OR(i-1) != null) {
-                L = builder.createLogicalOr(L, R);
+            if(!R.getType().isInt1Ty()){
+                R=builder.createCmp(CmpInst.Predicate.ICMP_NE,R, Constants.ConstantInt.const_0());
             }
             curVal = L;
         }
@@ -1009,17 +1049,17 @@ public class Visitor extends SysyBaseVisitor<Value> {
     @Override
     public Value visitINT_CONST(SysyParser.INT_CONSTContext ctx) {
         type = Type.getInt32Ty();
-        if(ctx.DEC_INT_CONST()!=null){
+        if (ctx.DEC_INT_CONST() != null) {
             String text = ctx.DEC_INT_CONST().getText();
-            int number = new BigInteger(text,10).intValue();
+            int number = new BigInteger(text, 10).intValue();
             curVal = ConstantInt.get(number);
-        }else if(ctx.OCT_INT_CONST()!=null){
+        } else if (ctx.OCT_INT_CONST() != null) {
             String text = ctx.OCT_INT_CONST().getText();
-            int number = new BigInteger(text,8).intValue();
+            int number = new BigInteger(text, 8).intValue();
             curVal = ConstantInt.get(number);
-        }else{
+        } else {
             String text = ctx.HEX_INT_CONST().getText();
-            int number = new BigInteger(text.substring(2),16).intValue();
+            int number = new BigInteger(text.substring(2), 16).intValue();
             curVal = ConstantInt.get(number);
         }
         return curVal;
@@ -1028,11 +1068,11 @@ public class Visitor extends SysyBaseVisitor<Value> {
     @Override
     public Value visitFLOAT_CONST(SysyParser.FLOAT_CONSTContext ctx) {
         type = Type.getFloatTy();
-        if(ctx.Decimal_floating_constant()!=null){
+        if (ctx.Decimal_floating_constant() != null) {
             String text = ctx.Decimal_floating_constant().getText();
             float number = new BigDecimal(text).floatValue();
             curVal = ConstantFP.get(number);
-        }else{
+        } else {
             //TODO:十六进制转换
             String text = ctx.Hexadecimal_floating_constant().getText();
             float number = new BigDecimal(text.substring(2)).floatValue();
