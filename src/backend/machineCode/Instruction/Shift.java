@@ -1,8 +1,11 @@
 package backend.machineCode.Instruction;
 
-import backend.machineCode.Register.Register;
+import backend.machineCode.MachineBasicBlock;
+import backend.machineCode.MachineInstruction;
+import backend.machineCode.Operand.MCOperand;
+import backend.machineCode.Operand.Register;
 
-public class Shift extends MCOperand{
+public class Shift extends MachineInstruction {
     public enum Type{
         ASR, // Arithmetic Shift Right
         LSL, // Logical Shift Left
@@ -48,14 +51,16 @@ public class Shift extends MCOperand{
     private Register op1;
     private MCOperand sh;
 
-    public Shift(Type type, Register dest, Register op1, MCOperand shift){
+    public Shift(MachineBasicBlock parent, Type type, Register dest, Register op1, MCOperand shift){
+        super(parent);
         this.type = type;
         this.dest = dest;
         this.op1 = op1;
         this.sh = shift;
     }
 
-    public Shift(Type type, Register op1, MCOperand shift){
+    public Shift(MachineBasicBlock parent, Type type, Register op1, MCOperand shift){
+        super(parent);
         this.type = type;
         this.dest = op1;
         this.op1 = op1;

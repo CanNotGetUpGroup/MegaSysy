@@ -1,5 +1,6 @@
 package ir.instructions;
 
+import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
 

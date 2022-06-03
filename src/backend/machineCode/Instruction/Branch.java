@@ -2,7 +2,7 @@ package backend.machineCode.Instruction;
 
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
-import backend.machineCode.Register.Register;
+import backend.machineCode.Operand.Register;
 
 public class Branch extends MachineInstruction {
     // 暂时没考虑过Thumb2指令集
@@ -16,13 +16,15 @@ public class Branch extends MachineInstruction {
     }
     private Type type;
 
-    public Branch(MachineBasicBlock destBasicBlock, boolean storeLR){
+    public Branch(MachineBasicBlock parent, MachineBasicBlock destBasicBlock, boolean storeLR){
+        super(parent);
         this.destBB = destBasicBlock;
         this.storeLR = storeLR;
         type = Type.LABEL;
     }
 
-    public Branch(Register destReg, boolean storeLR){
+    public Branch(MachineBasicBlock parent, Register destReg, boolean storeLR){
+        super(parent);
         this.destReg = destReg;
         this.storeLR = storeLR;
         type = Type.REG;

@@ -7,7 +7,7 @@ import util.IListNode;
 import util.MyIRBuilder;
 
 public class MachineInstruction {
-    private MachineBasicBlock Parent;
+    private MachineBasicBlock parent;
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
 
@@ -27,11 +27,11 @@ public class MachineInstruction {
     }
 
     public MachineBasicBlock getParent() {
-        return Parent;
+        return parent;
     }
 
     public void setParent(MachineBasicBlock parent) {
-        Parent = parent;
+        parent = parent;
     }
 
     public IListNode<MachineInstruction, MachineBasicBlock> getInstNode() {
@@ -54,5 +54,8 @@ public class MachineInstruction {
         this.getInstNode().insertIntoListEnd(this.getParent().getInstList());
     }
 
+    public MachineInstruction(MachineBasicBlock parent){
+        this.parent = parent;
+    }
 
 }

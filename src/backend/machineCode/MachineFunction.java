@@ -1,17 +1,22 @@
 package backend.machineCode;
 
+import backend.machineCode.Operand.Register;
 import ir.*;
-import ir.Module;
 import util.IList;
-import util.IListNode;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class MachineFunction {
     private ArrayList<Argument> Arguments;
     private String name;
     private IList<MachineBasicBlock, MachineFunction> bbList;
-    private boolean isDefined = true;
+
+    public void setDefined(boolean defined) {
+        isDefined = defined;
+    }
+
+    private boolean isDefined = false;
 
     /**
      * 生成一个MachineFunction对象
@@ -23,15 +28,31 @@ public class MachineFunction {
         bbList = new IList<>(this);
         Arguments = new ArrayList<>();
         this.name = name;
+        this.bbMap = new HashMap<>();
+        this.valueMap = new HashMap<>();
     }
 
     @Override
     public String toString() {
+        if(!isDefined) return "";
         StringBuilder sb = new StringBuilder();
 
-        // TODO: print directives for functions
+        sb.append("\t.align\t2\n" +
+                        "\t.arch armv7-a\n" +
+                        "\t.syntax unified\n" +
+                        "\t.arm\n" +
+                        "\t.fpu vfp\n")
+                .append("\t.global\t").append(this.name)
+                .append("\t.type\t").append(this.name).append("\t%function\n")
+                .append(this.name).append(":").append("\n");
 
-        sb.append(this.name).append(":");
+        var head = bbList.getHead();
+
+        while (bbList.getLast() != null && head != bbList.getLast()) {
+            head = head.getNext();
+            var bb = head.getVal();
+            sb.append(bb.toString());
+        }
         return sb.toString();
     }
 
@@ -53,5 +74,23 @@ public class MachineFunction {
 
     public String getName(){
         return name;
+    }
+
+    HashMap<BasicBlock, MachineBasicBlock> bbMap;
+    HashMap<Value, Register> valueMap;
+
+    /**
+     * 得到ir中的基本块和汇编中基本块的映射HashMap
+     * @return HashMap<BasicBlock, MachineBasicBlock>
+     */
+    public HashMap<BasicBlock, MachineBasicBlock> getBBMap (){
+        return bbMap;
+    }
+
+    /**
+     * 得到ir中的Value对寄存器的HashMap
+     */
+    public HashMap<Value, Register> getValueMap(){
+        return valueMap;
     }
 }

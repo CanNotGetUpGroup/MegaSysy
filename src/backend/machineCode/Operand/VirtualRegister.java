@@ -1,4 +1,4 @@
-package backend.machineCode.Register;
+package backend.machineCode.Operand;
 
 public class VirtualRegister {
     private static int c = 0;
@@ -11,7 +11,11 @@ public class VirtualRegister {
 
 
     public VirtualRegister(){
-        name = Integer.toString(counter());
+        name = "v" + Integer.toString(counter());
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
 }

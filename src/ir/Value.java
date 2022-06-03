@@ -4,7 +4,7 @@ import java.util.LinkedList;
 import java.util.logging.Logger;
 
 public abstract class Value {
-    private LinkedList<Use> UseList;//自己在哪些地方被使用
+    private LinkedList<Use> UseList; //自己在哪些地方被使用
     private Type type;
     private String name;
 

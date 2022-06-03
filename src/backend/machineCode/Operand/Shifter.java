@@ -1,4 +1,4 @@
-package backend.machineCode.Register;
+package backend.machineCode.Operand;
 
 import backend.machineCode.Instruction.Shift;
 

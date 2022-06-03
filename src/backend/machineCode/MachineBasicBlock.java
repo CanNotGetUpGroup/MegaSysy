@@ -61,7 +61,18 @@ public class MachineBasicBlock {
 
     @Override
     public String toString() {
-        return getLabel() + ":";
+        StringBuilder sb = new StringBuilder();
+
+        sb.append(getLabel()).append(":\n");
+
+        var head = instList.getHead();
+
+        while (instList.getLast() != null && head != instList.getLast()) {
+            head = head.getNext();
+            var i = head.getVal();
+            sb.append(i.toString());
+        }
+        return sb.toString();
     }
 
     public MachineFunction getParent() {

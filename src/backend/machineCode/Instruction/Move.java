@@ -1,13 +1,16 @@
 package backend.machineCode.Instruction;
 
+import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
-import backend.machineCode.Register.Register;
+import backend.machineCode.Operand.MCOperand;
+import backend.machineCode.Operand.Register;
 
 public class Move extends MachineInstruction {
     private Register dest;
     private MCOperand op;
 
-    public Move(Register dest, MCOperand op){
+    public Move(MachineBasicBlock parent, Register dest, MCOperand op){
+        super(parent);
         this.dest = dest;
         this.op = op;
     }
