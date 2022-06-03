@@ -3,6 +3,7 @@ package backend.machineCode;
 import ir.BasicBlock;
 import ir.Instruction;
 import ir.Type;
+import util.IList;
 import util.IListNode;
 import util.MyIRBuilder;
 
@@ -31,7 +32,7 @@ public class MachineInstruction {
     }
 
     public void setParent(MachineBasicBlock parent) {
-        parent = parent;
+        this.parent = parent;
     }
 
     public IListNode<MachineInstruction, MachineBasicBlock> getInstNode() {
@@ -56,6 +57,9 @@ public class MachineInstruction {
 
     public MachineInstruction(MachineBasicBlock parent){
         this.parent = parent;
+        instNode = new IListNode<>(this, parent.getInstList());
+        //插入到parent末尾
+        instNode.insertIntoListEnd(this.parent.getInstList());
     }
 
 }

@@ -50,9 +50,12 @@ public class CodeGenManager {
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
+
+        sb.append(".text\n");
         for (var func : funcList) {
             sb.append(func.toString());
         }
+
         return sb.toString();
     }
 

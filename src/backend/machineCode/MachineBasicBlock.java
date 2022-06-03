@@ -23,7 +23,7 @@ public class MachineBasicBlock {
     private String label;
 
 
-    private MachineFunction Parent;
+    private MachineFunction parent;
     private IListNode<MachineBasicBlock, MachineFunction> bbNode;
     private IList<MachineInstruction, MachineBasicBlock> instList;
 
@@ -42,20 +42,20 @@ public class MachineBasicBlock {
     }
 
     public MachineBasicBlock(MachineFunction parent) {
-        Parent = parent;
+        this.parent = parent;
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
         //插入到parent末尾
-        bbNode.insertIntoListEnd(Parent.getBbList());
+        bbNode.insertIntoListEnd(this.parent.getBbList());
         label = parent.getName() + Integer.toString(counter());
     }
 
     public MachineBasicBlock(String label, MachineFunction parent) {
-        Parent = parent;
+        this.parent = parent;
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
         //插入到parent末尾
-        bbNode.insertIntoListEnd(Parent.getBbList());
+        bbNode.insertIntoListEnd(this.parent.getBbList());
         this.label = label;
     }
 
@@ -70,17 +70,17 @@ public class MachineBasicBlock {
         while (instList.getLast() != null && head != instList.getLast()) {
             head = head.getNext();
             var i = head.getVal();
-            sb.append(i.toString());
+            sb.append(i.toString()).append("\n");
         }
         return sb.toString();
     }
 
     public MachineFunction getParent() {
-        return Parent;
+        return parent;
     }
 
     public void setParent(MachineFunction parent) {
-        Parent = parent;
+        this.parent = parent;
     }
 
     public IList<MachineInstruction, MachineBasicBlock> getInstList() {

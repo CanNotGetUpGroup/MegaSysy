@@ -1,5 +1,6 @@
 package backend.pass;
 
+import backend.machineCode.Instruction.Branch;
 import backend.machineCode.Instruction.Move;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
@@ -59,7 +60,7 @@ public class InstructionSelector {
     private void translateFunction(Function irFunction) {
         MachineFunction mf = funcMap.get(irFunction);
 
-        HashMap<BasicBlock, MachineBasicBlock> bbMap = new HashMap<>();
+        HashMap<BasicBlock, MachineBasicBlock> bbMap = mf.getBBMap();
         var bbList = irFunction.getBbList();
         var head = bbList.getHead();
 
@@ -83,7 +84,6 @@ public class InstructionSelector {
 
         var bbMap = funcMap.get(bb.getParent()).getBBMap();
         MachineBasicBlock mbb = bbMap.get(bb);
-
         var instList = bb.getInstList();
         var head = instList.getHead();
 
@@ -96,17 +96,14 @@ public class InstructionSelector {
 
     private void translateInstruction(Instruction ir) {
         var bb = ir.getParent();
-        System.out.println(ir.toString());
-        System.out.println(bb);
         var mbb = funcMap.get(bb.getParent()).getBBMap().get(bb);
-
-        System.out.println(ir.getOperand(0).toString());
         switch (ir.getOp()) {
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
                     var op1 = ir.getOperand(0);
                     MachineInstruction inst = new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(op1));
                     inst.pushBacktoInstList();
+                    new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false);
                 }
             }
 

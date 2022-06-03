@@ -1,0 +1,15 @@
+.text
+	.align	2
+	.arch armv7-a
+	.syntax unified
+	.arm
+	.fpu vfp
+	.global	main
+	.type	main	%function
+main:
+main1:
+mov	r0, 1
+BX	LR
+
+.size	main, .-main
+

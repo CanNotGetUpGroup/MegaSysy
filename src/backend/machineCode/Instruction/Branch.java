@@ -32,7 +32,7 @@ public class Branch extends MachineInstruction {
 
     @Override
     public String toString() {
-        String inst = "B";
+        String inst = "BX";
         if(storeLR) inst += "L";
         return switch (type){
             case REG -> inst + "\t" + destReg.toString();

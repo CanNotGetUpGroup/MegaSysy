@@ -42,7 +42,7 @@ public class MachineFunction {
                         "\t.syntax unified\n" +
                         "\t.arm\n" +
                         "\t.fpu vfp\n")
-                .append("\t.global\t").append(this.name)
+                .append("\t.global\t").append(this.name).append("\n")
                 .append("\t.type\t").append(this.name).append("\t%function\n")
                 .append(this.name).append(":").append("\n");
 
@@ -51,8 +51,10 @@ public class MachineFunction {
         while (bbList.getLast() != null && head != bbList.getLast()) {
             head = head.getNext();
             var bb = head.getVal();
-            sb.append(bb.toString());
+            sb.append(bb.toString()).append("\n");
         }
+        // size
+        sb.append(".size\t").append(name).append(", .-").append(name).append("\n");
         return sb.toString();
     }
 
