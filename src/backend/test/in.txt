@@ -1,3 +1,6 @@
 int main(){
-    return 1;
+    int a = 10;
+    int b = 9;
+    const int c = 3;
+    return a * b - c;
 }

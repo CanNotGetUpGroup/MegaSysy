@@ -1,6 +1,8 @@
 package backend.machineCode.Operand;
 
-public class VirtualRegister {
+import static backend.machineCode.Operand.Register.Type.VIRTUAL;
+
+public class VirtualRegister extends Register{
     private static int c = 0;
     private static int counter(){
         return c++;
@@ -11,6 +13,7 @@ public class VirtualRegister {
 
 
     public VirtualRegister(){
+        super(VIRTUAL);
         name = "v" + Integer.toString(counter());
     }
 

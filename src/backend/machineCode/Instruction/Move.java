@@ -9,9 +9,10 @@ public class Move extends MachineInstruction {
     private Register dest;
     private MCOperand op;
 
-    public Move(MachineBasicBlock parent, Register dest, MCOperand op){
+    public Move(MachineBasicBlock parent, MCOperand dest, MCOperand op){
         super(parent);
-        this.dest = dest;
+        assert dest instanceof Register;
+        this.dest = (Register) dest;
         this.op = op;
     }
 

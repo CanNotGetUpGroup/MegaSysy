@@ -8,7 +8,13 @@
 	.type	main	%function
 main:
 main1:
-mov	r0, 1
+mov	v0, 10
+mov	v1, 9
+mov	v2, v0
+mov	v3, v1
+MUL	v4, v2, v3
+SUB	v5, v4, 3
+mov	r0, v5
 BX	LR
 
 .size	main, .-main

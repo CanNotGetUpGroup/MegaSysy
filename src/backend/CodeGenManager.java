@@ -61,8 +61,10 @@ public class CodeGenManager {
 
     public static void main(String[] args) throws IOException {
         CharStream inputStream = CharStreams.fromFileName("/Users/luxia/code/MegaSysy/src/backend/test/in.txt"); // 获取输入流
-        FileWriter fw = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/out.txt");
-        PrintWriter pw = new PrintWriter(fw);
+        FileWriter fw1 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/ir_out.txt");
+        FileWriter fw2 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/arm_out.txt");
+        PrintWriter pw1 = new PrintWriter(fw1);
+        PrintWriter pw2 = new PrintWriter(fw2);
 
         SysyLexer lexer = new SysyLexer(inputStream);
 
@@ -74,12 +76,15 @@ public class CodeGenManager {
         Module module = Module.getInstance();
         module.rename();
 
+        pw1.println(module.toLL());
+        pw1.flush();
+
+        // back-end
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
         mc.run();
 
-//        pw.println(module.toLL());
-        pw.println(mc.toArm());
-        pw.flush();
+        pw2.println(mc.toArm());
+        pw2.flush();
     }
 }

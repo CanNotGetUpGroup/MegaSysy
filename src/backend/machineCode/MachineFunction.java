@@ -11,12 +11,14 @@ public class MachineFunction {
     private ArrayList<Argument> Arguments;
     private String name;
     private IList<MachineBasicBlock, MachineFunction> bbList;
+    private boolean isDefined = false;
+
 
     public void setDefined(boolean defined) {
         isDefined = defined;
     }
 
-    private boolean isDefined = false;
+
 
     /**
      * 生成一个MachineFunction对象
@@ -78,8 +80,8 @@ public class MachineFunction {
         return name;
     }
 
-    HashMap<BasicBlock, MachineBasicBlock> bbMap;
-    HashMap<Value, Register> valueMap;
+    private HashMap<BasicBlock, MachineBasicBlock> bbMap;
+    private HashMap<Value, Register> valueMap;
 
     /**
      * 得到ir中的基本块和汇编中基本块的映射HashMap
