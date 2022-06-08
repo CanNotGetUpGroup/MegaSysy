@@ -85,7 +85,7 @@ stmt:lVal EQ exp SEMICOLON
     | CONTINUE SEMICOLON
     | RETURN (exp)? SEMICOLON ;
 exp : addExp;
-cond returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock] : lOrExp;
+cond returns [ArrayList<ir.instructions.Instructions.BranchInst> trueBrs, ArrayList<ir.instructions.Instructions.BranchInst> falseBrs] : lOrExp;
 lVal : IDENT (LBRACKET exp RBRACKET )*;
 primaryExp : LPAREN exp RPAREN | lVal | number ;
 number : iNT_CONST|fLOAT_CONST;
@@ -102,7 +102,7 @@ relExp  : addExp (relOp addExp)*;
 relOp   : (SLT | SGT | SLE | SGE);
 eqExp   : relExp (eqOp relExp)*;
 eqOp    : (EEQ | UEQ);
-lAndExp returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock] :
+lAndExp returns [ArrayList<ir.instructions.Instructions.BranchInst> trueBrs, ArrayList<ir.instructions.Instructions.BranchInst> falseBrs] :
     eqExp (AND eqExp)*;
-lOrExp returns [ir.BasicBlock trueBlock, ir.BasicBlock falseBlock]  :
+lOrExp returns [ArrayList<ir.instructions.Instructions.BranchInst> trueBrs, ArrayList<ir.instructions.Instructions.BranchInst> falseBrs]  :
     lAndExp (OR lAndExp)*;
