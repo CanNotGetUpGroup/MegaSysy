@@ -23,7 +23,8 @@ public abstract class Instruction extends User {
     }
 
     public BasicBlock getParent() {
-        return Parent;
+//        return Parent;
+        return instNode.getParent().getVal();
     }
 
     public void setParent(BasicBlock parent) {

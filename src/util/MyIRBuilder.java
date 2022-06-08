@@ -62,6 +62,10 @@ public class MyIRBuilder {
         InsertPt = I.getInstNode();
     }
 
+    public void setInsertPt(IListNode<Instruction, BasicBlock> insertPt) {
+        InsertPt = insertPt;
+    }
+
     public BasicBlock createBasicBlock(String name, Function parent) {
         BasicBlock BB = BasicBlock.create(name, parent);
         return BB;
@@ -72,22 +76,27 @@ public class MyIRBuilder {
         return BB;
     }
 
-    public void unifyType(Value L, Value R){
+    Value retL,retR;
+
+    public void unifyType(Value L, Value R, boolean left){
         if(!L.getType().equals(R.getType())){
             if(L.getType().isInt1Ty()){
                 if(R.getType().isInt32Ty()){
-                    L=createZExt(L,Type.getInt32Ty());
+                    if(left) retL=createZExt(L,Type.getInt32Ty());
+                    else retR=createZExt(L,Type.getInt32Ty());
                 }else if(R.getType().isFloatTy()){
-                    L=createSIToFP(L,Type.getFloatTy());
+                    if(left) retL=createSIToFP(L,Type.getFloatTy());
+                    else retR=createSIToFP(L,Type.getFloatTy());
                 }
             }else if(L.getType().isInt32Ty()){
                 if(R.getType().isFloatTy()){
-                    L=createSIToFP(L,Type.getFloatTy());
+                    if(left) retL=createSIToFP(L,Type.getFloatTy());
+                    else retR=createSIToFP(L,Type.getFloatTy());
                 }else if(R.getType().isInt1Ty()){
-                    unifyType(R,L);
+                    unifyType(R,L,false);
                 }
             }else if(R.getType().isFloatTy()){
-                unifyType(R,L);
+                unifyType(R,L,false);
             }
         }
     }
@@ -164,8 +173,10 @@ public class MyIRBuilder {
 
     public Value createBinary(Instruction.Ops op,Value L ,Value R){
         // 转换类型
-        unifyType(L,R);
-        if(L.getType().isFloatTy()){
+        retL=L;
+        retR=R;
+        unifyType(L,R,true);
+        if(retL.getType().isFloatTy()){
             if(op.equals(Instruction.Ops.Add)){
                 op= Instruction.Ops.FAdd;
             }else if(op.equals(Instruction.Ops.Sub)){
@@ -180,25 +191,25 @@ public class MyIRBuilder {
         }
         switch (op){
             case Add:
-                return createAdd(L,R);
+                return createAdd(retL,retR);
             case Sub:
-                return createSub(L,R);
+                return createSub(retL,retR);
             case Mul:
-                return createMul(L,R);
+                return createMul(retL,retR);
             case SDiv:
-                return createSDiv(L,R);
+                return createSDiv(retL,retR);
             case SRem:
-                return createSRem(L,R);
+                return createSRem(retL,retR);
             case FAdd:
-                return createFAdd(L,R);
+                return createFAdd(retL,retR);
             case FSub:
-                return createFSub(L,R);
+                return createFSub(retL,retR);
             case FMul:
-                return createFMul(L,R);
+                return createFMul(retL,retR);
             case FDiv:
-                return createFDiv(L,R);
+                return createFDiv(retL,retR);
             case FRem:
-                return createFRem(L,R);
+                return createFRem(retL,retR);
         }
         return null;
     }
@@ -344,7 +355,9 @@ public class MyIRBuilder {
     //===--------------------------------------------------------------------===//
 
     public Instruction createAlloca(Type Ty) {
-        return insert(new AllocaInst(Ty));
+        Instruction I=new AllocaInst(Ty);
+        I.getInstNode().insertAfter(BB.getInstList().getHead());
+        return I;
     }
 
     public Value createLoad(Type Ty, Value Ptr) {
@@ -411,8 +424,10 @@ public class MyIRBuilder {
      */
     public Value createCmp(Predicate Pred, Value L, Value R) {
         // 类型转换
-        unifyType(L,R);
-        if(L.getType().isFloatTy()){
+        retL=L;
+        retR=R;
+        unifyType(L,R,true);
+        if(retL.getType().isFloatTy()){
             if(Pred.equals(Predicate.ICMP_EQ)){
                 Pred= Predicate.FCMP_UEQ;
             }else if(Pred.equals(Predicate.ICMP_NE)){
@@ -428,8 +443,8 @@ public class MyIRBuilder {
             }
         }
         return CmpInst.isFPPredicate(Pred)
-                ? createFCmp(Pred, L, R)
-                : createICmp(Pred, L, R);
+                ? createFCmp(Pred, retL, retR)
+                : createICmp(Pred, retL, retR);
     }
 
     public Value createICmp(Predicate P, Value LHS, Value RHS) {
