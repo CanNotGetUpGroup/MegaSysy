@@ -1515,8 +1515,8 @@ public class SysyParser extends Parser {
 	}
 
 	public static class CondContext extends ParserRuleContext {
-		public ir.BasicBlock trueBlock;
-		public ir.BasicBlock falseBlock;
+		public ArrayList<ir.instructions.Instructions.BranchInst> trueBrs;
+		public ArrayList<ir.instructions.Instructions.BranchInst> falseBrs;
 		public LOrExpContext lOrExp() {
 			return getRuleContext(LOrExpContext.class,0);
 		}
@@ -2457,8 +2457,8 @@ public class SysyParser extends Parser {
 	}
 
 	public static class LAndExpContext extends ParserRuleContext {
-		public ir.BasicBlock trueBlock;
-		public ir.BasicBlock falseBlock;
+		public ArrayList<ir.instructions.Instructions.BranchInst> trueBrs;
+		public ArrayList<ir.instructions.Instructions.BranchInst> falseBrs;
 		public List<EqExpContext> eqExp() {
 			return getRuleContexts(EqExpContext.class);
 		}
@@ -2519,8 +2519,8 @@ public class SysyParser extends Parser {
 	}
 
 	public static class LOrExpContext extends ParserRuleContext {
-		public ir.BasicBlock trueBlock;
-		public ir.BasicBlock falseBlock;
+		public ArrayList<ir.instructions.Instructions.BranchInst> trueBrs;
+		public ArrayList<ir.instructions.Instructions.BranchInst> falseBrs;
 		public List<LAndExpContext> lAndExp() {
 			return getRuleContexts(LAndExpContext.class);
 		}
