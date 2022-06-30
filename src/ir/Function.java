@@ -12,6 +12,7 @@ public class Function extends Constant {
     private Module Parent;
     private IListNode<Function, Module> funcNode;
     private IList<BasicBlock, Function> bbList;
+    private BasicBlock entryBB;
     private boolean isDefined=true;
 
     /**
@@ -111,5 +112,13 @@ public class Function extends Constant {
 
     public void setDefined(boolean defined) {
         isDefined = defined;
+    }
+
+    public BasicBlock getEntryBB() {
+        return entryBB;
+    }
+
+    public void setEntryBB(BasicBlock entryBB) {
+        this.entryBB = entryBB;
     }
 }

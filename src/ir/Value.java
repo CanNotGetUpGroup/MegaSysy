@@ -7,6 +7,7 @@ public abstract class Value {
     private LinkedList<Use> UseList; //自己在哪些地方被使用
     private Type type;
     private String name;
+    private String comment; //注释，用于debug
 
     public int getUseSize() {
         return UseList.size();
@@ -34,6 +35,14 @@ public abstract class Value {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = "; "+comment;
     }
 
     /**

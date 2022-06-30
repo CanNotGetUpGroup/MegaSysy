@@ -76,7 +76,9 @@ public class GlobalVariable extends User {
         super(DerivedTypes.PointerType.get(ty), numOps);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;
-        //TODO:插入在该指令前
+        //插入在该指令前
+        int idx=parent.getGlobalVariables().indexOf(insertBefore);
+        parent.getGlobalVariables().add(idx,this);
     }
 
     @Override

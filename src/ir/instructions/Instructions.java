@@ -11,7 +11,7 @@ public abstract class Instructions {
     //                                AllocaInst Class
     //===----------------------------------------------------------------------===//
 
-    /// an instruction to allocate memory on the stack
+    /// 在堆栈上分配局部变量的指令
     public static class AllocaInst extends UnaryInstruction {
         private Type AllocatedType;
         private boolean undef = true;
@@ -29,6 +29,11 @@ public abstract class Instructions {
         @Override
         public String toString() {
             return getName() + " = alloca " + AllocatedType;
+        }
+
+        @Override
+        public PointerType getType() {
+            return (PointerType) super.getType();
         }
 
         public boolean isUndef() {
@@ -52,8 +57,7 @@ public abstract class Instructions {
     //                                LoadInst Class
     //===----------------------------------------------------------------------===//
 
-    /// An instruction for reading from memory. This uses the SubclassData field in
-    /// Value to store whether or not the load is volatile.
+    /// 用于访问分配在栈帧的变量的指令
     public static class LoadInst extends UnaryInstruction {
         /**
          * load从addr中读取储存的val
@@ -77,7 +81,7 @@ public abstract class Instructions {
     //                                StoreInst Class
     //===----------------------------------------------------------------------===//
 
-    /// An instruction for storing to memory.
+    /// 用于存储的指令
     public static class StoreInst extends Instruction {
         /**
          * alloca申请addr，store将val存到addr中
@@ -117,9 +121,6 @@ public abstract class Instructions {
     //                             GetElementPtrInst Class
     //===----------------------------------------------------------------------===//
 
-    // checkGEPType - Simple wrapper function to give a better assertion failure
-    // message on bad indexes for a gep instruction.
-    //
     public static class GetElementPtrInst extends Instruction {
         private Type SourceElementType;
         private Type ResultElementType;
@@ -182,9 +183,7 @@ public abstract class Instructions {
         public static Type getGEPReturnType(Type ElTy, Value Ptr, ArrayList<Value> IdxList) {
             Type ty = getIndexType(ElTy, IdxList);
             assert ty != null;
-            Type PtrTy = DerivedTypes.PointerType.get(ty);
-            //TODO:Vector
-            return PtrTy;
+            return PointerType.get(ty);
         }
 
         public static GetElementPtrInst create(Type PointeeType, Value Ptr, ArrayList<Value> IdxList) {
@@ -335,7 +334,7 @@ public abstract class Instructions {
         }
 
         public static CallInst create(Function Func, ArrayList<Value> Args) {
-            return new CallInst((FunctionType) Func.getType(), Func, Args);
+            return new CallInst(Func.getType(), Func, Args);
         }
     }
 

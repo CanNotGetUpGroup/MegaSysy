@@ -157,7 +157,6 @@ public class Constants {
     public static class ConstantArray extends Constant {
         public ConstantArray(ArrayType ty, ArrayList<Value> V) {
             super(ty, V);
-            //TODO:存入MyContext
         }
 
         public static ConstantArray get(ArrayType ty, ArrayList<Value> V) {
@@ -182,8 +181,13 @@ public class Constants {
                 sb.append("zeroinitializer");
             }else{
                 sb.append("[");
-                for (int i = 0; i < getOperandList().size(); i++) {
+                int i;
+                for (i = 0; i < getOperandList().size(); i++) {
                     sb.append(getOperandList().get(i).toString()).append(",");
+                }
+                while(i<this.getType().getNumElements()){
+                    sb.append(Constant.getNullValue(this.getType().getKidType())).append(",");
+                    i++;
                 }
                 sb.deleteCharAt(sb.length() - 1);
                 sb.append("]");
@@ -207,8 +211,8 @@ public class Constants {
             return sb.toString();
         }
 
-        public ArrayType getArrType(){
-            return (ArrayType) getType();
+        public ArrayType getType(){
+            return (ArrayType) super.getType();
         }
 
         public ArrayList<Value> getArr(){
@@ -222,16 +226,16 @@ public class Constants {
          */
         public static ConstantArray getZeroArr(ArrayType ty){
             ArrayList<Value> V=new ArrayList<>();
-            if(!ty.getKidType().isArrayTy()){
-                for(int i=0;i<ty.getNumElements();i++){
-                    V.add(Constant.getNullValue(ty.getKidType()));
-                }
-            }else{
-                ConstantArray tmp=getZeroArr((ArrayType) ty.getKidType());
-                for(int i=0;i<ty.getNumElements();i++){
-                    V.add(tmp);
-                }
-            }
+//            if(!ty.getKidType().isArrayTy()){
+//                for(int i=0;i<ty.getNumElements();i++){
+//                    V.add(Constant.getNullValue(ty.getKidType()));
+//                }
+//            }else{
+//                ConstantArray tmp=getZeroArr((ArrayType) ty.getKidType());
+//                for(int i=0;i<ty.getNumElements();i++){
+//                    V.add(tmp);
+//                }
+//            }
             return get(ty,V);
         }
 
@@ -260,7 +264,7 @@ public class Constants {
                 if(v instanceof ConstantInt||v instanceof ConstantFP){
                     result = prime * result + v.hashCode();
                 }else if(v instanceof ConstantArray){
-                    result = prime * result + hash(((ConstantArray) v).getArrType(),((ConstantArray) v).getArr());
+                    result = prime * result + hash(((ConstantArray) v).getType(),((ConstantArray) v).getArr());
                 }
             }
             return result;
