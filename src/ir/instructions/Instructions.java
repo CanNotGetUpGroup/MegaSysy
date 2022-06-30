@@ -182,9 +182,7 @@ public abstract class Instructions {
         public static Type getGEPReturnType(Type ElTy, Value Ptr, ArrayList<Value> IdxList) {
             Type ty = getIndexType(ElTy, IdxList);
             assert ty != null;
-            Type PtrTy = DerivedTypes.PointerType.get(ty);
-            //TODO:Vector
-            return PtrTy;
+            return PointerType.get(ty);
         }
 
         public static GetElementPtrInst create(Type PointeeType, Value Ptr, ArrayList<Value> IdxList) {

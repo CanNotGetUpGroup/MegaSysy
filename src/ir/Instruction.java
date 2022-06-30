@@ -65,7 +65,7 @@ public abstract class Instruction extends User {
     public Instruction(Type type, Ops op, int numOperands, Instruction InsertBefore) {
         super(type, numOperands);
         this.op = op;
-        //TODO: 插入在这个指令之前
+        //插入在这个指令之前
         instNode.insertBefore(InsertBefore.getInstNode());
     }
 
@@ -77,7 +77,7 @@ public abstract class Instruction extends User {
     public Instruction(Type type, Ops op, int numOperands, BasicBlock InsertAtEnd) {
         super(type, numOperands);
         this.op = op;
-        //TODO: 插入在这个基本块的最后
+        //插入在这个基本块的最后
         instNode.insertIntoListEnd(InsertAtEnd.getInstList());
     }
 
