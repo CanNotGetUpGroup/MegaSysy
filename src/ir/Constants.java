@@ -157,7 +157,6 @@ public class Constants {
     public static class ConstantArray extends Constant {
         public ConstantArray(ArrayType ty, ArrayList<Value> V) {
             super(ty, V);
-            //TODO:存入MyContext
         }
 
         public static ConstantArray get(ArrayType ty, ArrayList<Value> V) {

@@ -78,6 +78,10 @@ public class MyIRBuilder {
 
     Value retL,retR;
 
+    /**
+     * 类型转换 int1<int32<float
+     * @param left 为true表示L优先级低于R，L转换成R的类型，返回retL；为false则相反
+     */
     public void unifyType(Value L, Value R, boolean left){
         if(!L.getType().equals(R.getType())){
             if(L.getType().isInt1Ty()){
@@ -352,11 +356,12 @@ public class MyIRBuilder {
 
     //===--------------------------------------------------------------------===//
     // Instruction creation methods: Memory Instructions
+    // 所有声明的变量放在entry基本块首
     //===--------------------------------------------------------------------===//
 
     public Instruction createAlloca(Type Ty) {
         Instruction I=new AllocaInst(Ty);
-        I.getInstNode().insertAfter(BB.getInstList().getHead());
+        I.getInstNode().insertAfter(BB.getParent().getEntryBB().getInstList().getHead());
         return I;
     }
 
@@ -370,6 +375,13 @@ public class MyIRBuilder {
     }
 
     public Instruction createStore(Value Val, Value Ptr) {
+        if(!Val.getType().equals(((DerivedTypes.PointerType)Ptr.getType()).getElementType())){
+            if(Val.getType().equals(Type.getInt32Ty())){
+                Val=createSIToFP(Val,Type.getFloatTy());
+            }else{
+                Val=createFPToSI(Val,Type.getInt32Ty());
+            }
+        }
         return insert(new StoreInst(Val, Ptr));
     }
 
