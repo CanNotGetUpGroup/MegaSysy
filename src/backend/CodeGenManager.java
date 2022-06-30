@@ -2,6 +2,7 @@ package backend;
 
 import backend.machineCode.MachineFunction;
 import backend.pass.InstructionSelector;
+import backend.pass.RegAllocator;
 import frontend.SysyLexer;
 import frontend.SysyParser;
 import frontend.Visitor;
@@ -46,6 +47,9 @@ public class CodeGenManager {
         var selector = new InstructionSelector(module);
         selector.run();
         this.funcList = selector.getFuncList();
+
+        var allocator = new RegAllocator(funcList);
+        allocator.run();
     }
 
     public String toArm() {
