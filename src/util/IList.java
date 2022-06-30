@@ -99,7 +99,7 @@ public class IList<T, P> implements Iterable<T>{
         return new ListItr(N);
     }
 
-    private class ListItr implements Iterator<T> {
+    private class ListItr implements IListIterator<T> {
         private IListNode<T,P> lastReturned;
         private IListNode<T,P> nodePtr;
 
