@@ -7,7 +7,7 @@ import backend.machineCode.Operand.Register;
 
 public class Arithmetic extends MachineInstruction {
     private Register destReg;
-    private Register op1;
+    private MCOperand op1;
     private MCOperand op2;
     private Type type;
 
@@ -40,5 +40,35 @@ public class Arithmetic extends MachineInstruction {
     @Override
     public String toString() {
         return type.toString() + "\t" + destReg.toString() + ", " + op1.toString() + ", " + op2.toString();
+    }
+
+    @Override
+    public Register getDest() {
+        return destReg;
+    }
+
+    @Override
+    public void setDest(Register dest) {
+        this.destReg = dest;
+    }
+
+    @Override
+    public MCOperand getOp1() {
+        return op1;
+    }
+
+    @Override
+    public void setOp1(MCOperand op) {
+        this.op1 = op;
+    }
+
+    @Override
+    public MCOperand getOp2() {
+        return op2;
+    }
+
+    @Override
+    public void setOp2(MCOperand op) {
+        this.op2 = op;
     }
 }

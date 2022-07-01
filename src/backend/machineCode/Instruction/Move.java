@@ -16,8 +16,32 @@ public class Move extends MachineInstruction {
         this.op = op;
     }
 
+    @Override
+    public Register getDest() {
+        return dest;
+    }
+
+    @Override
+    public void setDest(Register dest) {
+        this.dest = dest;
+    }
+
+    @Override
+    public void setOp1(MCOperand op) {
+        throw new RuntimeException("Unfinished");
+    }
+
+    @Override
+    public MCOperand getOp2() {
+        return op;
+    }
+
+    @Override
+    public void setOp2(MCOperand op) {
+        this.op = op;
+    }
+
     public String toString(){
         return "mov\t" + dest.toString() + ", " + op.toString();
-
     }
 }

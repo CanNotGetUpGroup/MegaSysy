@@ -105,7 +105,7 @@ public class InstructionSelector {
                     var op1 = ir.getOperand(0);
                     new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(valueMap, op1)).pushBacktoInstList();
                 }
-                new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false);
+                new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false).pushBacktoInstList();
             }
             // 可能可以优化， 但中端也可以做吧？MemtoReg
             case Alloca -> {

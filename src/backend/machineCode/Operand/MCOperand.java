@@ -4,6 +4,7 @@ public abstract class MCOperand {
     public enum Type{
         Imm,
         Reg,
+        Addr,
     }
     private Type type;
     public MCOperand(Type type){

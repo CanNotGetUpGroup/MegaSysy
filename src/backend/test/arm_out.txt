@@ -8,13 +8,26 @@
 	.type	main	%function
 main:
 main1:
-mov	v0, 10
-mov	v1, 9
-mov	v2, v0
-mov	v3, v1
-MUL	v4, v2, v3
-SUB	v5, v4, 3
-mov	r0, v5
+SUB	SP, SP, 24
+mov	r0, 10
+STR r0, [ SP ]
+mov	r0, 9
+STR r0, [ SP , 4 ]
+LDR r2, [ SP ]
+mov	r0, r2
+STR r0, [ SP , 8 ]
+LDR r2, [ SP , 4 ]
+mov	r0, r2
+STR r0, [ SP , 12 ]
+LDR r1, [ SP , 8 ]
+LDR r2, [ SP , 12 ]
+MUL	r0, r1, r2
+STR r0, [ SP , 16 ]
+LDR r1, [ SP , 16 ]
+SUB	r0, r1, 3
+STR r0, [ SP , 20 ]
+LDR r2, [ SP , 20 ]
+mov	r0, r2
 BX	LR
 
 .size	main, .-main
