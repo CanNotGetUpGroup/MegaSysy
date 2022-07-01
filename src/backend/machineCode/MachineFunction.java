@@ -18,7 +18,9 @@ public class MachineFunction {
         isDefined = defined;
     }
 
-
+    public boolean isDefined() {
+        return isDefined;
+    }
 
     /**
      * 生成一个MachineFunction对象
@@ -36,7 +38,7 @@ public class MachineFunction {
 
     @Override
     public String toString() {
-        if(!isDefined) return "";
+        if (!isDefined) return "";
         StringBuilder sb = new StringBuilder();
 
         sb.append("\t.align\t2\n" +
@@ -76,7 +78,7 @@ public class MachineFunction {
         this.bbList = bbList;
     }
 
-    public String getName(){
+    public String getName() {
         return name;
     }
 
@@ -85,16 +87,17 @@ public class MachineFunction {
 
     /**
      * 得到ir中的基本块和汇编中基本块的映射HashMap
+     *
      * @return HashMap<BasicBlock, MachineBasicBlock>
      */
-    public HashMap<BasicBlock, MachineBasicBlock> getBBMap (){
+    public HashMap<BasicBlock, MachineBasicBlock> getBBMap() {
         return bbMap;
     }
 
     /**
      * 得到ir中的Value对寄存器的HashMap
      */
-    public HashMap<Value, Register> getValueMap(){
+    public HashMap<Value, Register> getValueMap() {
         return valueMap;
     }
 }

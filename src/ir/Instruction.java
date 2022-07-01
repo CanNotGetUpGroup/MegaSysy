@@ -29,7 +29,7 @@ public abstract class Instruction extends User {
 
     public void setParent(BasicBlock parent) {
         Parent = parent;
-    }·
+    }
 
     public IListNode<Instruction, BasicBlock> getInstNode() {
         return instNode;

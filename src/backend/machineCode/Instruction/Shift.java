@@ -26,16 +26,19 @@ public class Shift extends MachineInstruction {
         return dest;
     }
 
+    @Override
     public void setDest(Register dest) {
         this.dest = dest;
     }
 
-    public Register getOp1() {
+    public MCOperand getOp1() {
         return op1;
     }
 
-    public void setOp1(Register op1) {
-        this.op1 = op1;
+    @Override
+    public void setOp1(MCOperand op) {
+        if(!(op instanceof Register) ) throw new RuntimeException("Shift: op1 should be Regs");
+        this.op1 = op;
     }
 
     public MCOperand getSh() {
@@ -46,9 +49,14 @@ public class Shift extends MachineInstruction {
         this.sh = sh;
     }
 
+    @Override
+    public void setOp2(MCOperand op) {
+        setSh(op);
+    }
+
     private Type type;
     private Register dest;
-    private Register op1;
+    private MCOperand op1;
     private MCOperand sh;
 
     public Shift(MachineBasicBlock parent, Type type, Register dest, Register op1, MCOperand shift){
@@ -71,4 +79,6 @@ public class Shift extends MachineInstruction {
     public String toString(){
         return type.toString() + "\t" + dest.toString() + ", " + op1.toString() + sh.toString();
     }
+
+
 }

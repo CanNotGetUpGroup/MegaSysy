@@ -2,6 +2,7 @@ package backend.machineCode.Instruction;
 
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
+import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
 public class Branch extends MachineInstruction {
@@ -9,6 +10,16 @@ public class Branch extends MachineInstruction {
     private boolean storeLR = false;
     private Register destReg;
     private MachineBasicBlock destBB;
+
+    @Override
+    public void setOp1(MCOperand op) {
+        throw new RuntimeException("Unfinished");
+    }
+
+    @Override
+    public void setOp2(MCOperand op) {
+        throw new RuntimeException("Unfinished");
+    }
 
     private enum Type{
         REG,
@@ -39,4 +50,6 @@ public class Branch extends MachineInstruction {
             case LABEL -> inst + "\t" + destBB.getLabel();
         };
     }
+
+
 }
