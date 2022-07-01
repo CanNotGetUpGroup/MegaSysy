@@ -2,16 +2,26 @@ import ir.*;
 import ir.Module;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
+import util.MyIRBuilder;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 public class test {
     public static void main(String[] args) {
-        LinkedList<String> linkedList=new LinkedList<>();
-        linkedList.iterator();
+        Module module=Module.getInstance();
+        Function function=new Function(null,"test",module);
+        BasicBlock bb=new BasicBlock(function);
+        MyIRBuilder myIRBuilder=MyIRBuilder.getInstance();
+        myIRBuilder.setInsertPoint(bb);
+        bb.getInstList().pushBack(new Instructions.AllocaInst(Type.getInt1Ty()));
+        bb.getInstList().pushBack(new Instructions.AllocaInst(Type.getInt1Ty()));
+        for(var i:bb.getInstList()){
+            System.out.println(i);
+        }
 //        MyContext context = MyContext.getInstance();
 //        Module module=Module.getInstance();
 //        DerivedTypes.ArrayType tmp1=DerivedTypes.ArrayType.get(Type.getInt32Ty(),5);

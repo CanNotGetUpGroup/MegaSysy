@@ -66,6 +66,7 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         //插入在这个指令之前
+        instNode=new IListNode<>(this,InsertBefore.getParent().getInstList());
         instNode.insertBefore(InsertBefore.getInstNode());
     }
 
@@ -78,6 +79,7 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         //插入在这个基本块的最后
+        instNode=new IListNode<>(this,InsertAtEnd.getInstList());
         instNode.insertIntoListEnd(InsertAtEnd.getInstList());
     }
 
