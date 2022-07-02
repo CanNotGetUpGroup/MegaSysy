@@ -2,6 +2,7 @@ package backend.pass;
 
 import backend.machineCode.Instruction.Arithmetic;
 import backend.machineCode.Instruction.Branch;
+import backend.machineCode.Instruction.LoadOrStore;
 import backend.machineCode.Instruction.Move;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
@@ -103,7 +104,7 @@ public class InstructionSelector {
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
                     var op1 = ir.getOperand(0);
-                    new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(valueMap, op1)).pushBacktoInstList();
+                    new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, valueMap, op1)).pushBacktoInstList();
                 }
                 new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false).pushBacktoInstList();
             }
@@ -122,8 +123,8 @@ public class InstructionSelector {
             }
             case Store -> {
                 assert ir.getNumOperands() == 2;
-                MCOperand op1 = valueToMCOperand(valueMap, ir.getOperand(0)),
-                        op2 = valueToMCOperand(valueMap, ir.getOperand(1));
+                MCOperand op1 = valueToMCOperand(mbb, valueMap, ir.getOperand(0)),
+                        op2 = valueToMCOperand(mbb, valueMap, ir.getOperand(1));
                 if (op2 instanceof Register) {
                     // 存到寄存器中
                     new Move(mbb, (Register) op2, op1).pushBacktoInstList();
@@ -133,7 +134,7 @@ public class InstructionSelector {
             }
             case Load -> {
                 assert ir.getNumOperands() == 2;
-                MCOperand src = valueToMCOperand(valueMap, ir.getOperand(0));
+                MCOperand src = valueToMCOperand(mbb, valueMap, ir.getOperand(0));
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
                 if (src instanceof Register) {
@@ -146,8 +147,8 @@ public class InstructionSelector {
 
             case Sub, Add, Mul, SDiv -> {
                 assert ir.getNumOperands() == 2;
-                MCOperand op1 = valueToMCOperand(valueMap, ir.getOperand(0)),
-                        op2 = valueToMCOperand(valueMap, ir.getOperand(1));
+                MCOperand op1 = valueToMCOperand(mbb, valueMap, ir.getOperand(0)),
+                        op2 = valueToMCOperand(mbb, valueMap, ir.getOperand(1));
 
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
@@ -186,13 +187,20 @@ public class InstructionSelector {
         }
     }
 
-    private MCOperand valueToMCOperand(HashMap<Value, Register> valueMap, Value val) {
-
+    private MCOperand valueToMCOperand(MachineBasicBlock parent, HashMap<Value, Register> valueMap, Value val) {
         var type = val.getType();
         if (val instanceof Constant) {
             if (type.isInt32Ty()) {
                 Constants.ConstantInt v = (Constants.ConstantInt) val;
-                return new ImmediateNumber(v.getVal());
+                int value = v.getVal();
+                if (ImmediateNumber.isLegalImm(value))
+                    return new ImmediateNumber(value);
+                else {
+                    // not a legal immediate number, has to load a literal value
+                    Register dest = new VirtualRegister();
+                    new LoadOrStore(parent, LoadOrStore.Type.LOAD, dest, new ImmediateNumber(value)).pushBacktoInstList();
+                    return dest;
+                }
             }
         } else if (val instanceof Instruction) {
             var ans = valueMap.get(val);

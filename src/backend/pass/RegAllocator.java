@@ -33,7 +33,6 @@ public class RegAllocator {
             if (!func.isDefined()) continue;
             HashMap<VirtualRegister, Integer> vRegHash = new HashMap<>();
             int numOnStack = 0;
-            System.out.println(func.getName());
             for (var bb : func.getBbList()) {
                 for (var inst : bb.getInstList()) {
                     var dest = inst.getDest();
@@ -60,8 +59,6 @@ public class RegAllocator {
 
             for (var bb : func.getBbList()) {
                 for (var inst : bb.getInstList()) {
-                    System.out.println(inst.toString());
-
                     var dest = inst.getDest();
                     var op1 = inst.getOp1();
                     var op2 = inst.getOp2();

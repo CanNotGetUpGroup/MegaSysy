@@ -13,7 +13,7 @@ public class LoadOrStore extends MachineInstruction {
     }
     private final Type type;
     private Register dest;
-    private MCOperand addr;
+    private MCOperand addr;     // could be address , or literal number
 
     public LoadOrStore(MachineBasicBlock parent, Type type, Register dest, MCOperand addr){
         super(parent);

@@ -42,7 +42,7 @@ public class MachineFunction {
         StringBuilder sb = new StringBuilder();
 
         sb.append("\t.align\t2\n" +
-                        "\t.arch armv7-a\n" +
+                        "\t.arch armv7ve\n" +
                         "\t.syntax unified\n" +
                         "\t.arm\n" +
                         "\t.fpu vfp\n")
