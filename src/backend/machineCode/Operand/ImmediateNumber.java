@@ -1,14 +1,40 @@
 package backend.machineCode.Operand;
 
-public class ImmediateNumber extends MCOperand{
-    int value;
-    public ImmediateNumber(int value){
+import backend.machineCode.Instruction.LoadOrStore;
+import backend.machineCode.Instruction.Move;
+import backend.machineCode.MachineBasicBlock;
+import backend.machineCode.MachineInstruction;
+
+public class ImmediateNumber extends MCOperand {
+    final int value;
+    final boolean isLegalImm;
+
+    public ImmediateNumber(int value) {
         super(Type.Imm);
         this.value = value;
+        this.isLegalImm = isLegalImm(value);
+    }
+
+    static public boolean isLegalImm(int num) {
+        for (int i = 0; i < 16; i++) {
+            int head = (num & 3) << 30;
+            num = (num >>> 2) | head;
+            if ((num & ~0xff) == 0) return true;
+        }
+        return false;
+    }
+
+    static public MachineInstruction loadNum(MachineBasicBlock parent, Register reg, int num) {
+        if (isLegalImm(num)) {
+            return new Move(parent, reg, new ImmediateNumber(num));
+        } else {
+            return new LoadOrStore(parent, LoadOrStore.Type.LOAD, reg, new ImmediateNumber(num));
+        }
     }
 
     @Override
     public String toString() {
-        return Integer.toString(value);
+        return (isLegalImm ? "#" : "=") + Integer.toString(value);
     }
+
 }

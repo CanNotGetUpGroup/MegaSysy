@@ -1,6 +1,6 @@
-int main(){
-    int a = 10;
-    int b = 9;
-    const int c = 3;
-    return a * b - c;
+int main() {
+    int a = 511;
+    int b = 3;
+    return a / b;
+
 }

@@ -64,6 +64,8 @@ public abstract class MachineInstruction {
 //        instNode.insertIntoListEnd(this.parent.getInstList());
     }
 
+
+
     public Register getDest() {
         return null;
     }

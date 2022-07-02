@@ -15,12 +15,11 @@ declare void @stoptime()
 define dso_local i32 @main(){
   %1 = alloca i32     ; get b
   %2 = alloca i32     ; get a
-  store i32 10, i32* %2     ; a=i32 10
-  store i32 9, i32* %1     ; b=i32 9
+  store i32 511, i32* %2     ; a=i32 511
+  store i32 3, i32* %1     ; b=i32 3
   %3 = load i32, i32* %2     
   %4 = load i32, i32* %1     
-  %5 = mul i32 %3, %4     ; a*b
-  %6 = sub i32 %5, 3     ; a*b-c
-  ret i32 %6     
+  %5 = sdiv i32 %3, %4     ; a/b
+  ret i32 %5     
 }
 
