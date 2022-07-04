@@ -12,6 +12,7 @@ public class MachineFunction {
     private String name;
     private IList<MachineBasicBlock, MachineFunction> bbList;
     private boolean isDefined = false;
+    private boolean isLeaf = true;
 
 
     public void setDefined(boolean defined) {
@@ -21,6 +22,16 @@ public class MachineFunction {
     public boolean isDefined() {
         return isDefined;
     }
+
+    public boolean isLeaf(){
+        return isLeaf;
+    }
+
+    public void setLeaf(boolean isLeaf){
+        this.isLeaf = isLeaf;
+    }
+
+
 
     /**
      * 生成一个MachineFunction对象

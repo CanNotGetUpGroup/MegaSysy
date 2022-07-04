@@ -1,6 +1,7 @@
-int main() {
-    int a = 511;
-    int b = 3;
-    return a / b;
+int add (int a, int b, int c, int d, int e, int f ){
+    return e + a + b + c + d + f;
+}
 
+int main() {
+    return add(1, 2, 4, 8, 16, 32);
 }
