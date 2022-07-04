@@ -1,9 +1,6 @@
 package backend.pass;
 
-import backend.machineCode.Instruction.Arithmetic;
-import backend.machineCode.Instruction.Branch;
-import backend.machineCode.Instruction.LoadOrStore;
-import backend.machineCode.Instruction.Move;
+import backend.machineCode.Instruction.*;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
@@ -11,7 +8,6 @@ import backend.machineCode.Operand.*;
 import ir.*;
 import ir.Module;
 
-import java.net.PortUnreachableException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -72,6 +68,26 @@ public class InstructionSelector {
             mbb.pushBacktoBBList();
             bbMap.put(bb, mbb);
         }
+
+        // 稍微处理了一下参数。。。这个不太行。目前是用Virtual Regitser又转存了一次。TODO: 在完成Phi指令的时候应该顺便修改这里
+        var firstbb = mf.getBbList().getFirst().getVal();
+        var paras = irFunction.getArguments();
+        for (var para : paras) {
+            var dest = new VirtualRegister();
+            mf.getValueMap().put(para, dest);
+            if (para.getArgNo() < 4) {
+                new Move(firstbb, dest, switch (para.getArgNo()) {
+                    case 0 -> new MCRegister(MCRegister.RegName.r0);
+                    case 1 -> new MCRegister(MCRegister.RegName.r1);
+                    case 2 -> new MCRegister(MCRegister.RegName.r2);
+                    case 3 -> new MCRegister(MCRegister.RegName.r3);
+                    default -> null;
+                }).pushBacktoInstList();
+            } else {
+                new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Adress(new MCRegister(MCRegister.RegName.r11), 4 * (para.getArgNo() - 3))).pushBacktoInstList();
+            }
+        }
+
         head = bbList.getHead();
         while (bbList.getLast() != null && head != bbList.getLast()) {
             head = head.getNext();
@@ -106,7 +122,43 @@ public class InstructionSelector {
                     var op1 = ir.getOperand(0);
                     new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, valueMap, op1)).pushBacktoInstList();
                 }
-                new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false).pushBacktoInstList();
+
+                // 不管是不是叶子节点都push了，为了解决栈上参数的问题 TODO：未来修改
+                MachineInstruction newInst = new PushOrPop(mbb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
+                newInst.setPrologue(true);
+                newInst.pushtofront();
+
+                if (mf.isLeaf()) {
+                    newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
+                    newInst.setEpilogue(true);
+                    newInst.pushBacktoInstList();
+
+                } else {
+                    newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
+                    newInst.setEpilogue(true);
+                    newInst.pushBacktoInstList();
+                }
+            }
+            case Call -> {
+                mf.setLeaf(false);
+                // TODO : change after phi
+                int paraNum = ir.getNumOperands();
+
+                for (--paraNum; paraNum > 4; paraNum--) {
+                    new PushOrPop(mbb, PushOrPop.Type.Push, valueToReg(mbb, valueMap, ir.getOperand(paraNum))).pushBacktoInstList();
+                }
+                for (; paraNum > 0; paraNum--) {
+                    new Move(mbb, new MCRegister(MCRegister.idTORegName(paraNum - 1)), valueToMCOperand(mbb, valueMap, ir.getOperand(paraNum))).pushBacktoInstList();
+                }
+
+                new Branch(mbb, funcMap.get(ir.getOperand(0)), true, Branch.Type.Call).pushBacktoInstList();
+                // release stack
+                if (paraNum > 4) {
+                    new Arithmetic(mbb, Arithmetic.Type.ADD, new MCRegister(MCRegister.RegName.SP), new ImmediateNumber((paraNum - 5) * 4)).pushBacktoInstList();
+                }
+                var dest = new VirtualRegister();
+                new Move(mbb, dest, new MCRegister(MCRegister.RegName.r0)).pushBacktoInstList();
+                valueMap.put(ir, dest);
             }
             // 可能可以优化， 但中端也可以做吧？MemtoReg
             case Alloca -> {
@@ -206,8 +258,24 @@ public class InstructionSelector {
             var ans = valueMap.get(val);
             if (ans == null) throw new RuntimeException("Not defined instruction");
             return ans;
+        } else if (val instanceof Argument) {
+            return valueMap.get(val);
         }
+
         throw new RuntimeException("Unreachable point");
     }
+
+    private Register valueToReg(MachineBasicBlock parent, HashMap<Value, Register> valueMap, Value val) {
+        MCOperand res = valueToMCOperand(parent, valueMap, val);
+        if (res instanceof Register)
+            return (Register) res;
+        if (res instanceof ImmediateNumber) {
+            var dest = new VirtualRegister();
+            ImmediateNumber.loadNum(parent,dest, ((ImmediateNumber) res).getValue()).pushBacktoInstList();
+            return dest;
+        }
+        throw new RuntimeException("can't convert to Register, or maybe haven't finished this part");
+    }
+
 
 }

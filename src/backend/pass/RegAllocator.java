@@ -1,23 +1,22 @@
 package backend.pass;
 
 import backend.machineCode.Instruction.Arithmetic;
+import backend.machineCode.Instruction.Branch;
 import backend.machineCode.Instruction.LoadOrStore;
-import backend.machineCode.Instruction.Push;
+import backend.machineCode.Instruction.PushOrPop;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
+import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.Adress;
 import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.MCRegister;
 import backend.machineCode.Operand.VirtualRegister;
-import ir.DerivedTypes;
-import ir.Function;
-import ir.Instruction;
-import util.SymbolTable;
 
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static backend.machineCode.Instruction.Arithmetic.Type.ADD;
 import static backend.machineCode.Instruction.Arithmetic.Type.SUB;
 
 public class RegAllocator {
@@ -53,9 +52,43 @@ public class RegAllocator {
                     }
                 }
             }
-            MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
-            firstBb.getInstList().insertAtHead(new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP),
-                    new ImmediateNumber(4 * numOnStack)));
+
+            if (numOnStack > 0) {
+                MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
+                MachineInstruction newInst;
+
+                // reserve space for temp varible on stack
+                for (var inst : firstBb.getInstList()) {
+                    if (!inst.isPrologue()) {
+                        // Push FP
+                        newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.r11));
+                        newInst.setPrologue(true);
+                        newInst.getInstNode().insertBefore(inst.getInstNode());
+
+                        // set Frame Pointer -> Fp = sp + 4
+                        newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
+                        newInst.setPrologue(true);
+                        newInst.getInstNode().insertBefore(inst.getInstNode());
+
+                        new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP),
+                                new ImmediateNumber(4 * numOnStack)).getInstNode().insertBefore(inst.getInstNode());
+                        break;
+                    }
+                }
+
+                // release stack
+                for (var bb : func.getBbList()) {
+                    for (var inst : bb.getInstList()) {
+                        if (inst.isEpilogue()) {
+                            new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), new MCRegister(MCRegister.RegName.r11),
+                                    new ImmediateNumber(4)).getInstNode().insertBefore(inst.getInstNode());
+                            newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.r11));
+                            newInst.setEpilogue(true);
+                            newInst.getInstNode().insertBefore(inst.getInstNode());
+                        }
+                    }
+                }
+            }
 
             for (var bb : func.getBbList()) {
                 for (var inst : bb.getInstList()) {
@@ -64,22 +97,22 @@ public class RegAllocator {
                     var op2 = inst.getOp2();
 
                     if (dest instanceof VirtualRegister) {
-                        new LoadOrStore(bb, LoadOrStore.Type.STORE, new MCRegister(MCRegister.RegName.r0),
-                                new Adress(new MCRegister(MCRegister.RegName.SP), 4 * vRegHash.get((VirtualRegister) dest)))
+                        new LoadOrStore(bb, LoadOrStore.Type.STORE, new MCRegister(MCRegister.RegName.r4),
+                                new Adress(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - 8))
                                 .getInstNode().insertAfter(inst.getInstNode());
-                        inst.setDest(new MCRegister(MCRegister.RegName.r0)) ;
+                        inst.setDest(new MCRegister(MCRegister.RegName.r4));
                     }
-                    if(op1 instanceof VirtualRegister){
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r1),
-                                new Adress(new MCRegister(MCRegister.RegName.SP), 4 * vRegHash.get((VirtualRegister) op1)))
+                    if (op1 instanceof VirtualRegister) {
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r5),
+                                new Adress(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - 8))
                                 .getInstNode().insertBefore(inst.getInstNode());
-                        inst.setOp1(new MCRegister(MCRegister.RegName.r1)) ;
+                        inst.setOp1(new MCRegister(MCRegister.RegName.r5));
                     }
-                    if(op2 instanceof VirtualRegister){
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r2),
-                                new Adress(new MCRegister(MCRegister.RegName.SP), 4 * vRegHash.get((VirtualRegister) op2)))
+                    if (op2 instanceof VirtualRegister) {
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r6),
+                                new Adress(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - 8))
                                 .getInstNode().insertBefore(inst.getInstNode());
-                        inst.setOp2(new MCRegister(MCRegister.RegName.r2)) ;
+                        inst.setOp2(new MCRegister(MCRegister.RegName.r6));
                     }
                 }
             }

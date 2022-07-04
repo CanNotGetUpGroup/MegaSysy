@@ -14,6 +14,37 @@ public abstract class MachineInstruction {
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
 
+    private String comment;
+
+    public MachineInstruction setComment(String comment) {
+        this.comment = comment;
+        return this;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    private boolean isPrologue = false; // 开头
+
+    public boolean isPrologue() {
+        return isPrologue;
+    }
+
+    public void setPrologue(boolean prologue) {
+        isPrologue = prologue;
+    }
+
+    public boolean isEpilogue() {
+        return isEpilogue;
+    }
+
+    public void setEpilogue(boolean epilogue) {
+        isEpilogue = epilogue;
+    }
+
+    private boolean isEpilogue = false; // 结尾
+
     public enum Ops {
         //Branch
         BL, B,
@@ -57,11 +88,14 @@ public abstract class MachineInstruction {
         this.getInstNode().insertIntoListEnd(this.getParent().getInstList());
     }
 
+    public void pushtofront() {
+        this.getInstNode().insertBefore(this.getParent().getInstList().getFirst());
+    }
+
+
     public MachineInstruction(MachineBasicBlock parent) {
         this.parent = parent;
         instNode = new IListNode<>(this, parent.getInstList());
-        //插入到parent末尾
-//        instNode.insertIntoListEnd(this.parent.getInstList());
     }
 
 

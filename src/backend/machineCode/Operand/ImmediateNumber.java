@@ -6,6 +6,10 @@ import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
 
 public class ImmediateNumber extends MCOperand {
+    public int getValue() {
+        return value;
+    }
+
     final int value;
     final boolean isLegalImm;
 
@@ -16,6 +20,7 @@ public class ImmediateNumber extends MCOperand {
     }
 
     static public boolean isLegalImm(int num) {
+        if(num < 0) num = -num;
         for (int i = 0; i < 16; i++) {
             int head = (num & 3) << 30;
             num = (num >>> 2) | head;
@@ -23,6 +28,8 @@ public class ImmediateNumber extends MCOperand {
         }
         return false;
     }
+
+
 
     static public MachineInstruction loadNum(MachineBasicBlock parent, Register reg, int num) {
         if (isLegalImm(num)) {
@@ -37,4 +44,8 @@ public class ImmediateNumber extends MCOperand {
         return (isLegalImm ? "#" : "=") + Integer.toString(value);
     }
 
+    public static void main(String[] args) {
+        isLegalImm(-8);
+        System.out.println(isLegalImm(-8));
+    }
 }
