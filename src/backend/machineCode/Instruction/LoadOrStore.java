@@ -2,7 +2,7 @@ package backend.machineCode.Instruction;
 
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
-import backend.machineCode.Operand.Adress;
+import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
@@ -34,7 +34,7 @@ public class LoadOrStore extends MachineInstruction {
 
     @Override
     public void setOp2(MCOperand op) {
-        assert op instanceof Adress;
+        assert op instanceof Address;
         this.addr = op;
     }
 

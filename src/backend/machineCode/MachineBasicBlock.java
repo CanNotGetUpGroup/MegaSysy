@@ -47,7 +47,7 @@ public class MachineBasicBlock {
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(this.parent.getBbList());
-        label = parent.getName() + Integer.toString(counter());
+        label = parent.getName() + counter();
     }
 
     public MachineBasicBlock(String label, MachineFunction parent) {

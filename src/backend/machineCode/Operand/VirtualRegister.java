@@ -14,7 +14,7 @@ public class VirtualRegister extends Register{
 
     public VirtualRegister(){
         super(VIRTUAL);
-        name = "v" + Integer.toString(counter());
+        name = "v" + counter();
     }
 
     @Override

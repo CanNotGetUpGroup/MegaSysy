@@ -52,11 +52,13 @@ public class MachineFunction {
         if (!isDefined) return "";
         StringBuilder sb = new StringBuilder();
 
-        sb.append("\t.align\t2\n" +
-                        "\t.arch armv7ve\n" +
-                        "\t.syntax unified\n" +
-                        "\t.arm\n" +
-                        "\t.fpu vfp\n")
+        sb.append("""
+                        \t.align\t2
+                        \t.arch armv7ve
+                        \t.syntax unified
+                        \t.arm
+                        \t.fpu vfp
+                        """)
                 .append("\t.global\t").append(this.name).append("\n")
                 .append("\t.type\t").append(this.name).append("\t%function\n")
                 .append(this.name).append(":").append("\n");

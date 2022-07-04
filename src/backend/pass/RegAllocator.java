@@ -1,13 +1,12 @@
 package backend.pass;
 
 import backend.machineCode.Instruction.Arithmetic;
-import backend.machineCode.Instruction.Branch;
 import backend.machineCode.Instruction.LoadOrStore;
 import backend.machineCode.Instruction.PushOrPop;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
-import backend.machineCode.Operand.Adress;
+import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.MCRegister;
 import backend.machineCode.Operand.VirtualRegister;
@@ -98,19 +97,19 @@ public class RegAllocator {
 
                     if (dest instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.STORE, new MCRegister(MCRegister.RegName.r4),
-                                new Adress(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - 8))
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - 8))
                                 .getInstNode().insertAfter(inst.getInstNode());
                         inst.setDest(new MCRegister(MCRegister.RegName.r4));
                     }
                     if (op1 instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r5),
-                                new Adress(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - 8))
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - 8))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         inst.setOp1(new MCRegister(MCRegister.RegName.r5));
                     }
                     if (op2 instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r6),
-                                new Adress(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - 8))
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - 8))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         inst.setOp2(new MCRegister(MCRegister.RegName.r6));
                     }

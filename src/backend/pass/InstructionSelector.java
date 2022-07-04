@@ -84,7 +84,7 @@ public class InstructionSelector {
                     default -> null;
                 }).pushBacktoInstList();
             } else {
-                new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Adress(new MCRegister(MCRegister.RegName.r11), 4 * (para.getArgNo() - 3))).pushBacktoInstList();
+                new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(new MCRegister(MCRegister.RegName.r11), 4 * (para.getArgNo() - 3))).pushBacktoInstList();
             }
         }
 
@@ -152,7 +152,9 @@ public class InstructionSelector {
                 }
 
                 new Branch(mbb, funcMap.get(ir.getOperand(0)), true, Branch.Type.Call).pushBacktoInstList();
+
                 // release stack
+                paraNum = ir.getNumOperands();
                 if (paraNum > 4) {
                     new Arithmetic(mbb, Arithmetic.Type.ADD, new MCRegister(MCRegister.RegName.SP), new ImmediateNumber((paraNum - 5) * 4)).pushBacktoInstList();
                 }
