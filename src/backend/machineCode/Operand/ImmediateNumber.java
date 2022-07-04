@@ -41,7 +41,7 @@ public class ImmediateNumber extends MCOperand {
 
     @Override
     public String toString() {
-        return (isLegalImm ? "#" : "=") + Integer.toString(value);
+        return (isLegalImm ? "#" : "=") + value;
     }
 
     public static void main(String[] args) {
