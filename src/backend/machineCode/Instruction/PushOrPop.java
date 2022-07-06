@@ -24,18 +24,22 @@ public class PushOrPop extends MachineInstruction {
 
     @Override
     public String toString() {
-        return  type.name() + " { " + op.toString() + " }";
+        return type.name() + " { " + op.toString() + " }";
     }
 
     @Override
     public void setOp2(MCOperand op) {
         assert op instanceof Register;
-        this.op =(Register) op;
+        if (type == Type.Push) {
+            this.op = (Register) op;
+        }
     }
 
     @Override
     public MCOperand getOp2() {
-        return this.op;
+        if (type == Type.Push)
+            return this.op;
+        return null;
     }
 
     @Override
@@ -46,6 +50,14 @@ public class PushOrPop extends MachineInstruction {
 
     @Override
     public void setDest(Register dest) {
-        throw new RuntimeException("Unfinished");
+        if (type == Type.Pop)
+            this.op = dest;
+    }
+
+    @Override
+    public Register getDest() {
+        if (type == Type.Pop)
+            return this.op;
+        return null;
     }
 }

@@ -11,6 +11,7 @@ public class Arithmetic extends MachineInstruction {
     private MCOperand op2;
     private Type type;
 
+    // TODO: 取余数
     public enum Type{
         ADD,
         SUB,

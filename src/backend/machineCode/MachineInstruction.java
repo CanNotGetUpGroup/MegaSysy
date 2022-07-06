@@ -16,6 +16,38 @@ public abstract class MachineInstruction {
 
     private String comment;
 
+    public Condition getCond() {
+        return cond;
+    }
+
+    public void setCond(Condition cond) {
+        this.cond = cond;
+    }
+
+    private Condition cond;
+
+
+
+    public enum Condition{
+        EQ, ///> Equal
+        NE, ///> Not Equal
+        GE, ///> Signed greater than or equal
+        LT, ///> Signed less than
+        GT, ///> Signed greater than
+        LE; ///> Signed less than or equal
+
+        static public Condition getOpposite(Condition cond){
+            return switch (cond){
+                case EQ -> NE;
+                case NE -> EQ;
+                case GE -> LT;
+                case LT -> GE;
+                case GT -> LE;
+                case LE -> GT;
+            };
+        }
+    }
+
     public MachineInstruction setComment(String comment) {
         this.comment = comment;
         return this;
@@ -53,7 +85,7 @@ public abstract class MachineInstruction {
         //Binary
         Add, Sub, Rsb, Mul, Div, Mod,
         //Memory
-        LDR, STR,
+        Ldr, STR, Push, Pop
         //Cast
 
         //Other
@@ -113,12 +145,20 @@ public abstract class MachineInstruction {
         return null;
     }
 
-    abstract public void setOp1(MCOperand op) ;
+     public void setOp1(MCOperand op) {
+
+     }
 
     public MCOperand getOp2() {
         return null;
     }
 
-    abstract public void setOp2(MCOperand op);
+    public void setOp2(MCOperand op){
+    }
+
+
+    public static void main(String[] args) {
+
+    }
 
 }
