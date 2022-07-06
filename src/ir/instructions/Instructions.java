@@ -498,6 +498,30 @@ public abstract class Instructions {
             setOperand(0,BB);
         }
 
+        public BasicBlock getTrueBlock(){
+            if(getNumOperands()==3){
+                return (BasicBlock) getOperand(2);
+            }else{
+                return (BasicBlock) getOperand(0);
+            }
+        }
+
+        public BasicBlock getFalseBlock() {
+            if(getNumOperands()==3){
+                return (BasicBlock) getOperand(1);
+            }else{
+                return (BasicBlock) getOperand(0);
+            }
+        }
+
+        public Value getCond(){
+            if(getNumOperands()==3){
+                return getOperand(0);
+            }else{
+                return Constants.ConstantInt.const1_1();
+            }
+        }
+
         @Override
         public String toString() {
             if(getOperandList().size()==1){
