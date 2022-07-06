@@ -7,11 +7,6 @@ import java.util.ArrayList;
 public class Constants {
     public static MyContext context = MyContext.getInstance();
 
-    /// Base class for constants with no operands.
-    ///
-    /// These constants have no operands; they represent their data directly.
-    /// Since they can be in use by unrelated modules (and are never based on
-    /// GlobalValues), it never makes sense to RAUW them.
     public static class ConstantData extends Constant {
         public ConstantData(Type ty) {
             super(ty, 0);
@@ -19,9 +14,7 @@ public class Constants {
     }
 
     //===----------------------------------------------------------------------===//
-    /// This is the shared class of boolean and integer constants. This class
-    /// represents both boolean and integral constants.
-    /// Class for constant integers.
+    /// 32 bits Integer and boolean
     public static class ConstantInt extends ConstantData {
         private int val;
 
@@ -114,7 +107,8 @@ public class Constants {
 
         @Override
         public String getName() {
-            return String.valueOf(this.getVal());
+            long bits=Double.doubleToLongBits(this.getVal());
+            return "0x"+Long.toHexString(bits);
         }
 
         @Override

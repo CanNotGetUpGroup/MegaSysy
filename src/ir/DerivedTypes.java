@@ -129,6 +129,17 @@ public abstract class DerivedTypes {
                 contain.addAll(Params);
         }
 
+        @Override
+        public String toString(){
+            StringBuilder sb=new StringBuilder(getReturnType().toString());
+            sb.append(" f(");
+            for(int i=1;i<getContainedTys().size();i++){
+                sb.append(getContainedTys(i)).append(" ,");
+            }
+            sb.append(")");
+            return sb.toString();
+        }
+
         /**
          * 获取一个函数类型
          *

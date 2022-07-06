@@ -68,4 +68,9 @@ public class BasicBlock extends Value {
     public void setBbNode(IListNode<BasicBlock, Function> bbNode) {
         this.bbNode = bbNode;
     }
+
+    //从函数中删除
+    public void remove(){
+        bbNode.remove();
+    }
 }

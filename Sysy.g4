@@ -44,8 +44,8 @@ Decimal_floating_constant:
     Fractional_constant (('e'|'E') ('+'|'-')? Digit_sequence)? |
     Digit_sequence ('e'|'E') ('+'|'-')? Digit_sequence;
 Hexadecimal_floating_constant:
-    ('0x'|'0X') Hexadecimal_fractional_constant ('p' ('+'|'-')? Digit_sequence | 'P' ('+'|'-')?) |
-    ('0x'|'0X') Hexadecimal_digit_sequence ('p' ('+'|'-')? Digit_sequence | 'P' ('+'|'-')?);
+    ('0x'|'0X') Hexadecimal_fractional_constant (('p'|'P') ('+'|'-')? Digit_sequence )? |
+    ('0x'|'0X') Hexadecimal_digit_sequence (('p'|'P') ('+'|'-')? Digit_sequence );
 Fractional_constant:
     (Digit_sequence)? '.' Digit_sequence |
     Digit_sequence '.';
