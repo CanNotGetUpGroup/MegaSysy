@@ -7,7 +7,7 @@ import util.IList;
 import util.IListNode;
 
 public class MachineBasicBlock {
-    private int c = 1;
+    private static int c = 1;
     private int counter(){
         return c++;
     }

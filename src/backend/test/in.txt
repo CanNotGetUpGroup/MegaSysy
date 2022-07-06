@@ -1,7 +1,15 @@
-int add (int a, int b, int c, int d, int e, int f ){
-    return e + a + b + c + d + f;
-}
-
 int main() {
-    return add(1, 2, 4, 8, 16, 32);
+    int n = getint();
+    int i = 0, sum = 0;
+    while (i < n) {
+        if (i % 2 == 0) {
+            i = i + 1;
+            continue;
+        }
+        i = i + 1;
+        sum = sum + i;
+        putint(sum);
+        putch(10);
+    }
+    return 0;
 }

@@ -15,6 +15,7 @@ public class Branch extends MachineInstruction {
     private MachineBasicBlock destBB;
     private MachineFunction destf;
     private Type type;
+
     public enum Type {
         Call,
         Ret,
@@ -35,14 +36,15 @@ public class Branch extends MachineInstruction {
         throw new RuntimeException("Unfinished");
     }
 
-    private enum DestType{
+    private enum DestType {
         REG,
         LABEL,
         FUNC,
     }
+
     private DestType destType;
 
-    public Branch(MachineBasicBlock parent, MachineBasicBlock destBasicBlock, boolean storeLR, Type type){
+    public Branch(MachineBasicBlock parent, MachineBasicBlock destBasicBlock, boolean storeLR, Type type) {
         super(parent);
         this.destBB = destBasicBlock;
         this.storeLR = storeLR;
@@ -50,7 +52,7 @@ public class Branch extends MachineInstruction {
         this.type = type;
     }
 
-    public Branch(MachineBasicBlock parent, MachineFunction f, boolean storeLR, Type type){
+    public Branch(MachineBasicBlock parent, MachineFunction f, boolean storeLR, Type type) {
         super(parent);
         this.destf = f;
         this.storeLR = storeLR;
@@ -59,7 +61,7 @@ public class Branch extends MachineInstruction {
     }
 
 
-    public Branch(MachineBasicBlock parent, Register destReg, boolean storeLR, Type type){
+    public Branch(MachineBasicBlock parent, Register destReg, boolean storeLR, Type type) {
         super(parent);
         this.destReg = destReg;
         this.storeLR = storeLR;
@@ -70,9 +72,11 @@ public class Branch extends MachineInstruction {
     @Override
     public String toString() {
         String inst = "B";
-        if(storeLR) inst += "L";
-        inst += "X";
-        return switch (destType){
+        if (storeLR) inst += "L";
+        if (this.destType != DestType.LABEL)
+            inst += "X";
+        if (getCond() != null) inst += getCond();
+        return switch (destType) {
             case REG -> inst + "\t" + destReg.toString();
             case LABEL -> inst + "\t" + destBB.getLabel();
             case FUNC -> inst + "\t" + destf.getName();

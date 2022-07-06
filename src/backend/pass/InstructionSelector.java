@@ -7,6 +7,7 @@ import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.*;
 import ir.*;
 import ir.Module;
+import ir.instructions.CmpInst;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -124,7 +125,7 @@ public class InstructionSelector {
                 }
 
                 // 不管是不是叶子节点都push了，为了解决栈上参数的问题 TODO：未来修改
-                MachineInstruction newInst = new PushOrPop(mbb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
+                MachineInstruction newInst = new PushOrPop(mf.getBbList().getFirst().getVal(), PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
                 newInst.setPrologue(true);
                 newInst.pushtofront();
 
@@ -137,6 +138,31 @@ public class InstructionSelector {
                     newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
                     newInst.setEpilogue(true);
                     newInst.pushBacktoInstList();
+                }
+            }
+            case Br -> {
+                if (ir.getNumOperands() == 1) { // unconditional branch
+                    var dest = ir.getOperand(0);
+                    new Branch(mbb, mf.getBBMap().get((BasicBlock) dest), false, Branch.Type.Block).pushBacktoInstList();
+                } else { // conditional branch
+                    var cond = (CmpInst) ir.getOperand(0);
+                    var op = cond.getPredicate();
+                    new Cmp(mbb, valueToReg(mbb, valueMap, cond.getOperand(0)), valueToMCOperand(mbb, valueMap, cond.getOperand(1))).pushBacktoInstList();
+                    // TODO: change the ir.getOperand(2) after merge
+                    MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
+                    inst.setCond(switch (op) {
+                        case ICMP_EQ -> MachineInstruction.Condition.EQ;
+                        case ICMP_NE -> MachineInstruction.Condition.NE;
+                        case ICMP_SGE -> MachineInstruction.Condition.GE;
+                        case ICMP_SGT -> MachineInstruction.Condition.GT;
+                        case ICMP_SLE -> MachineInstruction.Condition.LE;
+                        case ICMP_SLT -> MachineInstruction.Condition.LT;
+                        default -> null;
+                    });
+                    inst.pushBacktoInstList();
+
+                    new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
+
                 }
             }
             case Call -> {
@@ -162,6 +188,8 @@ public class InstructionSelector {
                 new Move(mbb, dest, new MCRegister(MCRegister.RegName.r0)).pushBacktoInstList();
                 valueMap.put(ir, dest);
             }
+
+
             // 可能可以优化， 但中端也可以做吧？MemtoReg
             case Alloca -> {
                 var type = ir.getType();
@@ -238,6 +266,10 @@ public class InstructionSelector {
                 new Arithmetic(mbb, mcType, dest, (Register) op1, op2).pushBacktoInstList();
 
             }
+
+            default -> {
+                System.out.println("Didn't process command: " + ir);
+            }
         }
     }
 
@@ -273,7 +305,7 @@ public class InstructionSelector {
             return (Register) res;
         if (res instanceof ImmediateNumber) {
             var dest = new VirtualRegister();
-            ImmediateNumber.loadNum(parent,dest, ((ImmediateNumber) res).getValue()).pushBacktoInstList();
+            ImmediateNumber.loadNum(parent, dest, ((ImmediateNumber) res).getValue()).pushBacktoInstList();
             return dest;
         }
         throw new RuntimeException("can't convert to Register, or maybe haven't finished this part");
