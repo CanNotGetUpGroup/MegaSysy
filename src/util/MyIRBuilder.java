@@ -351,7 +351,8 @@ public class MyIRBuilder {
         if(V instanceof Constant){
             return insert(Folder.createNot((Constant)V));
         }
-        return insert(BinaryInstruction.createNot(V));
+//        return insert(BinaryInstruction.createNot(V));
+        return createICmpEQ(V, Constants.ConstantInt.const1_0());
     }
 
     //===--------------------------------------------------------------------===//
