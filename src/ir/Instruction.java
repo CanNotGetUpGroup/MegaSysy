@@ -17,7 +17,7 @@ public abstract class Instruction extends User {
         //Memory
         Alloca, Load, Store, GetElementPtr, Fence,
         //Cast
-        ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr,
+        ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr, BitCast,
         //Other
         ICmp, FCmp, Call, Select,
     }
@@ -66,6 +66,7 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         //插入在这个指令之前
+        instNode=new IListNode<>(this,InsertBefore.getParent().getInstList());
         instNode.insertBefore(InsertBefore.getInstNode());
     }
 
@@ -78,6 +79,7 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         //插入在这个基本块的最后
+        instNode=new IListNode<>(this,InsertAtEnd.getInstList());
         instNode.insertIntoListEnd(InsertAtEnd.getInstList());
     }
 
@@ -95,5 +97,10 @@ public abstract class Instruction extends User {
             case Add, FAdd, Mul, FMul, And, Or, Xor -> true;
             default -> false;
         };
+    }
+
+    //从基本块中删除
+    public void remove(){
+        instNode.remove();
     }
 }

@@ -7,28 +7,28 @@ public interface IListIterator<T> extends Iterator<T> {
     /**
      * 有后继节点
      */
-    public boolean hasNext();
+    boolean hasNext();
 
     /**
      * 返回当前节点，指向后继节点
      */
-    public T next();
+    T next();
 
     /**
      * 有前驱节点
      */
-    public boolean hasPrevious();
+    boolean hasPrevious();
 
     /**
      * 指向前驱节点，返回该节点
      */
-    public T previous();
+    T previous();
 
     /**
      * 移除当前节点，指向后继节点
      */
-    public void remove();
+    void remove();
 
-    public void set(T e);
-    public void add(T e);
+    void set(T e);
+    void add(T e);
 }

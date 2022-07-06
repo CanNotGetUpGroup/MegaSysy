@@ -565,4 +565,30 @@ public abstract class Instructions {
             setOperand(2, C);
         }
     }
+
+    public static class BitCastInst extends Instruction {
+        private Type targetType;
+        public BitCastInst(Value C, Type targetType) {
+            super(targetType, Ops.BitCast, 1);
+            this.targetType = targetType;
+            addOperand(C);
+        }
+
+        @Override
+        public String toString() {
+            return getName() + " = bitcast "+getOperand(0).getType()+" "+getOperand(0).getName()+" to "+ targetType;
+        }
+
+        public static BitCastInst create(Value C, Type target) {
+            return new BitCastInst(C, target);
+        }
+
+        public Type getTargetType() {
+            return targetType;
+        }
+
+        public void setTargetType(Type targetType) {
+            this.targetType = targetType;
+        }
+    }
 }

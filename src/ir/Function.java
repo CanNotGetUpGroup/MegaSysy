@@ -41,6 +41,10 @@ public class Function extends Constant {
         return (FunctionType) super.getType();
     }
 
+    public Type getRetType() {
+        return getType().getReturnType();
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -120,5 +124,10 @@ public class Function extends Constant {
 
     public void setEntryBB(BasicBlock entryBB) {
         this.entryBB = entryBB;
+    }
+
+    //从module中删除
+    public void remove(){
+
     }
 }

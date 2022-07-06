@@ -26,6 +26,9 @@ public class Module {
         return funcList;
     }
 
+    /**
+     * 将ir按照数字顺序重新命名
+     */
     public void rename(){
         for (Function F : funcList) {
             int namePtr = 0;
