@@ -80,6 +80,13 @@ public abstract class DerivedTypes {
         }
 
         /**
+         * 数组尺寸
+         */
+        public int size() {
+            return getNumElements()*getEleSize();
+        }
+
+        /**
          * 获取一个数组类型
          *
          * @param ElementType 元素类型
