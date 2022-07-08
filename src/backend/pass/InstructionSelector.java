@@ -8,6 +8,7 @@ import backend.machineCode.Operand.*;
 import ir.*;
 import ir.Module;
 import ir.instructions.CmpInst;
+import ir.instructions.Instructions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -121,7 +122,7 @@ public class InstructionSelector {
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
                     var op1 = ir.getOperand(0);
-                    new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, valueMap, op1)).pushBacktoInstList();
+                    new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, op1)).pushBacktoInstList();
                 }
 
                 // 不管是不是叶子节点都push了，为了解决栈上参数的问题 TODO：未来修改
@@ -147,7 +148,7 @@ public class InstructionSelector {
                 } else { // conditional branch
                     var cond = (CmpInst) ir.getOperand(0);
                     var op = cond.getPredicate();
-                    new Cmp(mbb, valueToReg(mbb, valueMap, cond.getOperand(0)), valueToMCOperand(mbb, valueMap, cond.getOperand(1))).pushBacktoInstList();
+                    new Cmp(mbb, valueToReg(mbb, cond.getOperand(0)), valueToMCOperand(mbb, cond.getOperand(1))).pushBacktoInstList();
                     // TODO: change the ir.getOperand(2) after merge
                     MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
                     inst.setCond(switch (op) {
@@ -171,10 +172,10 @@ public class InstructionSelector {
                 int paraNum = ir.getNumOperands();
 
                 for (--paraNum; paraNum > 4; paraNum--) {
-                    new PushOrPop(mbb, PushOrPop.Type.Push, valueToReg(mbb, valueMap, ir.getOperand(paraNum))).pushBacktoInstList();
+                    new PushOrPop(mbb, PushOrPop.Type.Push, valueToReg(mbb,  ir.getOperand(paraNum))).pushBacktoInstList();
                 }
                 for (; paraNum > 0; paraNum--) {
-                    new Move(mbb, new MCRegister(MCRegister.idTORegName(paraNum - 1)), valueToMCOperand(mbb, valueMap, ir.getOperand(paraNum))).pushBacktoInstList();
+                    new Move(mbb, new MCRegister(MCRegister.idTORegName(paraNum - 1)), valueToMCOperand(mbb, ir.getOperand(paraNum))).pushBacktoInstList();
                 }
 
                 new Branch(mbb, funcMap.get(ir.getOperand(0)), true, Branch.Type.Call).pushBacktoInstList();
@@ -195,18 +196,26 @@ public class InstructionSelector {
                 var type = ir.getType();
                 assert type.isPointerTy();
                 DerivedTypes.PointerType pType = (DerivedTypes.PointerType) type;
+
                 if (pType.getElementType().isInt32Ty()) {
                     // 为int32分配空间，分配到寄存器上
                     valueMap.put(ir, new VirtualRegister());
                 } else {
-                    // TODO: 数组?
-                    throw new RuntimeException("Unfinish: array allocation");
+                    // TODO: 数组
+                    assert pType.getElementType().isArrayTy();
+                    var contentType = (DerivedTypes.ArrayType) pType.getElementType();
+                    var size = contentType.getEleSize() * contentType.getNumElements();
+
+                    // 保存一下位置
+                    valueMap.put(ir, new Address(new MCRegister(MCRegister.RegName.r11), - mf.getStackTop()));
+                    // 分配栈空间
+                    mf.addStackTop(size * 4);
                 }
             }
             case Store -> {
                 assert ir.getNumOperands() == 2;
-                MCOperand op1 = valueToMCOperand(mbb, valueMap, ir.getOperand(0)),
-                        op2 = valueToMCOperand(mbb, valueMap, ir.getOperand(1));
+                MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)),
+                        op2 = valueToMCOperand(mbb, ir.getOperand(1));
                 if (op2 instanceof Register) {
                     // 存到寄存器中
                     new Move(mbb, (Register) op2, op1).pushBacktoInstList();
@@ -216,7 +225,7 @@ public class InstructionSelector {
             }
             case Load -> {
                 assert ir.getNumOperands() == 2;
-                MCOperand src = valueToMCOperand(mbb, valueMap, ir.getOperand(0));
+                MCOperand src = valueToMCOperand(mbb, ir.getOperand(0));
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
                 if (src instanceof Register) {
@@ -226,11 +235,26 @@ public class InstructionSelector {
                     // TODO: 存到堆栈中（数组。。。）
                 }
             }
+            case GetElementPtr -> {
+                var curIr = (Instructions.GetElementPtrInst)  ir;
+                System.out.println(ir);
+                assert ir.getType().isPointerTy();
 
+                System.out.println(ir.getNumOperands());
+                var srcAddr = valueMap.get(ir.getOperand(0));
+                var srcType = curIr.getSourceElementType();
+                while(srcType instanceof DerivedTypes.ArrayType){
+                    System.out.println("<1>");
+                    break;
+                }
+
+            }
+
+            // TODO: Mod
             case Sub, Add, Mul, SDiv -> {
                 assert ir.getNumOperands() == 2;
-                MCOperand op1 = valueToMCOperand(mbb, valueMap, ir.getOperand(0)),
-                        op2 = valueToMCOperand(mbb, valueMap, ir.getOperand(1));
+                MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)),
+                        op2 = valueToMCOperand(mbb, ir.getOperand(1));
 
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
@@ -273,7 +297,9 @@ public class InstructionSelector {
         }
     }
 
-    private MCOperand valueToMCOperand(MachineBasicBlock parent, HashMap<Value, Register> valueMap, Value val) {
+    private MCOperand valueToMCOperand(MachineBasicBlock parent, Value val) {
+        var func = parent.getParent();
+        var valueMap = func.getValueMap();
         var type = val.getType();
         if (val instanceof Constant) {
             if (type.isInt32Ty()) {
@@ -287,6 +313,9 @@ public class InstructionSelector {
                     new LoadOrStore(parent, LoadOrStore.Type.LOAD, dest, new ImmediateNumber(value)).pushBacktoInstList();
                     return dest;
                 }
+            } else if (type.isPointerTy()) {
+                // TODO: ???
+                return valueMap.get(val);
             }
         } else if (val instanceof Instruction) {
             var ans = valueMap.get(val);
@@ -299,14 +328,18 @@ public class InstructionSelector {
         throw new RuntimeException("Unreachable point");
     }
 
-    private Register valueToReg(MachineBasicBlock parent, HashMap<Value, Register> valueMap, Value val) {
-        MCOperand res = valueToMCOperand(parent, valueMap, val);
+    private Register valueToReg(MachineBasicBlock parent, Value val) {
+        MCOperand res = valueToMCOperand(parent, val);
         if (res instanceof Register)
             return (Register) res;
         if (res instanceof ImmediateNumber) {
             var dest = new VirtualRegister();
             ImmediateNumber.loadNum(parent, dest, ((ImmediateNumber) res).getValue()).pushBacktoInstList();
             return dest;
+        }
+        if(res instanceof Address){
+            // TODO : need to modify to global array
+            throw new RuntimeException("Try to convert an address to register");
         }
         throw new RuntimeException("can't convert to Register, or maybe haven't finished this part");
     }

@@ -1,5 +1,9 @@
 package backend.machineCode.Operand;
 
+import backend.machineCode.MachineBasicBlock;
+import backend.machineCode.MachineFunction;
+import backend.machineCode.MachineInstruction;
+
 public class Address extends MCOperand{
     private Register reg;
     private int offset;

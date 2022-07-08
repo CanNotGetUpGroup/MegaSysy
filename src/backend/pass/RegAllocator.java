@@ -97,19 +97,19 @@ public class RegAllocator {
 
                     if (dest instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.STORE, new MCRegister(MCRegister.RegName.r4),
-                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - 8))
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - func.getStackTop()))
                                 .getInstNode().insertAfter(inst.getInstNode());
                         inst.setDest(new MCRegister(MCRegister.RegName.r4));
                     }
                     if (op1 instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r5),
-                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - 8))
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - func.getStackTop()))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         inst.setOp1(new MCRegister(MCRegister.RegName.r5));
                     }
                     if (op2 instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r6),
-                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - 8))
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - func.getStackTop()))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         inst.setOp2(new MCRegister(MCRegister.RegName.r6));
                     }
