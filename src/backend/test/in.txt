@@ -1,15 +1,6 @@
 int main() {
-    int n = getint();
-    int i = 0, sum = 0;
-    while (i < n) {
-        if (i % 2 == 0) {
-            i = i + 1;
-            continue;
-        }
-        i = i + 1;
-        sum = sum + i;
-        putint(sum);
-        putch(10);
-    }
-    return 0;
+    int a [10] = {11, 12, 13, 14};
+    int b [7][8][4] = {15, 16, 17, 18};
+
+    return a[3] + b[2][4];
 }

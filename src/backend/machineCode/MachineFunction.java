@@ -1,5 +1,6 @@
 package backend.machineCode;
 
+import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 import ir.*;
 import util.IList;
@@ -14,6 +15,21 @@ public class MachineFunction {
     private boolean isDefined = false;
     private boolean isLeaf = true;
 
+    public int getStackTop() {
+        return stackTop;
+    }
+
+    public void setStackTop(int stackTop) {
+        this.stackTop = stackTop;
+    }
+
+    public void addStackTop(int inc) {
+        this.stackTop += inc;
+    }
+
+
+    private int stackTop = 8;
+
 
     public void setDefined(boolean defined) {
         isDefined = defined;
@@ -23,14 +39,13 @@ public class MachineFunction {
         return isDefined;
     }
 
-    public boolean isLeaf(){
+    public boolean isLeaf() {
         return isLeaf;
     }
 
-    public void setLeaf(boolean isLeaf){
+    public void setLeaf(boolean isLeaf) {
         this.isLeaf = isLeaf;
     }
-
 
 
     /**
@@ -96,7 +111,17 @@ public class MachineFunction {
     }
 
     private HashMap<BasicBlock, MachineBasicBlock> bbMap;
-    private HashMap<Value, Register> valueMap;
+    private HashMap<Value, MCOperand> valueMap;
+
+    public HashMap<Value, Integer> getStackMap() {
+        return stackMap;
+    }
+
+    public void setStackMap(HashMap<Value, Integer> stackMap) {
+        this.stackMap = stackMap;
+    }
+
+    private HashMap<Value, Integer> stackMap;
 
     /**
      * 得到ir中的基本块和汇编中基本块的映射HashMap
@@ -110,7 +135,7 @@ public class MachineFunction {
     /**
      * 得到ir中的Value对寄存器的HashMap
      */
-    public HashMap<Value, Register> getValueMap() {
+    public HashMap<Value, MCOperand> getValueMap() {
         return valueMap;
     }
 }

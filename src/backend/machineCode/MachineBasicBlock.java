@@ -8,7 +8,8 @@ import util.IListNode;
 
 public class MachineBasicBlock {
     private static int c = 1;
-    private int counter(){
+
+    private int counter() {
         return c++;
     }
 
@@ -47,10 +48,10 @@ public class MachineBasicBlock {
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(this.parent.getBbList());
-        label = parent.getName() + counter();
+        label = "." + parent.getName() + counter();
     }
 
-    public MachineBasicBlock(String label, MachineFunction parent) {
+    public MachineBasicBlock(MachineFunction parent, String label) {
         this.parent = parent;
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
@@ -99,7 +100,7 @@ public class MachineBasicBlock {
         this.bbNode = bbNode;
     }
 
-    public void pushBacktoBBList(){
+    public void pushBacktoBBList() {
         this.getBbNode().insertIntoListEnd(this.getParent().getBbList());
     }
 }
