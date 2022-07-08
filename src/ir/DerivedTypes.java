@@ -80,6 +80,13 @@ public abstract class DerivedTypes {
         }
 
         /**
+         * 数组尺寸
+         */
+        public int size() {
+            return getNumElements()*getEleSize();
+        }
+
+        /**
          * 获取一个数组类型
          *
          * @param ElementType 元素类型
@@ -127,6 +134,17 @@ public abstract class DerivedTypes {
             contain.add(ReturnType);
             if (Params != null)
                 contain.addAll(Params);
+        }
+
+        @Override
+        public String toString(){
+            StringBuilder sb=new StringBuilder(getReturnType().toString());
+            sb.append(" f(");
+            for(int i=1;i<getContainedTys().size();i++){
+                sb.append(getContainedTys(i)).append(" ,");
+            }
+            sb.append(")");
+            return sb.toString();
         }
 
         /**

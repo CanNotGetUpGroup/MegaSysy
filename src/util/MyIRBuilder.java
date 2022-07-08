@@ -62,7 +62,7 @@ public class MyIRBuilder {
         InsertPt = I.getInstNode();
     }
 
-    public void setInsertPt(IListNode<Instruction, BasicBlock> insertPt) {
+    private void setInsertPt(IListNode<Instruction, BasicBlock> insertPt) {
         InsertPt = insertPt;
     }
 
@@ -99,7 +99,7 @@ public class MyIRBuilder {
                 }else if(R.getType().isInt1Ty()){
                     unifyType(R,L,false);
                 }
-            }else if(R.getType().isFloatTy()){
+            }else if(L.getType().isFloatTy()){
                 unifyType(R,L,false);
             }
         }
@@ -351,7 +351,8 @@ public class MyIRBuilder {
         if(V instanceof Constant){
             return insert(Folder.createNot((Constant)V));
         }
-        return insert(BinaryInstruction.createNot(V));
+//        return insert(BinaryInstruction.createNot(V));
+        return createICmpEQ(V, Constants.ConstantInt.const1_0());
     }
 
     //===--------------------------------------------------------------------===//
@@ -419,12 +420,16 @@ public class MyIRBuilder {
 //        return createCast(Instruction.CastOps.FPExt, V, DestTy);
 //    }
 
-    Value createFPToSI(Value V, Type DestTy) {
+    public Value createFPToSI(Value V, Type DestTy) {
         return createCast(Instruction.Ops.FPToSI, V, DestTy);
     }
 
-    Value createSIToFP(Value V, Type DestTy) {
+    public Value createSIToFP(Value V, Type DestTy) {
         return createCast(Instruction.Ops.SIToFP, V, DestTy);
+    }
+
+    public Value createBitCast(Value V, Type DestTy) {
+        return insert(BitCastInst.create(V,DestTy));
     }
 
     //===--------------------------------------------------------------------===//
