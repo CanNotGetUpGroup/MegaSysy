@@ -499,6 +499,30 @@ public abstract class Instructions {
             setOperand(0,BB);
         }
 
+        public BasicBlock getTrueBlock(){
+            if(getNumOperands()==3){
+                return (BasicBlock) getOperand(2);
+            }else{
+                return (BasicBlock) getOperand(0);
+            }
+        }
+
+        public BasicBlock getFalseBlock() {
+            if(getNumOperands()==3){
+                return (BasicBlock) getOperand(1);
+            }else{
+                return (BasicBlock) getOperand(0);
+            }
+        }
+
+        public Value getCond(){
+            if(getNumOperands()==3){
+                return getOperand(0);
+            }else{
+                return Constants.ConstantInt.const1_1();
+            }
+        }
+
         @Override
         public String toString() {
             if(getOperandList().size()==1){
@@ -564,6 +588,32 @@ public abstract class Instructions {
 
         public void setFalseValue(Value C) {
             setOperand(2, C);
+        }
+    }
+
+    public static class BitCastInst extends Instruction {
+        private Type targetType;
+        public BitCastInst(Value C, Type targetType) {
+            super(targetType, Ops.BitCast, 1);
+            this.targetType = targetType;
+            addOperand(C);
+        }
+
+        @Override
+        public String toString() {
+            return getName() + " = bitcast "+getOperand(0).getType()+" "+getOperand(0).getName()+" to "+ targetType;
+        }
+
+        public static BitCastInst create(Value C, Type target) {
+            return new BitCastInst(C, target);
+        }
+
+        public Type getTargetType() {
+            return targetType;
+        }
+
+        public void setTargetType(Type targetType) {
+            this.targetType = targetType;
         }
     }
 }

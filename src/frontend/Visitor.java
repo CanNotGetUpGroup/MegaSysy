@@ -114,6 +114,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return super.visitBType(ctx);
     }
 
+    public void castType(Type ty){
+        if (!curVal.getType().equals(ty)) {
+            if(curVal.getType().equals(Type.getInt32Ty())){
+                curVal=builder.createSIToFP(curVal,Type.getFloatTy());
+            }else{
+                curVal=builder.createFPToSI(curVal,Type.getInt32Ty());
+            }
+        }
+    }
+
     /**
      * constDef : IDENT (LBRACKET constExp RBRACKET )* EQ constInitVal;
      */
@@ -166,6 +176,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 Args.add(gep);
                 Args.add(Constant.getNullValue(declType));
                 Args.add(ConstantInt.get(arrayType.getNumElements() * arrayType.getEleSize() * 4));
+                //TODO: 浮点数组初始化
+//                builder.createBitCast(alloca,)
                 Value v = builder.createCall(symbolTable.getFunction("memset"), Args);
                 v.setComment(name);
                 gep=alloca;
@@ -198,9 +210,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             }
         } else {
             visit(ctx.constInitVal());
-            if (!curVal.getType().equals(type)) {
-                LogError("赋值类型与定义不匹配");
-            }
+            castType(declType);
             symbolTable.addValue(name, curVal);
         }
         return curVal;
@@ -449,9 +459,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             if (ctx.initVal() != null) {
                 if (symbolTable.inGlobalArea()) {
                     visit(ctx.initVal());
-                    if (!curVal.getType().equals(declType)) {
-                        LogError("赋值类型与定义不匹配");
-                    }
+                    castType(declType);
                     Value val = builder.createGlobalVariable("@" + name, declType, module, (Constant) curVal, false);
                     symbolTable.addValue(name, val);
                 } else {
@@ -459,9 +467,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     alloca.setComment(declType+" "+ctx.getText());
                     symbolTable.addValue(name, alloca);
                     visit(ctx.initVal());
-                    if (!curVal.getType().equals(declType)) {
-                        LogError("赋值类型与定义不匹配");
-                    }
+                    castType(declType);
                     Value v=builder.createStore(curVal, alloca);
                     v.setComment(name+"="+curVal);
                     ((Instructions.AllocaInst) alloca).setUndef(false);
@@ -813,6 +819,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 break;
             case 3://'return' Exp ';'
                 visit(ctx.exp());
+                castType(curF.getRetType());
                 builder.createRet(curVal);
                 break;
         }
@@ -998,9 +1005,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitFuncRParams(SysyParser.FuncRParamsContext ctx) {
         for (int i = 0; i < ctx.exp().size(); i++) {
             visit(ctx.exp(i));
-            if (!curVal.getType().equals(fType.peek().getContainedTys().get(i + 1))) {
-                LogError("函数引用时，参数类型错误");
-            }
+            castType(fType.peek().getContainedTys().get(i + 1));
             assert paramList.peek() != null;
             paramList.peek().add(curVal);
         }
@@ -1176,7 +1181,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         type = Type.getInt32Ty();
         if (ctx.DEC_INT_CONST() != null) {
             String text = ctx.DEC_INT_CONST().getText();
-            int number = new BigInteger(text, 10).intValue();
+            int number = Integer.parseInt(text);
             curVal = ConstantInt.get(number);
         } else if (ctx.OCT_INT_CONST() != null) {
             String text = ctx.OCT_INT_CONST().getText();
@@ -1195,12 +1200,11 @@ public class Visitor extends SysyBaseVisitor<Value> {
         type = Type.getFloatTy();
         if (ctx.Decimal_floating_constant() != null) {
             String text = ctx.Decimal_floating_constant().getText();
-            float number = new BigDecimal(text).floatValue();
+            float number = Float.parseFloat(text);
             curVal = ConstantFP.get(number);
         } else {
-            //TODO:十六进制转换
             String text = ctx.Hexadecimal_floating_constant().getText();
-            float number = new BigDecimal(text.substring(2)).floatValue();
+            float number = Float.parseFloat(text);
             curVal = ConstantFP.get(number);
         }
         return curVal;

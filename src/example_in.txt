@@ -1,0 +1,12 @@
+int a=5;
+const int b=5;
+
+int f(int m,int n){
+    if(m>n) return 0;
+    else return 1;
+}
+
+int main(){
+    putint(f(a,b));
+    return 0;
+}

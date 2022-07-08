@@ -44,17 +44,17 @@ public class Folder {
         ConstantFP R = (ConstantFP) RHS;
 
         switch (P) {
-            case FCMP_OEQ:
+            case FCMP_OEQ,FCMP_UEQ:
                 return ConstantInt.get(ResultType, L.getVal() == R.getVal() ? 1 : 0);
-            case FCMP_ONE:
+            case FCMP_ONE,FCMP_UNE:
                 return ConstantInt.get(ResultType, L.getVal() != R.getVal() ? 1 : 0);
-            case FCMP_OLT:
+            case FCMP_OLT,FCMP_ULT:
                 return ConstantInt.get(ResultType, L.getVal() < R.getVal() ? 1 : 0);
-            case FCMP_OGT:
+            case FCMP_OGT,FCMP_UGT:
                 return ConstantInt.get(ResultType, L.getVal() > R.getVal() ? 1 : 0);
-            case FCMP_OLE:
+            case FCMP_OLE,FCMP_ULE:
                 return ConstantInt.get(ResultType, L.getVal() <= R.getVal() ? 1 : 0);
-            case FCMP_OGE:
+            case FCMP_OGE,FCMP_UGE:
                 return ConstantInt.get(ResultType, L.getVal() >= R.getVal() ? 1 : 0);
         }
         return null;

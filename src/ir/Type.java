@@ -68,6 +68,10 @@ public class Type {
         return containedTys;
     }
 
+    public Type getContainedTys(int i) {
+        return containedTys.get(i);
+    }
+
     public void setContainedTys(ArrayList<Type> containedTys) {
         this.containedTys = containedTys;
     }
