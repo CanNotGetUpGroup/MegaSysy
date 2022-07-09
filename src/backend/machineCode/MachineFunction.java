@@ -111,7 +111,7 @@ public class MachineFunction {
     }
 
     private HashMap<BasicBlock, MachineBasicBlock> bbMap;
-    private HashMap<Value, MCOperand> valueMap;
+    private HashMap<Value, Register> valueMap;
 
     public HashMap<Value, Integer> getStackMap() {
         return stackMap;
@@ -135,7 +135,7 @@ public class MachineFunction {
     /**
      * 得到ir中的Value对寄存器的HashMap
      */
-    public HashMap<Value, MCOperand> getValueMap() {
+    public HashMap<Value, Register> getValueMap() {
         return valueMap;
     }
 }

@@ -112,7 +112,13 @@ public class RegAllocator {
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - func.getStackTop()))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         inst.setOp2(new MCRegister(MCRegister.RegName.r6));
+                    } else if (op2 instanceof Address && ((Address) op2).getReg() instanceof VirtualRegister){
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r7),
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get(((Address) op2).getReg()) - func.getStackTop()))
+                                .getInstNode().insertBefore(inst.getInstNode());
+                        ((Address) op2).setReg(new MCRegister(MCRegister.RegName.r7));
                     }
+
                 }
             }
         }
