@@ -13,34 +13,47 @@ declare void @starttime()
 declare void @stoptime()
 
 define dso_local i32 @main(){
-  %1 = alloca [7 x [8 x [4 x i32]]]     ; i32 b[7][8][4]={15,16,17,18}
-  %2 = alloca [10 x i32]     ; i32 a[10]={11,12,13,14}
-  %3= getelementptr [10 x i32],[10 x i32]* %2 , i32 0, i32 0     
-  call void @memset(i32* %3,i32 0,i32 40)     ; a
-  store i32 11, i32* %3     
-  %4= getelementptr i32,i32* %3 , i32 1     
-  store i32 12, i32* %4     
-  %5= getelementptr i32,i32* %4 , i32 1     
-  store i32 13, i32* %5     
-  %6= getelementptr i32,i32* %5 , i32 1     
-  store i32 14, i32* %6     
-  %7= getelementptr [7 x [8 x [4 x i32]]],[7 x [8 x [4 x i32]]]* %1 , i32 0, i32 0     
-  %8= getelementptr [8 x [4 x i32]],[8 x [4 x i32]]* %7 , i32 0, i32 0     
-  %9= getelementptr [4 x i32],[4 x i32]* %8 , i32 0, i32 0     
-  call void @memset(i32* %9,i32 0,i32 896)     ; b
-  store i32 15, i32* %9     
-  %10= getelementptr i32,i32* %9 , i32 1     
-  store i32 16, i32* %10     
-  %11= getelementptr i32,i32* %10 , i32 1     
-  store i32 17, i32* %11     
-  %12= getelementptr i32,i32* %11 , i32 1     
-  store i32 18, i32* %12     
-  %13= getelementptr [10 x i32],[10 x i32]* %2 , i32 0, i32 3     ; get a[3]
-  %14 = load i32, i32* %13     
-  %15= getelementptr [7 x [8 x [4 x i32]]],[7 x [8 x [4 x i32]]]* %1 , i32 0, i32 2     
-  %16= getelementptr [8 x [4 x i32]],[8 x [4 x i32]]* %15 , i32 0, i32 4     ; get b[2][4]
-  %17= getelementptr [4 x i32],[4 x i32]* %16 , i32 0, i32 0     
-  %18 = add i32 %14, %17     ; a[3]+b[2][4]
-  ret i32 %18     
+  %1 = alloca [3 x i32]     ; i32 a[3]={1,2}
+  %2 = alloca [5 x i32]     ; i32 d[5]={}
+  %3 = alloca [4 x [4 x i32]]     ; i32 e[4][4]
+  %4 = alloca [2 x [3 x i32]]     ; i32 b[2][3]={{1}}
+  %5 = alloca [2 x [1 x i32]]     ; const i32 c[2][1]={{1},{3}}
+  %6= getelementptr [2 x [1 x i32]],[2 x [1 x i32]]* %5 , i32 0, i32 0     
+  %7= getelementptr [1 x i32],[1 x i32]* %6 , i32 0, i32 0     
+  call void @memset(i32* %7,i32 0,i32 8)     ; c
+  store i32 1, i32* %7     
+  %8= getelementptr [1 x i32],[1 x i32]* %6 , i32 1     
+  %9= getelementptr [1 x i32],[1 x i32]* %8 , i32 0, i32 0     
+  store i32 3, i32* %9     
+  %10= getelementptr [2 x [3 x i32]],[2 x [3 x i32]]* %4 , i32 0, i32 0     
+  %11= getelementptr [3 x i32],[3 x i32]* %10 , i32 0, i32 0     
+  call void @memset(i32* %11,i32 0,i32 24)     ; b
+  store i32 1, i32* %11     
+  %12= getelementptr [5 x i32],[5 x i32]* %2 , i32 0, i32 0     
+  call void @memset(i32* %12,i32 0,i32 20)     ; d
+  %13= getelementptr [3 x i32],[3 x i32]* %1 , i32 0, i32 0     
+  call void @memset(i32* %13,i32 0,i32 12)     ; a
+  store i32 1, i32* %13     
+  %14= getelementptr i32,i32* %13 , i32 1     
+  store i32 2, i32* %14     
+  %15= getelementptr [2 x [1 x i32]],[2 x [1 x i32]]* %5 , i32 0, i32 1     
+  %16= getelementptr [1 x i32],[1 x i32]* %15 , i32 0, i32 0     ; get c[1][0]
+  %17 = load i32, i32* %16     
+  %18= getelementptr [2 x [3 x i32]],[2 x [3 x i32]]* %4 , i32 0, i32 0     
+  %19= getelementptr [3 x i32],[3 x i32]* %18 , i32 0, i32 0     ; get b[0][0]
+  %20 = load i32, i32* %19     
+  %21 = add i32 %17, %20     ; c[1][0]+b[0][0]
+  %22= getelementptr [2 x [1 x i32]],[2 x [1 x i32]]* %5 , i32 0, i32 0     
+  %23= getelementptr [1 x i32],[1 x i32]* %22 , i32 0, i32 0     ; get c[0][0]
+  %24 = load i32, i32* %23     
+  %25 = add i32 %21, %24     ; c[1][0]+b[0][0]+c[0][0]
+  %26= getelementptr [3 x i32],[3 x i32]* %1 , i32 0, i32 1     ; get a[1]
+  %27 = load i32, i32* %26     
+  %28 = add i32 %25, %27     ; c[1][0]+b[0][0]+c[0][0]+a[1]
+  %29= getelementptr [5 x i32],[5 x i32]* %2 , i32 0, i32 4     ; get d[4]
+  %30 = load i32, i32* %29     
+  %31 = add i32 %28, %30     ; c[1][0]+b[0][0]+c[0][0]+a[1]+d[4]
+  call void @putint(i32 %31)     ; call putint(c[1][0]+b[0][0]+c[0][0]+a[1]+d[4])
+  ret i32 0     
 }
 

@@ -2,6 +2,7 @@ package backend.machineCode.Instruction;
 
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
+import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
@@ -36,6 +37,22 @@ public class Arithmetic extends MachineInstruction {
         this.destReg = op1;
         this.op1 = op1;
         this.op2 = op2;
+    }
+
+    public Arithmetic(MachineBasicBlock parent, Type type, Register op1, int op2){
+        super(parent);
+        this.type = type;
+        this.destReg = op1;
+        this.op1 = op1;
+        this.op2 = new ImmediateNumber(op2);
+    }
+
+    public Arithmetic(MachineBasicBlock parent, Type type,Register dest,  Register op1, int op2){
+        super(parent);
+        this.type = type;
+        this.destReg = dest;
+        this.op1 = op1;
+        this.op2 = new ImmediateNumber(op2);
     }
 
     @Override

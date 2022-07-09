@@ -13,6 +13,8 @@ import ir.instructions.Instructions;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static ir.Instruction.Ops.Load;
+
 public class InstructionSelector {
     private Module module;
     private ArrayList<MachineFunction> funcList;
@@ -172,7 +174,7 @@ public class InstructionSelector {
                 int paraNum = ir.getNumOperands();
 
                 for (--paraNum; paraNum > 4; paraNum--) {
-                    new PushOrPop(mbb, PushOrPop.Type.Push, valueToReg(mbb,  ir.getOperand(paraNum))).pushBacktoInstList();
+                    new PushOrPop(mbb, PushOrPop.Type.Push, valueToReg(mbb, ir.getOperand(paraNum))).pushBacktoInstList();
                 }
                 for (; paraNum > 0; paraNum--) {
                     new Move(mbb, new MCRegister(MCRegister.idTORegName(paraNum - 1)), valueToMCOperand(mbb, ir.getOperand(paraNum))).pushBacktoInstList();
@@ -198,56 +200,86 @@ public class InstructionSelector {
                 DerivedTypes.PointerType pType = (DerivedTypes.PointerType) type;
 
                 if (pType.getElementType().isInt32Ty()) {
-                    // 为int32分配空间，分配到寄存器上
-                    valueMap.put(ir, new VirtualRegister());
+                    var dest = new VirtualRegister();
+                    // 分配栈空间
+
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), 4).pushBacktoInstList();
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop()).pushBacktoInstList();
+                    // 保存一下位置
+                    valueMap.put(ir, dest);
+                    mf.addStackTop( 4);
                 } else {
                     // TODO: 数组
                     assert pType.getElementType().isArrayTy();
+
                     var contentType = (DerivedTypes.ArrayType) pType.getElementType();
                     var size = contentType.getEleSize() * contentType.getNumElements();
 
-                    // 保存一下位置
-                    valueMap.put(ir, new Address(new MCRegister(MCRegister.RegName.r11), - mf.getStackTop()));
                     // 分配栈空间
                     mf.addStackTop(size * 4);
+
+                    var dest = new VirtualRegister();
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), size * 4).pushBacktoInstList();
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop() - 4).pushBacktoInstList();
+                    // 保存一下位置
+                    valueMap.put(ir, dest);
+
                 }
             }
             case Store -> {
-                assert ir.getNumOperands() == 2;
-                MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)),
-                        op2 = valueToMCOperand(mbb, ir.getOperand(1));
-                if (op2 instanceof Register) {
-                    // 存到寄存器中
-                    new Move(mbb, (Register) op2, op1).pushBacktoInstList();
-                } else {
-                    // TODO: 存到堆栈中（数组。。。）
-                }
+                Register op1 = valueToReg(mbb, ir.getOperand(0)),
+                        op2 = valueToReg(mbb, ir.getOperand(1));
+                new LoadOrStore(mbb, LoadOrStore.Type.STORE,(Register) op1, new Address(op2)).pushBacktoInstList();
             }
             case Load -> {
-                assert ir.getNumOperands() == 2;
-                MCOperand src = valueToMCOperand(mbb, ir.getOperand(0));
+                Register src = valueToReg(mbb, ir.getOperand(0));
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
-                if (src instanceof Register) {
-                    // 寄存器中取
-                    new Move(mbb, dest, src).pushBacktoInstList();
-                } else {
-                    // TODO: 存到堆栈中（数组。。。）
-                }
+
+                new LoadOrStore(mbb, LoadOrStore.Type.LOAD, dest, new Address(src)).pushBacktoInstList();
             }
             case GetElementPtr -> {
-                var curIr = (Instructions.GetElementPtrInst)  ir;
-                System.out.println(ir);
+                var curIr = (Instructions.GetElementPtrInst) ir;
                 assert ir.getType().isPointerTy();
 
-                System.out.println(ir.getNumOperands());
                 var srcAddr = valueMap.get(ir.getOperand(0));
-                var srcType = curIr.getSourceElementType();
-                while(srcType instanceof DerivedTypes.ArrayType){
-                    System.out.println("<1>");
-                    break;
-                }
 
+                int constOffset = 0;
+
+                Register dest = null;
+
+                var srcType = curIr.getSourceElementType();
+                int i = 1;
+                while (true) {
+                    MCOperand op = valueToMCOperand(mbb, ir.getOperand(i));
+                    int size = srcType.isArrayTy() ? ((DerivedTypes.ArrayType) srcType).size() : 1;
+                    if (op instanceof ImmediateNumber) {
+                        constOffset += 4 * ((ImmediateNumber) op).getValue() * size;
+                    } else {
+                        assert op instanceof Register;
+                        Register op2 = new VirtualRegister();
+                        new Arithmetic(mbb, Arithmetic.Type.MUL, op2, (Register) op, 4 * size).pushBacktoInstList();
+
+                        if (dest == null) {
+                            dest = new VirtualRegister();
+                            new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, op2).pushBacktoInstList();
+                        } else // Warning: NOT SSA here
+                            new Arithmetic(mbb, Arithmetic.Type.ADD, dest, op2).pushBacktoInstList();
+                    }
+                    if (srcType.isInt32Ty() || i >= ir.getNumOperands() - 1) break;
+                    i++;
+                    srcType = ((DerivedTypes.ArrayType) srcType).getKidType();
+                }
+                if (constOffset != 0) {
+                    // deal with const offset together
+                    if (dest == null) {
+                        dest = new VirtualRegister();
+                        new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, constOffset).pushBacktoInstList();
+                    } else // Warning: NOT SSA here
+                        new Arithmetic(mbb, Arithmetic.Type.ADD, dest, constOffset).pushBacktoInstList();
+                }
+                if(dest == null) dest = srcAddr;
+                valueMap.put(ir, dest);
             }
 
             // TODO: Mod
@@ -292,7 +324,7 @@ public class InstructionSelector {
             }
 
             default -> {
-                System.out.println("Didn't process command: " + ir);
+//                System.out.println("Didn't process command: " + ir);
             }
         }
     }
@@ -319,7 +351,7 @@ public class InstructionSelector {
             }
         } else if (val instanceof Instruction) {
             var ans = valueMap.get(val);
-            if (ans == null) throw new RuntimeException("Not defined instruction");
+            if (ans == null) throw new RuntimeException("Not defined instruction: " + val);
             return ans;
         } else if (val instanceof Argument) {
             return valueMap.get(val);
@@ -337,7 +369,7 @@ public class InstructionSelector {
             ImmediateNumber.loadNum(parent, dest, ((ImmediateNumber) res).getValue()).pushBacktoInstList();
             return dest;
         }
-        if(res instanceof Address){
+        if (res instanceof Address) {
             // TODO : need to modify to global array
             throw new RuntimeException("Try to convert an address to register");
         }

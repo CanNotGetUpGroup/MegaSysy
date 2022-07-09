@@ -1,6 +1,5 @@
 package ir;
 
-import org.antlr.v4.tool.LabelType;
 import util.IList;
 import util.IListNode;
 
