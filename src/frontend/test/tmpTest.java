@@ -15,7 +15,11 @@ import java.io.PrintWriter;
 
 public class tmpTest {
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName("D:\\JavaProject\\MegaSysy\\src\\frontend\\input.txt"); // 获取输入流
+        initModule();
+    }
+
+    public static void initModule() throws IOException {
+        CharStream inputStream = CharStreams.fromFileName("src/frontend/input.txt"); // 获取输入流
         FileWriter fw=new FileWriter("src/frontend/output.txt");
         PrintWriter pw=new PrintWriter(fw);
 

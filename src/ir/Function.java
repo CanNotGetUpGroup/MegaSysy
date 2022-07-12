@@ -119,6 +119,9 @@ public class Function extends Constant {
     }
 
     public BasicBlock getEntryBB() {
+        if(entryBB==null){
+            entryBB=getBbList().getHead().getVal();
+        }
         return entryBB;
     }
 
