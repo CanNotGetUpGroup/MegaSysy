@@ -428,6 +428,54 @@ public abstract class Instructions {
     }
 
     //===----------------------------------------------------------------------===//
+    //                               PHINode Class
+    //===----------------------------------------------------------------------===//
+
+    // Value存在OperandList中，BasicBlock存在blocks对应位置
+    //
+    public static class PHIInst extends Instruction {
+        private ArrayList<BasicBlock> blocks;
+
+        public PHIInst(Type ty,int block_number) {
+            super(ty, Ops.PHI, block_number);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb=new StringBuilder();
+            sb.append(getName()).append(" = phi ").append(getType()).append(" ");
+            for(int i=0;i<getNumOperands();i++){
+                sb.append("[ ").append(getOperand(i).getName()).append(", ").append(getBlocks()).append(" ] ");
+                if(i!=getNumOperands()-1){
+                    sb.append(", ");
+                }
+            }
+            return sb.toString();
+        }
+
+        public static PHIInst create(Type ty,int block_num) {
+            return new PHIInst(ty,block_num);
+        }
+
+        public ArrayList<BasicBlock> getBlocks(){
+            return blocks;
+        }
+
+        public void addIncomingValue(Value V){
+            addOperand(V);
+        }
+
+        public void addIncomingBlock(BasicBlock BB){
+            blocks.add(BB);
+        }
+
+        public void addIncoming(Value V,BasicBlock BB){
+            addIncomingValue(V);
+            addIncomingBlock(BB);
+        }
+    }
+
+    //===----------------------------------------------------------------------===//
     //                               ReturnInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
