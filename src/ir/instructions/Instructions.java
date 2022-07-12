@@ -208,6 +208,19 @@ public abstract class Instructions {
         public void setResultElementType(Type resultElementType) {
             ResultElementType = resultElementType;
         }
+
+        public boolean allIndicesZero(){
+            for(int i=1;i<getNumOperands();i++){
+                if(getOperand(i) instanceof Constants.ConstantInt){
+                    if(!((Constants.ConstantInt)getOperand(i)).isZero()){
+                        return false;
+                    }
+                }else{
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     //===----------------------------------------------------------------------===//
