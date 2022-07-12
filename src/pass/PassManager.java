@@ -52,11 +52,6 @@ public class PassManager {
         }
 
         @Override
-        public void runOnModule(Module M) {
-            super.runOnModule(M);
-        }
-
-        @Override
         public String getName() {
             return "Hello";
         }
