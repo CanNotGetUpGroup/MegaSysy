@@ -36,6 +36,8 @@ public class testPass {
 
         FunctionPass mem2reg=new Mem2Reg();
         mem2reg.runOnModule(module);
+
+        //查看更改后的pass
         module.rename();
         System.out.println(module.toLL());
     }
