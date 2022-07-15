@@ -6,7 +6,7 @@ import ir.Function;
 import util.IList;
 import util.IListNode;
 
-public class MachineBasicBlock {
+public class MachineBasicBlock implements Addressable{
     private static int c = 1;
 
     private int counter() {
@@ -48,7 +48,7 @@ public class MachineBasicBlock {
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(this.parent.getBbList());
-        label = "." + parent.getName() + counter();
+        label = "." + parent.getLabel() + counter();
     }
 
     public MachineBasicBlock(MachineFunction parent, String label) {

@@ -118,7 +118,13 @@ public class RegAllocator {
                                 .getInstNode().insertBefore(inst.getInstNode());
                         ((Address) op2).setReg(new MCRegister(MCRegister.RegName.r7));
                     }
-
+                    // TODO: 地址的第二个参数可能也是reg
+                    else if (op2 instanceof Address && ((Address) op2).getOffset() instanceof VirtualRegister){
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r8),
+                                new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get(((Address) op2).getOffset()) - func.getStackTop()))
+                                .getInstNode().insertBefore(inst.getInstNode());
+                        ((Address) op2).setOffset(new MCRegister(MCRegister.RegName.r7));
+                    }
                 }
             }
         }

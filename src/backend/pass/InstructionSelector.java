@@ -2,6 +2,7 @@ package backend.pass;
 
 import backend.machineCode.Instruction.*;
 import backend.machineCode.MachineBasicBlock;
+import backend.machineCode.MachineDataBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.*;
@@ -18,17 +19,47 @@ import static ir.Instruction.Ops.Load;
 public class InstructionSelector {
     private Module module;
     private ArrayList<MachineFunction> funcList;
+    private ArrayList<MachineDataBlock> globalDataList;
 
     public InstructionSelector(Module module) {
         this.module = module;
         funcList = new ArrayList<>();
+        globalDataList = new ArrayList<>();
     }
 
     public ArrayList<MachineFunction> getFuncList() {
         return funcList;
     }
 
+    public ArrayList<MachineDataBlock> getGlobalDataList() {
+        return globalDataList;
+    }
+
     public void run() {
+        // 得到全局变量
+        var irGlobalData = module.getGlobalVariables();
+        for (var g : irGlobalData) {
+            var name = g.getName().substring(1);
+            System.out.println(name);
+            if (g.getType().getContainedTys(0).isArrayTy()) {
+                // 数组
+                for(((DerivedTypes.ArrayType) g).
+            } else {
+                // 数值
+                if (g.getType().getContainedTys(0).isInt32Ty()) {
+                    // global int
+                    globalDataList.add(new MachineDataBlock(name, ((Constants.ConstantInt) g.getOperand(0)).getVal()));
+
+                }
+            }
+
+            System.out.println(g);
+            System.out.println(g.getType());
+            System.out.println();
+            System.out.println(g.getOperand(0));
+        }
+
+
         // get ir function to machine function map
         var irFuncList = module.getFuncList();
         var head = irFuncList.getHead();
@@ -207,7 +238,7 @@ public class InstructionSelector {
                     new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop()).pushBacktoInstList();
                     // 保存一下位置
                     valueMap.put(ir, dest);
-                    mf.addStackTop( 4);
+                    mf.addStackTop(4);
                 } else {
                     // TODO: 数组
                     assert pType.getElementType().isArrayTy();
@@ -229,7 +260,7 @@ public class InstructionSelector {
             case Store -> {
                 Register op1 = valueToReg(mbb, ir.getOperand(0)),
                         op2 = valueToReg(mbb, ir.getOperand(1));
-                new LoadOrStore(mbb, LoadOrStore.Type.STORE,(Register) op1, new Address(op2)).pushBacktoInstList();
+                new LoadOrStore(mbb, LoadOrStore.Type.STORE, (Register) op1, new Address(op2)).pushBacktoInstList();
             }
             case Load -> {
                 Register src = valueToReg(mbb, ir.getOperand(0));
@@ -278,7 +309,7 @@ public class InstructionSelector {
                     } else // Warning: NOT SSA here
                         new Arithmetic(mbb, Arithmetic.Type.ADD, dest, constOffset).pushBacktoInstList();
                 }
-                if(dest == null) dest = srcAddr;
+                if (dest == null) dest = srcAddr;
                 valueMap.put(ir, dest);
             }
 

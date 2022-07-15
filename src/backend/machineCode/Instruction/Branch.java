@@ -79,7 +79,7 @@ public class Branch extends MachineInstruction {
         return switch (destType) {
             case REG -> inst + "\t" + destReg.toString();
             case LABEL -> inst + "\t" + destBB.getLabel();
-            case FUNC -> inst + "\t" + destf.getName();
+            case FUNC -> inst + "\t" + destf.getLabel();
         };
     }
 
