@@ -74,6 +74,17 @@ public class IList<T, P> implements Iterable<T>{
         new IListNode<T,P>(e,this).insertBefore(tail);
     }
 
+    public int indexOf(T e){
+        int ret=0;
+        for(T t:this){
+            if(t.equals(e)){
+                return ret;
+            }
+            ret++;
+        }
+        return -1;
+    }
+
     IListNode<T,P> node(int index) {
         // assert isElementIndex(index);
 
