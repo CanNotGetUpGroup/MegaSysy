@@ -8,7 +8,7 @@ import util.IList;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class MachineFunction {
+public class MachineFunction implements Addressable{
     private ArrayList<Argument> Arguments;
     private String name;
     private IList<MachineBasicBlock, MachineFunction> bbList;
@@ -106,7 +106,7 @@ public class MachineFunction {
         this.bbList = bbList;
     }
 
-    public String getName() {
+    public String getLabel() {
         return name;
     }
 
