@@ -15,6 +15,12 @@ public abstract class Instructions {
         private Type AllocatedType;
         private boolean undef = true;
 
+        public ArrayList<BasicBlock> definingBlocks=new ArrayList<>(); //store的基本块
+        public ArrayList<BasicBlock> usingBlocks=new ArrayList<>(); //load的基本块
+        public StoreInst onlyStore;
+        public boolean onlyUsedInOne;
+        public BasicBlock onlyBlock;
+
         /**
          * 申请addr，储存type类型的val
          *
@@ -23,6 +29,14 @@ public abstract class Instructions {
         public AllocaInst(Type type) {
             super(DerivedTypes.PointerType.get(type), Ops.Alloca, null);
             AllocatedType = type;
+        }
+
+        public void resetAnalyzeInfo(){
+            definingBlocks.clear();
+            usingBlocks.clear();
+            onlyStore=null;
+            onlyUsedInOne=true;
+            onlyBlock=null;
         }
 
         @Override
@@ -509,6 +523,22 @@ public abstract class Instructions {
             return new ReturnInst();
         }
 
+        public ArrayList<BasicBlock> getSuccessors(){
+            return new ArrayList<>();
+        }
+
+        public int getSuccessorsNum(){
+            return 0;
+        }
+
+        public BasicBlock getSuccessor(int idx){
+            return null;
+        }
+
+        public void setSuccessor(int idx,BasicBlock BB){
+            System.out.println("return指令没有后继基本块！");
+        }
+
         @Override
         public String toString() {
             if(getOperandList().size()==0){
@@ -581,6 +611,44 @@ public abstract class Instructions {
             }else{
                 return Constants.ConstantInt.const1_1();
             }
+        }
+
+        public ArrayList<BasicBlock> getSuccessors(){
+            ArrayList<BasicBlock> ret=new ArrayList<>();
+            if(getNumOperands()==3){
+                ret.add(getTrueBlock());
+                ret.add(getFalseBlock());
+            }else{
+                ret.add(getTrueBlock());
+            }
+            return ret;
+        }
+
+        public int getSuccessorsNum(){
+            if(getNumOperands()==3){
+                return 2;
+            }else{
+                return 1;
+            }
+        }
+
+        public BasicBlock getSuccessor(int idx){
+            if(getNumOperands()==3){
+                if(idx==0) return getTrueBlock();
+                else if(idx==1) return getFalseBlock();
+                else return null;
+            }else{
+                if(idx==0) return getTrueBlock();
+                else return null;
+            }
+        }
+
+        public void setSuccessor(int idx,BasicBlock BB){
+            assert idx<getSuccessorsNum();
+            if(getNumOperands()==3){
+                idx++;
+            }
+            setOperand(idx,BB);
         }
 
         @Override

@@ -1,5 +1,6 @@
 package ir;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
@@ -15,6 +16,14 @@ public abstract class Value {
 
     public LinkedList<Use> getUseList() {
         return UseList;
+    }
+
+    public ArrayList<User> getUsers(){
+        ArrayList<User> ret=new ArrayList<>();
+        for(Use u:UseList){
+            ret.add(u.getU());
+        }
+        return ret;
     }
 
     public void setUseList(LinkedList<Use> useList) {
@@ -85,5 +94,22 @@ public abstract class Value {
             use.getU().setOperand(use.getOperandNo(),V);
         }
         UseList.clear();
+    }
+
+    /**
+     * 删除UseList中的Use，并将User中对应的value设为Undef
+     */
+    public void dropUse(Use U){
+        removeUse(U);
+        U.getU().setOperand(U.getOperandNo(),Constants.UndefValue.get(getType()));
+    }
+
+    /**
+     * 作为Value被删除时，删除所有use，将所有User中对应的value设为Undef
+     */
+    public void dropUsesAsValue(){
+        for(Use U:getUseList()){
+            dropUse(U);
+        }
     }
 }

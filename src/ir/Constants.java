@@ -265,17 +265,23 @@ public class Constants {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    /// A constant value that is initialized with an expression using
-    /// other constant values.
-    ///
-    /// This class uses the standard Instruction opcodes to define the various
-    /// constant expressions.  The Opcode field for the ConstantExpr class is
-    /// maintained in the Value::SubclassData field.
-    public static class ConstantExpr extends Constant {
-        public ConstantExpr(Type ty) {
+    public static class UndefValue extends Constant {
+        public UndefValue(Type ty) {
             super(ty);
         }
 
+        @Override
+        public String getName() {
+            return "undef";
+        }
+
+        @Override
+        public String toString() {
+            return getType() + " undef";
+        }
+
+        public static UndefValue get(Type ty){
+            return context.UndefConstants.getOrDefault(ty, new UndefValue(ty));
+        }
     }
 }

@@ -1,8 +1,9 @@
 package ir;
 
-import org.antlr.v4.tool.LabelType;
 import util.IList;
 import util.IListNode;
+
+import java.util.ArrayList;
 
 public class BasicBlock extends Value {
     private Function Parent;
@@ -72,5 +73,24 @@ public class BasicBlock extends Value {
     //从函数中删除
     public void remove(){
         bbNode.remove();
+        dropUsesAsValue();
+    }
+
+    /**
+     * 获取终结符指令
+     */
+    public Instruction getTerminator(){
+        return getInstList().getLast().getVal();
+    }
+
+    /**
+     * 前驱
+     */
+    public ArrayList<BasicBlock> predecessors(){
+        ArrayList<BasicBlock> ret=new ArrayList<>();
+        for(Use use:getUseList()){
+            ret.add(((Instruction)use.getU()).getParent());
+        }
+        return ret;
     }
 }
