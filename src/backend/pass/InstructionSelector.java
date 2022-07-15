@@ -43,7 +43,7 @@ public class InstructionSelector {
             System.out.println(name);
             if (g.getType().getContainedTys(0).isArrayTy()) {
                 // 数组
-                for(((DerivedTypes.ArrayType) g).
+                for(((DerivedTypes.ArrayType) g
             } else {
                 // 数值
                 if (g.getType().getContainedTys(0).isInt32Ty()) {

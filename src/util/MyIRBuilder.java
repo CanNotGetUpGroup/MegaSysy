@@ -144,6 +144,10 @@ public class MyIRBuilder {
 //
 //    }
 
+    public Instruction createPHI(Type ty, int block_num){
+        return insert(PHIInst.create(ty,block_num));
+    }
+
     //===--------------------------------------------------------------------===//
     // Instruction creation methods: Terminators
     //===--------------------------------------------------------------------===//

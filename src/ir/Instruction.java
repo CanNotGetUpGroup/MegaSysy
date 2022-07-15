@@ -10,7 +10,11 @@ public abstract class Instruction extends User {
 
     public enum Ops {
         //Term
+<<<<<<< HEAD
         Ret, Br, Switch, CallBr,
+=======
+        Ret, Br ,CallBr,
+>>>>>>> origin/frontend
         //Unary
         //Binary
         Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem,And,Or,Xor,
@@ -19,7 +23,7 @@ public abstract class Instruction extends User {
         //Cast
         ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr, BitCast,
         //Other
-        ICmp, FCmp, Call, Select,
+        ICmp, FCmp, Call, Select, PHI,
     }
 
     public BasicBlock getParent() {
@@ -99,8 +103,17 @@ public abstract class Instruction extends User {
         };
     }
 
+    public boolean isTerminator(){
+        return switch (getOp()) {
+            case Ret, Br, CallBr -> true;
+            default -> false;
+        };
+    }
+
     //从基本块中删除
     public void remove(){
         instNode.remove();
+        dropUsesAsValue();
+        dropUsesAsUser();
     }
 }
