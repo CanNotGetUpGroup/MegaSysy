@@ -121,16 +121,33 @@ public class Function extends Constant {
     public BasicBlock getEntryBB() {
         if(entryBB==null){
             entryBB=getBbList().getHead().getVal();
+            entryBB.setEntryBlock(true);
         }
         return entryBB;
     }
 
     public void setEntryBB(BasicBlock entryBB) {
         this.entryBB = entryBB;
+        entryBB.setEntryBlock(true);
     }
 
     //从module中删除
     public void remove(){
 
+    }
+
+    /**
+     * @return 首个基本块
+     */
+    public BasicBlock front(){
+        return getBbList().getFirst().getVal();
+    }
+
+    /**
+     *
+     * @return 最后一个基本块
+     */
+    public BasicBlock back(){
+        return getBbList().getLast().getVal();
     }
 }

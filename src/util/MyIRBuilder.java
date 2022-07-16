@@ -144,6 +144,18 @@ public class MyIRBuilder {
 //
 //    }
 
+    public Instruction createPHI(Type ty, int block_num){
+        return insert(PHIInst.create(ty,block_num));
+    }
+
+    public Instruction createPHI(Type ty, int block_num,String Name, Instruction InsertBefore){
+        return insert(PHIInst.create(ty,block_num,Name,InsertBefore));
+    }
+
+    public Instruction createPHI(Type ty, int block_num,String Name, BasicBlock InsertAtEnd){
+        return insert(PHIInst.create(ty,block_num,Name,InsertAtEnd));
+    }
+
     //===--------------------------------------------------------------------===//
     // Instruction creation methods: Terminators
     //===--------------------------------------------------------------------===//
