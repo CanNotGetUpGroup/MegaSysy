@@ -16,9 +16,9 @@ public class PassManager {
     public static void initialization(){
         passes=new ArrayList<>();
 
-        passes.add(new Hello());
+//        passes.add(new Hello());
 
-//        passes.add(new Mem2Reg());
+        passes.add(new Mem2Reg());
 //        passes.add(new FuncInline());
     }
 

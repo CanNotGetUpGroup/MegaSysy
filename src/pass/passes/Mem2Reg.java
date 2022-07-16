@@ -318,10 +318,11 @@ public class Mem2Reg extends FunctionPass {
 
             VisitedSuccs.add(I);
             Pred = BB;
+            BasicBlock oldBB=BB;
             BB = I;
 
-            for (int i = 1; i < BB.getSuccessorsNum(); i++) {
-                I = BB.getSuccessor(i);
+            for (int i = 1; i < oldBB.getSuccessorsNum(); i++) {
+                I = oldBB.getSuccessor(i);
                 if (VisitedSuccs.add(I))
                     Worklist.add(new RenamePassData(I, Pred, IncomingVals));
             }
@@ -360,12 +361,7 @@ public class Mem2Reg extends FunctionPass {
      * 参考：https://blog.csdn.net/dashuniuniu/article/details/103389157
      */
     public void IDFCalculate(DominatorTree DT,ArrayList<BasicBlock> DefBlocks,Set<BasicBlock> LiveBB,ArrayList<BasicBlock> IDFBlocks){
-        PriorityQueue<Pair<TreeNode,Pair<int,int>>> PQ=new PriorityQueue<>(new Comparator<Pair<TreeNode, Pair<int, int>>>() {
-            @Override
-            public int compare(Pair<TreeNode, Pair<int, int>> o1, Pair<TreeNode, Pair<int, int>> o2) {
-                return o2.b.b-o1.b.b;
-            }
-        });
+        PriorityQueue<Pair<TreeNode,Pair<Integer,Integer>>> PQ=new PriorityQueue<>((o1, o2) -> o2.b.b-o1.b.b);
         DT.updateDFSNumbers();
         Stack<TreeNode> WorkList=new Stack<>();
         Set<TreeNode> visitedPQ=new HashSet<>();
@@ -373,12 +369,12 @@ public class Mem2Reg extends FunctionPass {
 
         for(BasicBlock BB:DefBlocks){
             TreeNode node=DT.getNode(BB);
-            PQ.add(new Pair<>(node,new Pair<int, int>(node.level,node.getDFSInNum())));
+            PQ.add(new Pair<>(node,new Pair<>(node.level,node.getDFSInNum())));
             visitedWorkList.add(node);
         }
 
         while(!PQ.isEmpty()){
-            Pair<TreeNode,Pair<int,int>> RootPair=PQ.poll();
+            Pair<TreeNode,Pair<Integer,Integer>> RootPair=PQ.poll();
             TreeNode Root=RootPair.a;
             int RootLevel=RootPair.b.a;
 
@@ -401,7 +397,7 @@ public class Mem2Reg extends FunctionPass {
                     }
                     IDFBlocks.add(child);
                     if(!DefBlocks.contains(child)){
-                        PQ.add(new Pair<>(childNode,new Pair<int, int>(childLevel,childNode.getDFSInNum())));
+                        PQ.add(new Pair<>(childNode,new Pair<>(childLevel,childNode.getDFSInNum())));
                     }
                 }
                 for(var domChild:node.Children){
@@ -603,12 +599,14 @@ public class Mem2Reg extends FunctionPass {
                 if(SI.getOperand(0).equals(AI)){
                     return false;
                 }
-            }else if(U instanceof GetElementPtrInst){
-                GetElementPtrInst GEP=(GetElementPtrInst)U;
-                if(!GEP.allIndicesZero()){
-                    return false;
-                }
-            }else{
+            }
+//            else if(U instanceof GetElementPtrInst){
+//                GetElementPtrInst GEP=(GetElementPtrInst)U;
+//                if(!GEP.allIndicesZero()){
+//                    return false;
+//                }
+//            }
+            else{
                 return false;
             }
         }

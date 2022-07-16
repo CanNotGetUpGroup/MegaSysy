@@ -448,7 +448,7 @@ public abstract class Instructions {
     // Value存在OperandList中，BasicBlock存在blocks对应位置
     //
     public static class PHIInst extends Instruction {
-        private ArrayList<BasicBlock> blocks;
+        private final ArrayList<BasicBlock> blocks=new ArrayList<>();
         private int ReservedSpace;
 
         public PHIInst(Type ty,int block_number) {
@@ -473,7 +473,7 @@ public abstract class Instructions {
             StringBuilder sb=new StringBuilder();
             sb.append(getName()).append(" = phi ").append(getType()).append(" ");
             for(int i=0;i<getNumOperands();i++){
-                sb.append("[ ").append(getOperand(i).getName()).append(", ").append(getBlocks()).append(" ] ");
+                sb.append("[ ").append(getOperand(i).getName()).append(", %").append(getBlocks().get(i).getName()).append(" ] ");
                 if(i!=getNumOperands()-1){
                     sb.append(", ");
                 }

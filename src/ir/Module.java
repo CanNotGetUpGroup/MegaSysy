@@ -31,7 +31,7 @@ public class Module {
      */
     public void rename(){
         for (Function F : funcList) {
-            int namePtr = 0;
+            int namePtr = 1;
             if (F.isDefined()) {
                 for (Argument argument : F.getArguments()) {
                     if(argument.getName()==null)

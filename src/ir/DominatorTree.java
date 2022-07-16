@@ -37,7 +37,7 @@ public class DominatorTree {
      */
     public void initTreeNode(TreeNode p) {
         if (p == null) return;
-        for (var child : p.BB.getTerminator().getSuccessors()) {
+        for (var child : p.BB.getSuccessors()) {
             if (DomTreeNodes.containsKey(child)) {
                 DomTreeNodes.get(child).Predecessors.add(p);
                 JoinNodes.add(DomTreeNodes.get(child));
@@ -53,6 +53,7 @@ public class DominatorTree {
         Parent = F;
         TreeNode root = new TreeNode(F.getEntryBB());
         Root = root;
+        DomTreeNodes.put(F.getEntryBB(),Root);
         initTreeNode(root);
         calculateDomTree();
         calculateDomFrontier();
@@ -62,6 +63,8 @@ public class DominatorTree {
         if (BBs.isEmpty()) return;
         Parent = BBs.get(0).getParent();
         TreeNode root = new TreeNode(BBs.get(0));
+        Root = root;
+        DomTreeNodes.put(BBs.get(0),Root);
         initTreeNode(root);
         calculateDomTree();
         calculateDomFrontier();
@@ -92,9 +95,9 @@ public class DominatorTree {
      */
     private void PostOrderDFS(TreeNode p, Set<TreeNode> visited) {
         visited.add(p);
-        for (var child : p.Children) {
-            if (!visited.contains(child)) {
-                PostOrderDFS(child, visited);
+        for (var child : p.BB.getSuccessors()) {
+            if (!visited.contains(getNode(child))) {
+                PostOrderDFS(getNode(child), visited);
             }
         }
         p.setPostNumber(PostOrder.size());
@@ -145,7 +148,7 @@ public class DominatorTree {
     public void calculateDomTree() {
         getReversePostOrder();
         boolean changed = true;
-        Root.setIDom(Root);
+        Root.IDom=Root;
         while (changed) {
             changed = false;
             for (var cur : ReversePostOrder) {
@@ -185,6 +188,9 @@ public class DominatorTree {
             for (var pred : node.Predecessors) {
                 runner = pred;
                 while (runner != node.IDom) {
+                    if(!DominanceFrontier.containsKey(runner)){
+                        DominanceFrontier.put(runner,new HashSet<>());
+                    }
                     DominanceFrontier.get(runner).add(node);
                     runner = runner.IDom;
                 }
@@ -218,7 +224,7 @@ public class DominatorTree {
     public static class TreeNode {
         public BasicBlock BB;
         public TreeNode IDom;//直接支配节点
-        public ArrayList<TreeNode> Children;
+        public ArrayList<TreeNode> Children=new ArrayList<>();
         public int level;
 
         public TreeNode Father;
@@ -296,6 +302,8 @@ public class DominatorTree {
         public void setIDom(TreeNode NP) {
             if (IDom == null) {
                 IDom = NP;
+                IDom.Children.add(this);
+                updateLevel();
                 return;
             }
             if (IDom.equals(NP)) {
