@@ -329,9 +329,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
             for (int i = 0; i < numEle && j<Idx.size(); i++) {
                 int start=j,end=j;
                 for(;j<Idx.size()&&Idx.get(j)>=i*eleSize&&Idx.get(j)<(i+1)*eleSize;j++){
-                    end=j;
+                    end=j+1;
                 }
-                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end+1)),new ArrayList<>(Idx.subList(start, end+1))));
+                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)),new ArrayList<>(Idx.subList(start, end))));
             }
         } else {
             ret.addAll(V);

@@ -25,6 +25,7 @@ public class testPass {
         //根据frontend中的input.txt初始化Module
         tmpTest.initModule();
         PassManager.run(module);
+        System.out.println(module.toLL());
     }
 
     /**

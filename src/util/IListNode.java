@@ -53,6 +53,17 @@ public class IListNode<T, P> {
         Parent = parent;
     }
 
+    public int index(){
+        int ret=0;
+        for(T e:getParent()){
+            if(e.equals(getVal())){
+                return ret;
+            }
+            ret++;
+        }
+        return -1;
+    }
+
     public void remove(){
         assert !isBorder();
         IList<T,P> p=getParent();

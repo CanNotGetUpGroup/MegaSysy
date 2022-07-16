@@ -3,6 +3,8 @@ package ir;
 import util.IListNode;
 import util.MyIRBuilder;
 
+import java.util.ArrayList;
+
 public abstract class Instruction extends User {
     private BasicBlock Parent;
     private IListNode<Instruction, BasicBlock> instNode;
@@ -10,7 +12,7 @@ public abstract class Instruction extends User {
 
     public enum Ops {
         //Term
-        Ret, Br, Switch,CallBr,
+        Ret, Br ,CallBr,
         //Unary
         //Binary
         Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem,And,Or,Xor,
@@ -19,7 +21,7 @@ public abstract class Instruction extends User {
         //Cast
         ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr, BitCast,
         //Other
-        ICmp, FCmp, Call, Select,
+        ICmp, FCmp, Call, Select, PHI,
     }
 
     public BasicBlock getParent() {
@@ -99,8 +101,32 @@ public abstract class Instruction extends User {
         };
     }
 
+    public boolean isTerminator(){
+        return switch (getOp()) {
+            case Ret, Br, CallBr -> true;
+            default -> false;
+        };
+    }
+
     //从基本块中删除
     public void remove(){
         instNode.remove();
+        dropUsesAsValue();
+        dropUsesAsUser();
+    }
+
+    public ArrayList<BasicBlock> getSuccessors(){
+        return new ArrayList<>();
+    }
+
+    public int getSuccessorsNum(){
+        return 0;
+    }
+
+    public BasicBlock getSuccessor(int idx){
+        return null;
+    }
+
+    public void setSuccessor(int idx,BasicBlock BB){
     }
 }

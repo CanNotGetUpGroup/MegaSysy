@@ -31,17 +31,18 @@ public class Module {
      */
     public void rename(){
         for (Function F : funcList) {
-            int namePtr = 0;
+            int namePtr = 1;
             if (F.isDefined()) {
                 for (Argument argument : F.getArguments()) {
-                    argument.setName("%" + namePtr++);
+                    if(argument.getName()==null)
+                        argument.setName("%" + namePtr++);
                 }
                 for (BasicBlock BB : F.getBbList()) {
-                    BB.setName(String.valueOf(namePtr++));
+                    if(BB.getName()==null) BB.setName(String.valueOf(namePtr++));
                     Iterator<Instruction> instItr=BB.getInstList().iterator();
                     while (instItr.hasNext()) {
                         Instruction I=instItr.next();
-                        if (!I.getType().isVoidTy()) {
+                        if (!I.getType().isVoidTy()&&I.getName()==null) {
                             I.setName("%" + namePtr++);
                         } else if (I instanceof Instructions.BranchInst || I instanceof Instructions.ReturnInst) {
                             I.getInstNode().cutFollow(instItr);
