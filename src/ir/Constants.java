@@ -283,5 +283,9 @@ public class Constants {
         public static UndefValue get(Type ty){
             return context.UndefConstants.getOrDefault(ty, new UndefValue(ty));
         }
+
+        public static boolean isUndefValue(Value V){
+            return V instanceof UndefValue;
+        }
     }
 }

@@ -60,7 +60,6 @@ public abstract class Value {
      */
     public Value(Type type) {
         this.type = type;
-        setName("x"+String.valueOf(MyContext.valuePtr++));
     }
 
     public Value(Type type, String name) {

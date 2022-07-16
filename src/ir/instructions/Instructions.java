@@ -449,9 +449,23 @@ public abstract class Instructions {
     //
     public static class PHIInst extends Instruction {
         private ArrayList<BasicBlock> blocks;
+        private int ReservedSpace;
 
         public PHIInst(Type ty,int block_number) {
-            super(ty, Ops.PHI, block_number);
+            super(ty, Ops.PHI, 0);
+            ReservedSpace=block_number;
+        }
+
+        public PHIInst(Type ty,int block_number,String Name, Instruction InsertBefore) {
+            super(ty, Ops.PHI, 0,InsertBefore);
+            ReservedSpace=block_number;
+            setName(Name);
+        }
+
+        public PHIInst(Type ty,int block_number,String Name, BasicBlock InsertAtEnd) {
+            super(ty, Ops.PHI, 0,InsertAtEnd);
+            ReservedSpace=block_number;
+            setName(Name);
         }
 
         @Override
@@ -471,6 +485,14 @@ public abstract class Instructions {
             return new PHIInst(ty,block_num);
         }
 
+        public static PHIInst create(Type ty,int block_num,String Name, BasicBlock InsertAtEnd) {
+            return new PHIInst(ty,block_num,Name,InsertAtEnd);
+        }
+
+        public static PHIInst create(Type ty,int block_num,String Name, Instruction InsertBefore) {
+            return new PHIInst(ty,block_num,Name,InsertBefore);
+        }
+
         public ArrayList<BasicBlock> getBlocks(){
             return blocks;
         }
@@ -486,6 +508,11 @@ public abstract class Instructions {
         public void addIncoming(Value V,BasicBlock BB){
             addIncomingValue(V);
             addIncomingBlock(BB);
+        }
+
+        public BasicBlock getIncomingBlock(int i){
+            if(i>getNumOperands()) return null;
+            return blocks.get(i);
         }
     }
 

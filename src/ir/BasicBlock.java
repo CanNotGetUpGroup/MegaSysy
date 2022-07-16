@@ -9,6 +9,7 @@ public class BasicBlock extends Value {
     private Function Parent;
     private IListNode<BasicBlock, Function> bbNode;
     private IList<Instruction, BasicBlock> instList;
+    private boolean isEntryBlock=false;
 
     /**
      * 生成基本块对象
@@ -86,11 +87,57 @@ public class BasicBlock extends Value {
     /**
      * 前驱
      */
-    public ArrayList<BasicBlock> predecessors(){
+    public ArrayList<BasicBlock> getPredecessors(){
         ArrayList<BasicBlock> ret=new ArrayList<>();
         for(Use use:getUseList()){
             ret.add(((Instruction)use.getU()).getParent());
         }
         return ret;
+    }
+
+    public int getPredecessorsNum(){
+        return getUseList().size();
+    }
+
+    /**
+     * 后继
+     */
+    public ArrayList<BasicBlock> getSuccessors(){
+        return getTerminator().getSuccessors();
+    }
+
+    public int getSuccessorsNum(){
+        return getTerminator().getSuccessorsNum();
+    }
+
+    public BasicBlock getSuccessor(int idx){
+        return getTerminator().getSuccessor(idx);
+    }
+
+    public void setSuccessor(int idx,BasicBlock BB){
+        getTerminator().setSuccessor(idx,BB);
+    }
+
+    public boolean isEntryBlock(){
+        return isEntryBlock;
+    }
+
+    public void setEntryBlock(boolean entryBlock) {
+        isEntryBlock = entryBlock;
+    }
+
+    /**
+     * @return 首条指令
+     */
+    public Instruction front(){
+        return getInstList().getFirst().getVal();
+    }
+
+    /**
+     *
+     * @return 最后一条指令
+     */
+    public Instruction back(){
+        return getInstList().getLast().getVal();
     }
 }

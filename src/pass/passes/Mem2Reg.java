@@ -1,15 +1,22 @@
 package pass.passes;
 
 import ir.*;
-import ir.instructions.Instructions;
 import org.antlr.v4.runtime.misc.Pair;
 import pass.FunctionPass;
-import pass.Pass;
 import ir.instructions.Instructions.*;
+import ir.DominatorTree.TreeNode;
 
 import java.util.*;
 
 public class Mem2Reg extends FunctionPass {
+    private final HashMap<BasicBlock,Integer> BBNumbers= new HashMap<>();
+    private final HashMap<Pair<Integer,Integer>,PHIInst> PhiNodes=new HashMap<>();
+    private final HashMap<AllocaInst,Integer> AllocaLookup= new HashMap<>();
+    private int NumPHIInsert=0;
+    private HashMap<PHIInst,Integer> PhiToAllocaMap=new HashMap<>();
+    private ArrayList<AllocaInst> allocaInsts;
+    private Set<BasicBlock> Visited=new HashSet<>();
+
     public Mem2Reg() {
         super();
     }
@@ -29,7 +36,7 @@ public class Mem2Reg extends FunctionPass {
         return new Mem2Reg();
     }
 
-    public static void promoteMem2Reg(Function F,DominatorTree DT){
+    public void promoteMem2Reg(Function F,DominatorTree DT){
         ArrayList<AllocaInst> allocaInsts=new ArrayList<>();
         BasicBlock BB=F.getEntryBB();
 
@@ -50,7 +57,8 @@ public class Mem2Reg extends FunctionPass {
         }
     }
 
-    public static void promoteMemoryToRegister(ArrayList<AllocaInst> allocaInsts,DominatorTree DT){
+    public void promoteMemoryToRegister(ArrayList<AllocaInst> AllocaInsts,DominatorTree DT){
+        allocaInsts=AllocaInsts;
         if(allocaInsts.isEmpty()){
             return;
         }
@@ -84,10 +92,329 @@ public class Mem2Reg extends FunctionPass {
             Set<BasicBlock> LiveBB=new HashSet<>();
             computeLiveBB(AI,LiveBB);
 
+            //计算插入phi位置
+            ArrayList<BasicBlock> PHIBasicBlocks=new ArrayList<>();
+            IDFCalculate(DT,AI.definingBlocks,LiveBB,PHIBasicBlocks);
+
+            if(BBNumbers.size()==0){
+                int ID=0;
+                for(BasicBlock basicBlock:DT.Parent.getBbList()){
+                    BBNumbers.put(basicBlock,ID++);
+                }
+            }
+            AllocaLookup.put(AI,i);
+            //升序排列，便于处理
+            PHIBasicBlocks.sort(new Comparator<BasicBlock>() {
+                @Override
+                public int compare(BasicBlock o1, BasicBlock o2) {
+                    return BBNumbers.get(o1)-BBNumbers.get(o2);
+                }
+            });
+            for(BasicBlock BB:PHIBasicBlocks){
+                QueuePhiNode(BB, i,0);
+            }
+        }
+        if(allocaInsts.isEmpty()){
+            return;
+        }
+
+        ArrayList<Value> Values=new ArrayList<>();
+        for (AllocaInst allocaInst : allocaInsts) {
+            Values.add(Constants.UndefValue.get(allocaInst.getAllocatedType()));
+        }
+        Stack<RenamePassData> RenamePassWorkList=new Stack<>();
+        RenamePassWorkList.add(new RenamePassData(DT.Parent.getEntryBB(),null,Values));
+        do{
+            RenamePassData RPD=RenamePassWorkList.pop();
+            RenamePass(RPD.BB,RPD.Pred,RPD.Values,RenamePassWorkList);
+        }while(!RenamePassWorkList.isEmpty());
+
+        Visited.clear();
+        // 清除alloca指令
+        for (Instruction A : allocaInsts) {
+            if (A.getUseSize()!=0)
+                A.replaceAllUsesWith(Constants.UndefValue.get(A.getType()));
+            A.remove();
+        }
+
+        boolean EliminatedAPHI = true;
+        while (EliminatedAPHI) {
+            EliminatedAPHI = false;
+
+            for (Map.Entry<Pair<Integer, Integer>, PHIInst> cur : PhiNodes.entrySet()) {
+                PHIInst PN = cur.getValue();
+                Value V = SimplifyPHI(PN,DT);
+                if (V != null) {
+                    PN.replaceAllUsesWith(V);
+                    PN.remove();
+                    PhiNodes.remove(cur.getKey());
+                    EliminatedAPHI = true;
+                }
+            }
+        }
+
+        //处理遍历不到的基本块
+        for (Map.Entry<Pair<Integer, Integer>, PHIInst> I : PhiNodes.entrySet()) {
+            PHIInst SomePHI = I.getValue();
+            BasicBlock BB = SomePHI.getParent();
+            if (BB.front() != SomePHI)
+                continue;
+
+            if (SomePHI.getNumOperands() == BB.getPredecessorsNum())
+                continue;
+
+            ArrayList<BasicBlock> Preds=BB.getPredecessors();
+
+            Preds.sort(new Comparator<BasicBlock>() {
+                @Override
+                public int compare(BasicBlock o1, BasicBlock o2) {
+                    return BBNumbers.get(o1)-BBNumbers.get(o2);
+                }
+            });
+
+            for (int i = 0; i < SomePHI.getNumOperands(); i++) {
+                Preds.remove(SomePHI.getIncomingBlock(i));
+            }
+
+            int NumBadPreds = SomePHI.getNumOperands();
+            Iterator<Instruction> BBIt=BB.getInstList().iterator();
+            Instruction BBI = BBIt.next();
+            while (BBI instanceof PHIInst &&
+                    SomePHI.getNumOperands() == NumBadPreds) {
+                SomePHI=(PHIInst)BBI;
+                BBI= BBIt.next();
+                Value UndefVal = Constants.UndefValue.get(SomePHI.getType());
+                for (BasicBlock Pred : Preds)
+                    SomePHI.addIncoming(UndefVal, Pred);
+            }
+        }
+        PhiNodes.clear();
+    }
+
+    public static Value SimplifyPHI(PHIInst PN,DominatorTree DT){
+        ArrayList<Value> IncomingValues=PN.getOperandList();
+        Value CommonValue = null;
+        boolean HasUndefInput = false;
+        for (Value Incoming : IncomingValues) {
+            if (Incoming == PN) continue;
+            if (Constants.UndefValue.isUndefValue(Incoming)) {
+                HasUndefInput = true;
+                continue;
+            }
+            if (CommonValue!=null && Incoming != CommonValue)
+                return null;  // Not the same, bail out.
+            CommonValue = Incoming;
+        }
+
+        if (CommonValue==null)
+            return Constants.UndefValue.get(PN.getType());
+
+        //TODO:处理Undef
+//        if (HasUndefInput) {
+//            // If we have a PHI node like phi(X, undef, X), where X is defined by some
+//            // instruction, we cannot return X as the result of the PHI node unless it
+//            // dominates the PHI block.
+//            return valueDominatesPHI(CommonValue, PN, DT) ? CommonValue : null;
+//        }
+
+        return CommonValue;
+    }
+
+    public static boolean valueDominatesPHI(Value V,PHIInst P,DominatorTree DT){
+        if (!(V instanceof Instruction))
+            return true;
+        Instruction I = (Instruction)(V);
+        if (I.getParent()==null || P.getParent()==null || I.getParent().getParent()==null)
+            return false;
+
+        // If we have a DominatorTree then do a precise test.
+//        if (DT!=null)
+//            return DT.dominates(I, P);
+
+        // Otherwise, if the instruction is in the entry block and is not an invoke,
+        // then it obviously dominates all phi nodes.
+        return I.getParent().isEntryBlock() && !(I instanceof CallBrInst);
+    }
+
+    /**
+     * 挑出来store instruction，把要存储的值，与alloca instruction关联起来，方便以后塞进ϕ-instruction 的参数中
+     * 挑出来load instruction，看情况替换成前面store instruction要存储的值，或者替换成ϕ-instruction
+     * 最后删除store，load指令
+     * @param BB
+     * @param Pred
+     * @param IncomingVals
+     */
+    public void RenamePass(BasicBlock BB,BasicBlock Pred,ArrayList<Value> IncomingVals,Stack<RenamePassData> Worklist){
+        while(true){
+            if (BB.getInstList().getFirst().getVal() instanceof PHIInst) {
+                PHIInst APN = (PHIInst) BB.getInstList().getFirst().getVal();
+                if (PhiToAllocaMap.containsKey(APN)) {
+                    int NewPHINumOperands = APN.getNumOperands();
+                    int NumEdges = 0;
+                    for (BasicBlock suc :
+                            Pred.getSuccessors()) {
+                        if (suc == BB) {
+                            NumEdges++;
+                        }
+                    }
+                    assert NumEdges >= 1;
+                    // Add entries for all the phis.
+                    Iterator<Instruction> PNI = BB.getInstList().iterator();
+                    do {
+                        int AllocaNo = PhiToAllocaMap.get(APN);
+
+                        // Add N incoming values to the PHI node.
+                        for (int i = 0; i != NumEdges; ++i)
+                            APN.addIncoming(IncomingVals.get(AllocaNo), Pred);
+
+                        // The currently active variable for this block is now the PHI.
+                        IncomingVals.set(AllocaNo, APN);
+                        // Get the next phi node.
+                        Instruction I = PNI.next();
+                        if (!(I instanceof PHIInst)) {
+                            break;
+                        }
+                        APN = (PHIInst) (I);
+
+                        // Verify that it is missing entries.  If not, it is not being inserted
+                        // by this mem2reg invocation so we want to ignore it.
+                    } while (APN.getNumOperands() == NewPHINumOperands);
+                }
+            }
+
+            if (!Visited.add(BB)) {
+                return;
+            }
+            for (Instruction II : BB.getInstList()) {
+                if (II.isTerminator()) {
+                    break;
+                }
+                if (II instanceof LoadInst) {
+                    AllocaInst Src = (AllocaInst) (II.getOperand(0));
+                    if (Src == null) continue;
+                    Integer AI = AllocaLookup.getOrDefault(Src, null);
+                    if (AI == null) continue;
+                    Value V = IncomingVals.get(AI);
+
+                    II.replaceAllUsesWith(V);
+                    II.remove();
+                } else if (II instanceof StoreInst) {
+                    AllocaInst Dest = (AllocaInst) (II.getOperand(1));
+                    if (Dest == null)
+                        continue;
+                    Integer ai = AllocaLookup.getOrDefault(Dest, null);
+                    if (ai == null)
+                        continue;
+                    IncomingVals.set(ai, II.getOperand(0));
+                    II.remove();
+                }
+            }
+
+            if (BB.getSuccessorsNum() == 0)
+                return;
+
+            BasicBlock I = BB.getSuccessor(0);
+            Set<BasicBlock> VisitedSuccs = new HashSet<>();
+
+            VisitedSuccs.add(I);
+            Pred = BB;
+            BB = I;
+
+            for (int i = 1; i < BB.getSuccessorsNum(); i++) {
+                I = BB.getSuccessor(i);
+                if (VisitedSuccs.add(I))
+                    Worklist.add(new RenamePassData(I, Pred, IncomingVals));
+            }
         }
     }
 
-    public static void computeLiveBB(AllocaInst AI,Set<BasicBlock> LiveBB){
+    static class RenamePassData{
+        public BasicBlock BB;
+        public BasicBlock Pred;
+        ArrayList<Value> Values;
+
+        public RenamePassData(BasicBlock BB, BasicBlock pred, ArrayList<Value> values) {
+            this.BB = BB;
+            Pred = pred;
+            Values = values;
+        }
+    }
+
+    public boolean QueuePhiNode(BasicBlock BB, int AllocaNo, int Version) {
+        Pair<Integer,Integer> f=new Pair<>(BBNumbers.get(BB), AllocaNo);
+        if(PhiNodes.containsKey(f)){
+            return false;
+        }
+        PHIInst PN = PHIInst.create(allocaInsts.get(AllocaNo).getAllocatedType(),BB.getPredecessorsNum(),
+                allocaInsts.get(AllocaNo).getName()+"."+String.valueOf(Version),
+                BB.getInstList().getFirst().getVal());
+
+
+        NumPHIInsert++;
+        PhiToAllocaMap.put(PN,AllocaNo);
+        return true;
+    }
+
+    /**
+     * IDF（iterated Dominator Frontier），时间复杂度O(n)
+     * 参考：https://blog.csdn.net/dashuniuniu/article/details/103389157
+     */
+    public void IDFCalculate(DominatorTree DT,ArrayList<BasicBlock> DefBlocks,Set<BasicBlock> LiveBB,ArrayList<BasicBlock> IDFBlocks){
+        PriorityQueue<Pair<TreeNode,Pair<int,int>>> PQ=new PriorityQueue<>(new Comparator<Pair<TreeNode, Pair<int, int>>>() {
+            @Override
+            public int compare(Pair<TreeNode, Pair<int, int>> o1, Pair<TreeNode, Pair<int, int>> o2) {
+                return o2.b.b-o1.b.b;
+            }
+        });
+        DT.updateDFSNumbers();
+        Stack<TreeNode> WorkList=new Stack<>();
+        Set<TreeNode> visitedPQ=new HashSet<>();
+        Set<TreeNode> visitedWorkList=new HashSet<>();
+
+        for(BasicBlock BB:DefBlocks){
+            TreeNode node=DT.getNode(BB);
+            PQ.add(new Pair<>(node,new Pair<int, int>(node.level,node.getDFSInNum())));
+            visitedWorkList.add(node);
+        }
+
+        while(!PQ.isEmpty()){
+            Pair<TreeNode,Pair<int,int>> RootPair=PQ.poll();
+            TreeNode Root=RootPair.a;
+            int RootLevel=RootPair.b.a;
+
+            WorkList.add(Root);
+            while(!WorkList.isEmpty()){
+                TreeNode node=WorkList.pop();
+                BasicBlock BB=node.BB;
+                for(var child:BB.getSuccessors()){
+                    TreeNode childNode=DT.getNode(child);
+                    int childLevel=childNode.level;
+                    if(childLevel>RootLevel){
+                        return;
+                    }
+                    if(visitedPQ.contains(childNode)){
+                        return;
+                    }
+                    visitedPQ.add(childNode);
+                    if(!LiveBB.contains(child)){
+                        return;
+                    }
+                    IDFBlocks.add(child);
+                    if(!DefBlocks.contains(child)){
+                        PQ.add(new Pair<>(childNode,new Pair<int, int>(childLevel,childNode.getDFSInNum())));
+                    }
+                }
+                for(var domChild:node.Children){
+                    if(!visitedWorkList.contains(domChild)){
+                        visitedWorkList.add(domChild);
+                        WorkList.push(domChild);
+                    }
+                }
+            }
+        }
+    }
+
+    public void computeLiveBB(AllocaInst AI,Set<BasicBlock> LiveBB){
         ArrayList<BasicBlock> copyUsing = new ArrayList<>(AI.usingBlocks);
 
         for(int i=0,e=copyUsing.size();i!=e;i++){
@@ -123,7 +450,7 @@ public class Mem2Reg extends FunctionPass {
             }
             LiveBB.add(basicBlock);
 
-            for(BasicBlock pre:basicBlock.predecessors()){
+            for(BasicBlock pre:basicBlock.getPredecessors()){
                 if(AI.definingBlocks.contains(pre)){
                     continue;
                 }
@@ -132,7 +459,7 @@ public class Mem2Reg extends FunctionPass {
         }
     }
 
-    public static boolean promoteAlloca(AllocaInst AI, DominatorTree DT){
+    public boolean promoteAlloca(AllocaInst AI, DominatorTree DT){
         ArrayList<Pair<Integer,StoreInst>> storeIndex=new ArrayList<>();
 
         for(Use use:AI.getUseList()){
@@ -186,7 +513,7 @@ public class Mem2Reg extends FunctionPass {
         return true;
     }
 
-    public static boolean rewriteAlloca(AllocaInst AI, DominatorTree DT){
+    public boolean rewriteAlloca(AllocaInst AI, DominatorTree DT){
         StoreInst SI=AI.onlyStore;
         BasicBlock SB=SI.getParent();
         int storeIdx=-1;
@@ -239,7 +566,7 @@ public class Mem2Reg extends FunctionPass {
      * 看下哪些基本块在使用这些ALLOC，哪些基本块定义了这个ALLOC
      * （这里的使用是指LOAD，定义是通过STORE语句）
      */
-    public static void analyzeAlloca(AllocaInst AI){
+    public void analyzeAlloca(AllocaInst AI){
         AI.resetAnalyzeInfo();
         for(Use use:AI.getUseList()){
             Instruction I=(Instruction) use.getU();

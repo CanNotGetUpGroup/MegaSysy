@@ -3,6 +3,8 @@ package ir;
 import util.IListNode;
 import util.MyIRBuilder;
 
+import java.util.ArrayList;
+
 public abstract class Instruction extends User {
     private BasicBlock Parent;
     private IListNode<Instruction, BasicBlock> instNode;
@@ -111,5 +113,20 @@ public abstract class Instruction extends User {
         instNode.remove();
         dropUsesAsValue();
         dropUsesAsUser();
+    }
+
+    public ArrayList<BasicBlock> getSuccessors(){
+        return new ArrayList<>();
+    }
+
+    public int getSuccessorsNum(){
+        return 0;
+    }
+
+    public BasicBlock getSuccessor(int idx){
+        return null;
+    }
+
+    public void setSuccessor(int idx,BasicBlock BB){
     }
 }
