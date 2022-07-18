@@ -33,6 +33,17 @@ public class DominatorTree {
     }
 
     /**
+     * 消除不可到达的基本块
+     */
+    public void removeUnreachableBB(){
+        for(BasicBlock BB:Parent.getBbList()){
+            if(getNode(BB)==null){
+                BB.remove();
+            }
+        }
+    }
+
+    /**
      * 按照CFG生成TreeNode，IDom信息在CalculateDomTree中生成
      */
     public void initTreeNode(TreeNode p) {
@@ -55,6 +66,7 @@ public class DominatorTree {
         Root = root;
         DomTreeNodes.put(F.getEntryBB(),Root);
         initTreeNode(root);
+        removeUnreachableBB();
         calculateDomTree();
         calculateDomFrontier();
     }
@@ -143,7 +155,8 @@ public class DominatorTree {
     }
 
     /**
-     * 计算支配树节点的IDom信息
+     * 计算支配树节点的IDom信息，Cooper的A Simple, Fast Dominance Algorithm
+     * 参考：https://www.cs.rice.edu/~keith/EMBED/dom.pdf
      */
     public void calculateDomTree() {
         getReversePostOrder();
@@ -269,7 +282,7 @@ public class DominatorTree {
 
         public boolean dominatedBy(TreeNode TA) {
             TreeNode IDom, TB = this;
-            while ((IDom = TB.IDom) != null && IDom.level >= TA.level) {
+            while ((IDom = TB.IDom) != TB && IDom != null && IDom.level >= TA.level) {
                 TB = IDom;
             }
             return TB == TA;

@@ -31,18 +31,20 @@ public class Module {
      */
     public void rename(){
         for (Function F : funcList) {
-            int namePtr = 1;
+            int namePtr = 0;
             if (F.isDefined()) {
                 for (Argument argument : F.getArguments()) {
-                    if(argument.getName()==null)
+                    if(argument.getName().isEmpty()||argument.getName().substring(1).matches("[0-9]+"))
                         argument.setName("%" + namePtr++);
                 }
                 for (BasicBlock BB : F.getBbList()) {
-                    if(BB.getName()==null) BB.setName(String.valueOf(namePtr++));
+                    if(BB.getName().isEmpty()||BB.getName().matches("[0-9]+"))
+                        BB.setName(String.valueOf(namePtr++));
                     Iterator<Instruction> instItr=BB.getInstList().iterator();
                     while (instItr.hasNext()) {
                         Instruction I=instItr.next();
-                        if (!I.getType().isVoidTy()&&I.getName()==null) {
+                        //指令有返回值并且没有名字或是有数字名字，需要更新时，进行重命名
+                        if (!I.getType().isVoidTy()&&(I.getName().isEmpty()||I.getName().substring(1).matches("[0-9]+"))) {
                             I.setName("%" + namePtr++);
                         } else if (I instanceof Instructions.BranchInst || I instanceof Instructions.ReturnInst) {
                             I.getInstNode().cutFollow(instItr);
@@ -70,6 +72,7 @@ public class Module {
                     if(!init){
                         sb.append("\n").append(BB).append("     ").append(BB.getComment()!=null?BB.getComment():"").append("\n");
                     }else{
+                        sb.append(BB).append("     ").append(BB.getComment()!=null?BB.getComment():"").append("\n");
                         init=false;
                     }
                     for (Instruction I: BB.getInstList()){

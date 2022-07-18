@@ -75,6 +75,7 @@ public class BasicBlock extends Value {
     public void remove(){
         bbNode.remove();
         dropUsesAsValue();
+        getTerminator().dropUsesAsUser();
     }
 
     /**
@@ -90,7 +91,9 @@ public class BasicBlock extends Value {
     public ArrayList<BasicBlock> getPredecessors(){
         ArrayList<BasicBlock> ret=new ArrayList<>();
         for(Use use:getUseList()){
-            ret.add(((Instruction)use.getU()).getParent());
+            if((use.getU() instanceof Instruction)){
+                ret.add(((Instruction)use.getU()).getParent());
+            }
         }
         return ret;
     }
