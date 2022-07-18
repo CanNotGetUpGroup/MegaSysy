@@ -1,6 +1,7 @@
 package pass.passes;
 
 import ir.*;
+import ir.Module;
 import org.antlr.v4.runtime.misc.Pair;
 import pass.FunctionPass;
 import ir.instructions.Instructions.*;
@@ -13,9 +14,10 @@ public class Mem2Reg extends FunctionPass {
     private final HashMap<Pair<Integer,Integer>,PHIInst> PhiNodes=new HashMap<>();
     private final HashMap<AllocaInst,Integer> AllocaLookup= new HashMap<>();
     private int NumPHIInsert=0;
-    private HashMap<PHIInst,Integer> PhiToAllocaMap=new HashMap<>();
+    private final HashMap<PHIInst,Integer> PhiToAllocaMap=new HashMap<>();
     private ArrayList<AllocaInst> allocaInsts;
-    private Set<BasicBlock> Visited=new HashSet<>();
+    private final Set<BasicBlock> Visited=new HashSet<>();
+    private int Version=0;
 
     public Mem2Reg() {
         super();
@@ -28,8 +30,15 @@ public class Mem2Reg extends FunctionPass {
 
     @Override
     public void runOnFunction(Function F) {
+        BBNumbers.clear();
+        PhiNodes.clear();
+        AllocaLookup.clear();
+        PhiToAllocaMap.clear();
+        Visited.clear();
+
         DominatorTree DT=new DominatorTree(F);
         promoteMem2Reg(F,DT);
+        Module.getInstance().rename();
     }
 
     public static FunctionPass createMem2Reg(){
@@ -68,7 +77,8 @@ public class Mem2Reg extends FunctionPass {
             //删除未使用的ALLOC
             if(AI.getUseList().isEmpty()){
                 AI.remove();
-                allocaInsts.remove(AI);
+                allocaInsts.remove(i);
+                i--;
                 continue;
             }
 
@@ -77,7 +87,8 @@ public class Mem2Reg extends FunctionPass {
             //如果只有一个定义基本块（只有一个STORE语句，且只存在一个基本块中），
             //那么被这个定义基本块所支配的所有LOAD都要被替换为STORE语句中的那个右值。
             if(AI.definingBlocks.size()==1&&rewriteAlloca(AI,DT)){
-                allocaInsts.remove(AI);
+                allocaInsts.remove(i);
+                i--;
                 continue;
             }
 
@@ -85,7 +96,8 @@ public class Mem2Reg extends FunctionPass {
             //没必要去遍历所有的CFG的，因为这个store语句支配了这些LOAD，
             //所以可以用STORE的右值直接替换使用LOAD指令的那些值。
             if(AI.onlyUsedInOne&&promoteAlloca(AI,DT)){
-                allocaInsts.remove(AI);
+                allocaInsts.remove(i);
+                i--;
                 continue;
             }
 
@@ -110,8 +122,9 @@ public class Mem2Reg extends FunctionPass {
                     return BBNumbers.get(o1)-BBNumbers.get(o2);
                 }
             });
+            Version=0;
             for(BasicBlock BB:PHIBasicBlocks){
-                QueuePhiNode(BB, i,0);
+                QueuePhiNode(BB, i);
             }
         }
         if(allocaInsts.isEmpty()){
@@ -137,21 +150,21 @@ public class Mem2Reg extends FunctionPass {
             A.remove();
         }
 
-        boolean EliminatedAPHI = true;
-        while (EliminatedAPHI) {
-            EliminatedAPHI = false;
-
-            for (Map.Entry<Pair<Integer, Integer>, PHIInst> cur : PhiNodes.entrySet()) {
-                PHIInst PN = cur.getValue();
-                Value V = SimplifyPHI(PN,DT);
-                if (V != null) {
-                    PN.replaceAllUsesWith(V);
-                    PN.remove();
-                    PhiNodes.remove(cur.getKey());
-                    EliminatedAPHI = true;
-                }
-            }
-        }
+//        boolean EliminatedAPHI = true;
+//        while (EliminatedAPHI) {
+//            EliminatedAPHI = false;
+//
+//            for (Map.Entry<Pair<Integer, Integer>, PHIInst> cur : PhiNodes.entrySet()) {
+//                PHIInst PN = cur.getValue();
+//                Value V = SimplifyPHI(PN,DT);
+//                if (V != null) {
+//                    PN.replaceAllUsesWith(V);
+//                    PN.remove();
+//                    PhiNodes.remove(cur.getKey());
+//                    EliminatedAPHI = true;
+//                }
+//            }
+//        }
 
         //处理遍历不到的基本块
         for (Map.Entry<Pair<Integer, Integer>, PHIInst> I : PhiNodes.entrySet()) {
@@ -246,6 +259,10 @@ public class Mem2Reg extends FunctionPass {
      */
     public void RenamePass(BasicBlock BB,BasicBlock Pred,ArrayList<Value> IncomingVals,Stack<RenamePassData> Worklist){
         while(true){
+            /*
+             * 如果块中有 φ 指令，则遍历所有先前添加的 φ（注意程序中原来可能也有 φ，这里要和原来的 φ 区分开来）：
+             * 假设某个前驱到当前基本块有 NumEdges 条边，则为 φ 指令添加 NumEdges 个来源，值为 IncomingVals[L]，同时设置 IncomingVals[L] = Phi
+             */
             if (BB.getInstList().getFirst().getVal() instanceof PHIInst) {
                 PHIInst APN = (PHIInst) BB.getInstList().getFirst().getVal();
                 if (PhiToAllocaMap.containsKey(APN)) {
@@ -258,26 +275,23 @@ public class Mem2Reg extends FunctionPass {
                         }
                     }
                     assert NumEdges >= 1;
-                    // Add entries for all the phis.
                     Iterator<Instruction> PNI = BB.getInstList().iterator();
+                    Instruction I=PNI.next();
                     do {
                         int AllocaNo = PhiToAllocaMap.get(APN);
 
-                        // Add N incoming values to the PHI node.
+                        // 则为 φ 指令添加 NumEdges 个来源
                         for (int i = 0; i != NumEdges; ++i)
                             APN.addIncoming(IncomingVals.get(AllocaNo), Pred);
 
-                        // The currently active variable for this block is now the PHI.
+                        // 设置 IncomingVals[L] = Phi
                         IncomingVals.set(AllocaNo, APN);
-                        // Get the next phi node.
-                        Instruction I = PNI.next();
+                        // 处理下一个phi
+                        I = PNI.next();
                         if (!(I instanceof PHIInst)) {
                             break;
                         }
                         APN = (PHIInst) (I);
-
-                        // Verify that it is missing entries.  If not, it is not being inserted
-                        // by this mem2reg invocation so we want to ignore it.
                     } while (APN.getNumOperands() == NewPHINumOperands);
                 }
             }
@@ -285,13 +299,20 @@ public class Mem2Reg extends FunctionPass {
             if (!Visited.add(BB)) {
                 return;
             }
+            /*
+             * 如果当前基本块没有重复访问过，则对于基本块内的每条指令
+             * 如果当前指令是 load，找到对应的 alloca L，然后替换成对应 store 进去的值，删除这条 load，并将所有 users 里的 load 替换成值 IncomingVals[L]
+             * 如果当前指令是 store，找到对应的 alloca L，删除这条 store，并更新数组内的版本 IncomingVals[L] = V
+             */
             for (Instruction II : BB.getInstList()) {
                 if (II.isTerminator()) {
                     break;
                 }
                 if (II instanceof LoadInst) {
+                    if(!(II.getOperand(0) instanceof AllocaInst)){
+                        continue;
+                    }
                     AllocaInst Src = (AllocaInst) (II.getOperand(0));
-                    if (Src == null) continue;
                     Integer AI = AllocaLookup.getOrDefault(Src, null);
                     if (AI == null) continue;
                     Value V = IncomingVals.get(AI);
@@ -299,9 +320,10 @@ public class Mem2Reg extends FunctionPass {
                     II.replaceAllUsesWith(V);
                     II.remove();
                 } else if (II instanceof StoreInst) {
-                    AllocaInst Dest = (AllocaInst) (II.getOperand(1));
-                    if (Dest == null)
+                    if(!(II.getOperand(1) instanceof AllocaInst)){
                         continue;
+                    }
+                    AllocaInst Dest = (AllocaInst) (II.getOperand(1));
                     Integer ai = AllocaLookup.getOrDefault(Dest, null);
                     if (ai == null)
                         continue;
@@ -324,7 +346,7 @@ public class Mem2Reg extends FunctionPass {
             for (int i = 1; i < oldBB.getSuccessorsNum(); i++) {
                 I = oldBB.getSuccessor(i);
                 if (VisitedSuccs.add(I))
-                    Worklist.add(new RenamePassData(I, Pred, IncomingVals));
+                    Worklist.add(new RenamePassData(I, Pred, new ArrayList<>(IncomingVals)));
             }
         }
     }
@@ -341,19 +363,18 @@ public class Mem2Reg extends FunctionPass {
         }
     }
 
-    public boolean QueuePhiNode(BasicBlock BB, int AllocaNo, int Version) {
+    public void QueuePhiNode(BasicBlock BB, int AllocaNo) {
         Pair<Integer,Integer> f=new Pair<>(BBNumbers.get(BB), AllocaNo);
         if(PhiNodes.containsKey(f)){
-            return false;
+            return;
         }
         PHIInst PN = PHIInst.create(allocaInsts.get(AllocaNo).getAllocatedType(),BB.getPredecessorsNum(),
-                allocaInsts.get(AllocaNo).getName()+"."+String.valueOf(Version),
+                "%"+allocaInsts.get(AllocaNo).getVarName()+"."+String.valueOf(Version++),
                 BB.getInstList().getFirst().getVal());
-
 
         NumPHIInsert++;
         PhiToAllocaMap.put(PN,AllocaNo);
-        return true;
+        PhiNodes.put(f,PN);
     }
 
     /**
@@ -386,14 +407,14 @@ public class Mem2Reg extends FunctionPass {
                     TreeNode childNode=DT.getNode(child);
                     int childLevel=childNode.level;
                     if(childLevel>RootLevel){
-                        return;
+                        continue;
                     }
                     if(visitedPQ.contains(childNode)){
-                        return;
+                        continue;
                     }
                     visitedPQ.add(childNode);
                     if(!LiveBB.contains(child)){
-                        return;
+                        continue;
                     }
                     IDFBlocks.add(child);
                     if(!DefBlocks.contains(child)){
@@ -467,14 +488,16 @@ public class Mem2Reg extends FunctionPass {
         }
         storeIndex.sort(Comparator.comparingInt(o -> o.a));
 
-        for(Use use:AI.getUseList()){
+        ArrayList<Use> copyUseList=new ArrayList<>(AI.getUseList());
+        Stack<Instruction> delete=new Stack<>();
+        for(Use use:copyUseList){
             User U=use.getU();
             if(!(U instanceof LoadInst)) {
                 continue;
             }
             LoadInst LI=(LoadInst)U;
             int Idx=LI.getInstNode().index();
-            //二分查找最接近Idx的storeInst
+            //二分查找最接近Idx且在load之前的storeInst
             int l=0,r=storeIndex.size()-1,mid;
             while(l<=r){
                 mid=(l+r)/2;
@@ -497,8 +520,10 @@ public class Mem2Reg extends FunctionPass {
                 }
                 LI.replaceAllUsesWith(val);
             }
-            LI.remove();
-
+            delete.push(LI);
+        }
+        while(!delete.isEmpty()){
+            delete.pop().remove();
         }
         //移除storeInst
         while(!AI.getUseList().isEmpty()){
@@ -515,7 +540,8 @@ public class Mem2Reg extends FunctionPass {
         int storeIdx=-1;
 
         AI.usingBlocks.clear();
-        for(Use use:AI.getUseList()){
+        ArrayList<Use> copyUseList=new ArrayList<>(AI.getUseList());
+        for(Use use:copyUseList){
             User U=use.getU();
             Instruction I=(Instruction)U;
             if(I.equals(SI)){
@@ -590,6 +616,11 @@ public class Mem2Reg extends FunctionPass {
      * 2.这个变量是直接通过LOAD或者STORE进行访问的，比如，不会被取址。
      */
     public static boolean isAllocaPromotable(AllocaInst AI){
+        Type Aty=AI.getAllocatedType();
+        //不处理数组
+        if(!(Aty.isIntegerTy()||Aty.isFloatTy())){
+            return false;
+        }
         for(Use use:AI.getUseList()){
             User U=use.getU();
             if(U instanceof LoadInst){

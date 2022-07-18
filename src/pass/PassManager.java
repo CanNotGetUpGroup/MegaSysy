@@ -29,9 +29,7 @@ public class PassManager {
         initialization();
 
         for(Pass p:passes){
-            System.out.println("Pass Info:");
-            System.out.println("Pass Name:"+p.getName());
-            System.out.println("Optimizing......\n");
+            System.out.println("Pass:"+p.getName());
             p.runOnModule(M);
         }
 
