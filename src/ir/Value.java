@@ -1,6 +1,8 @@
 package ir;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.logging.Logger;
 
@@ -9,6 +11,8 @@ public abstract class Value {
     private Type type;
     private String name;
     private String comment; //注释，用于debug
+    private String varName;
+    public static HashMap<String,Integer> varVersion=new HashMap<>();
 
     public int getUseSize() {
         return UseList.size();
@@ -24,6 +28,23 @@ public abstract class Value {
             ret.add(u.getU());
         }
         return ret;
+    }
+
+    public void setVarName(String varName) {
+        if(varName.length()>100)
+            varName = varName.substring(0,100);
+        if(varVersion.containsKey(varName)){
+            String oldName=varName;
+            varName=varName+varVersion.get(varName);
+            varVersion.put(oldName,varVersion.get(oldName)+1);
+        }else{
+            varVersion.put(varName,0);
+        }
+        this.varName=varName;
+    }
+
+    public String getVarName() {
+        return varName;
     }
 
     public void setUseList(LinkedList<Use> useList) {
@@ -60,6 +81,7 @@ public abstract class Value {
      */
     public Value(Type type) {
         this.type = type;
+        setName("");
     }
 
     public Value(Type type, String name) {

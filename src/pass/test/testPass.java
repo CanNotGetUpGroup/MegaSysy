@@ -1,4 +1,4 @@
-package pass;
+package pass.test;
 
 import frontend.SysyLexer;
 import frontend.SysyParser;
@@ -8,6 +8,8 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import pass.FunctionPass;
+import pass.PassManager;
 import pass.passes.Mem2Reg;
 import frontend.test.tmpTest;
 
@@ -23,9 +25,13 @@ public class testPass {
      */
     public static void main(String[] args) throws IOException {
         //根据frontend中的input.txt初始化Module
-        tmpTest.initModule();
+        initModule();
+        FileWriter fw=new FileWriter("src/pass/test/output.txt");
+        PrintWriter pw=new PrintWriter(fw);
+
         PassManager.run(module);
-        System.out.println(module.toLL());
+        pw.println(module.toLL());
+        pw.flush();
     }
 
     /**
@@ -41,5 +47,24 @@ public class testPass {
         //查看更改后的pass
         module.rename();
         System.out.println(module.toLL());
+    }
+
+    public static void initModule() throws IOException {
+        CharStream inputStream = CharStreams.fromFileName("src/pass/test/input.txt"); // 获取输入流
+        FileWriter fw=new FileWriter("src/pass/test/origin.txt");
+        PrintWriter pw=new PrintWriter(fw);
+
+        SysyLexer lexer = new SysyLexer(inputStream);
+
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
+        Visitor visitor=new Visitor();
+        SysyParser parser = new SysyParser(tokenStream);
+        ParseTree tree = parser.program(); // 获取语法树的根节点
+        visitor.visit(tree);
+        Module module = Module.getInstance();
+        module.rename();
+
+        pw.println(module.toLL());
+        pw.flush();
     }
 }

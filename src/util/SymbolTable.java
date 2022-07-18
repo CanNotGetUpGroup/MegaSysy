@@ -12,9 +12,9 @@ import java.util.HashMap;
 public class SymbolTable {
     private static final SymbolTable symbolTable = new SymbolTable();
 
-    private ArrayList<HashMap<String, Value>> ValSymTab; //局部变量符号表
-    private HashMap<String,Value> GlobalValSymTab;  //全局变量符号表
-    private HashMap<Value,String> NameValTab;   //查找Value的name
+    private final ArrayList<HashMap<String, Value>> ValSymTab; //局部变量符号表
+    private final HashMap<String,Value> GlobalValSymTab;  //全局变量符号表
+    private final HashMap<Value,String> NameValTab;   //查找Value的name
     private BasicBlock curBB;
     private Function curFunc;
     private SymbolTable() {

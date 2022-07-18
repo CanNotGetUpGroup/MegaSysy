@@ -150,6 +150,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             if (!symbolTable.inGlobalArea()) {
                 Instruction alloca = builder.createAlloca(arrayType);
                 alloca.setComment("const "+declType+" "+ctx.getText());
+                alloca.setVarName(ctx.IDENT().getText());
                 symbolTable.addValue(name, alloca);
                 Type tmpTy = arrayType.getKidType();
                 ((Instructions.AllocaInst) alloca).setUndef(false);
@@ -390,6 +391,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 if (!symbolTable.inGlobalArea()) {
                     Instruction alloca = builder.createAlloca(arrayType);
                     alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                     Type tmpTy = arrayType.getKidType();
                     ((Instructions.AllocaInst) alloca).setUndef(false);
@@ -452,6 +454,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 } else {
                     Value alloca = builder.createAlloca(arrayType);
                     alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                 }
             }
@@ -465,6 +468,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 } else {
                     Value alloca = builder.createAlloca(declType);
                     alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                     visit(ctx.initVal());
                     castType(declType);
@@ -479,6 +483,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 } else {
                     Value alloca = builder.createAlloca(declType);
                     alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                 }
             }
@@ -666,6 +671,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             curVal = new Argument(type, curF, 0);
             Value alloc = builder.createAlloca(type);
             alloc.setComment(type+" "+name);
+            alloc.setVarName(ctx.IDENT().getText());
             builder.createStore(curVal, alloc);
             symbolTable.addValue(name, alloc);
         }
@@ -903,7 +909,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //                V = builder.createLoad(V);
 //            }
         }
-        V.setComment("get "+ctx.getText());
+//        V.setComment("get "+ctx.getText());
         return V;
     }
 
