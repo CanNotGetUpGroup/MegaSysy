@@ -362,6 +362,14 @@ public abstract class Instructions {
         public static CallInst create(Function Func, ArrayList<Value> Args) {
             return new CallInst(Func.getType(), Func, Args);
         }
+
+        public Function getCalledFunction(){
+            return (Function)getOperand(0);
+        }
+
+        public ArrayList<Value> getArgs(){
+            return new ArrayList<>(getOperandList().subList(1,getNumOperands()-1));
+        }
     }
 
     //===----------------------------------------------------------------------===//

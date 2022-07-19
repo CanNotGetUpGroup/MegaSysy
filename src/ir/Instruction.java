@@ -129,4 +129,8 @@ public abstract class Instruction extends User {
 
     public void setSuccessor(int idx,BasicBlock BB){
     }
+
+    public Function getFunction(){
+        return getParent().getParent();
+    }
 }
