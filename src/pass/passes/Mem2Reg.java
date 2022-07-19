@@ -1,11 +1,12 @@
 package pass.passes;
 
+import analysis.DominatorTree;
 import ir.*;
 import ir.Module;
 import org.antlr.v4.runtime.misc.Pair;
 import pass.FunctionPass;
 import ir.instructions.Instructions.*;
-import ir.DominatorTree.TreeNode;
+import analysis.DominatorTree.TreeNode;
 
 import java.util.*;
 
