@@ -7,15 +7,16 @@ import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
 public class LoadOrStore extends MachineInstruction {
-    public enum Type{
+    public enum Type {
         LOAD,
         STORE
     }
+
     private final Type type;
     private Register dest;
     private MCOperand addr;     // could be address , or literal number
 
-    public LoadOrStore(MachineBasicBlock parent, Type type, Register dest, MCOperand addr){
+    public LoadOrStore(MachineBasicBlock parent, Type type, Register dest, MCOperand addr) {
         super(parent);
         this.type = type;
         this.dest = dest;
@@ -24,7 +25,21 @@ public class LoadOrStore extends MachineInstruction {
 
     @Override
     public Register getDest() {
-        return dest;
+        return type == Type.STORE? null : dest;
+    }
+
+    @Override
+    public MCOperand getOp1() {
+        if (type == Type.STORE) {
+            return dest;
+        }
+        return null;
+    }
+
+    public void setOp1(MCOperand op1) {
+        if (op1 instanceof Register && type == Type.STORE) {
+            dest = (Register) op1;
+        }
     }
 
     @Override
@@ -38,22 +53,19 @@ public class LoadOrStore extends MachineInstruction {
         this.addr = op;
     }
 
-    public Type getType(){
+    public Type getType() {
         return type;
     }
 
     @Override
     public String toString() {
-        return (type == Type.LOAD? "LDR " : "STR ") + dest.toString() + ", " + addr.toString();
+        return (type == Type.LOAD ? "LDR " : "STR ") + dest.toString() + ", " + addr.toString();
     }
 
     @Override
     public void setDest(Register dest) {
+        if(type == Type.LOAD)
         this.dest = dest;
     }
 
-    @Override
-    public void setOp1(MCOperand op) {
-        throw new RuntimeException("Unfinished");
-    }
 }

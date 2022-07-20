@@ -29,43 +29,112 @@ b:
 	.syntax unified
 	.arm
 	.fpu vfp
-	.global	main
-	.type	main	%function
-main:
-.main1:
+	.global	add
+	.type	add	%function
+add:
+.add1:
 Push { LR }
 Push { r11 }
 ADD	r11, SP, #4
-SUB	SP, SP, #28
-movw	r4, #:lower16:a
-movt	r4, #:upper16:a
-
-STR r4, [ r11 , #-8 ]
-LDR r5, [ r11 , #-8 ]
-ADD	r4, r5, #12
-STR r4, [ r11 , #-12 ]
-LDR r5, [ r11 , #-12 ]
-ADD	r4, r5, #8
+SUB	SP, SP, #40
+mov	r4, r0
 STR r4, [ r11 , #-16 ]
-LDR r7, [ r11 , #-16 ]
-LDR r4, [ r7 ]
+mov	r4, r1
 STR r4, [ r11 , #-20 ]
-movw	r4, #:lower16:b
-movt	r4, #:upper16:b
-
+@ %3 = alloca [3 x i32]*
+SUB	SP, SP, #4
+SUB	r4, r11, #8
 STR r4, [ r11 , #-24 ]
+@ %4 = alloca i32
+SUB	SP, SP, #4
+SUB	r4, r11, #12
+STR r4, [ r11 , #-28 ]
+@ store i32 %0, i32* %4
+LDR r5, [ r11 , #-16 ]
+LDR r7, [ r11 , #-28 ]
+STR r5, [ r7 ]
+@ store [3 x i32]* %1, [3 x i32]** %3
+LDR r5, [ r11 , #-20 ]
+LDR r7, [ r11 , #-24 ]
+STR r5, [ r7 ]
+@ %5 = load [3 x i32]*, [3 x i32]** %3
 LDR r7, [ r11 , #-24 ]
 LDR r4, [ r7 ]
-STR r4, [ r11 , #-28 ]
-LDR r5, [ r11 , #-20 ]
-LDR r6, [ r11 , #-28 ]
-ADD	r4, r5, r6
 STR r4, [ r11 , #-32 ]
-LDR r6, [ r11 , #-32 ]
+@ %6= getelementptr [3 x i32],[3 x i32]* %5 , i32 1
+LDR r5, [ r11 , #-32 ]
+ADD	r4, r5, #12
+STR r4, [ r11 , #-36 ]
+@ %7= getelementptr [3 x i32],[3 x i32]* %6 , i32 0, i32 2
+LDR r5, [ r11 , #-36 ]
+ADD	r4, r5, #8
+STR r4, [ r11 , #-40 ]
+@ %8 = load i32, i32* %7
+LDR r7, [ r11 , #-40 ]
+LDR r4, [ r7 ]
+STR r4, [ r11 , #-44 ]
+@ %9 = load i32, i32* %4
+LDR r7, [ r11 , #-28 ]
+LDR r4, [ r7 ]
+STR r4, [ r11 , #-48 ]
+@ %10 = add i32 %8, %9
+LDR r5, [ r11 , #-44 ]
+LDR r6, [ r11 , #-48 ]
+ADD	r4, r5, r6
+STR r4, [ r11 , #-52 ]
+@ ret i32 %10
+LDR r6, [ r11 , #-52 ]
 mov	r0, r6
 SUB	SP, r11, #4
 Pop { r11 }
 BX	LR
+
+.size	add, .-add
+	.align	2
+	.arch armv7ve
+	.syntax unified
+	.arm
+	.fpu vfp
+	.global	main
+	.type	main	%function
+main:
+.main2:
+Push { LR }
+Push { r11 }
+ADD	r11, SP, #4
+SUB	SP, SP, #20
+@ %1 = load i32, i32* @b
+movw	r4, #:lower16:b
+movt	r4, #:upper16:b
+
+STR r4, [ r11 , #-8 ]
+LDR r7, [ r11 , #-8 ]
+LDR r4, [ r7 ]
+STR r4, [ r11 , #-12 ]
+@ %2= getelementptr [5 x [3 x i32]],[5 x [3 x i32]]* @a , i32 0, i32 0
+movw	r4, #:lower16:a
+movt	r4, #:upper16:a
+
+STR r4, [ r11 , #-16 ]
+@ %3 = call i32 @add(i32 %1,[3 x i32]* %2)
+LDR r6, [ r11 , #-16 ]
+mov	r1, r6
+LDR r6, [ r11 , #-12 ]
+mov	r0, r6
+BLX	add
+mov	r4, r0
+STR r4, [ r11 , #-20 ]
+@ call void @putint(i32 %3)
+LDR r6, [ r11 , #-20 ]
+mov	r0, r6
+BLX	putint
+mov	r4, r0
+STR r4, [ r11 , #-24 ]
+@ ret i32 0
+mov	r0, #0
+SUB	SP, r11, #4
+Pop { r11 }
+Pop { PC }
 
 .size	main, .-main
 

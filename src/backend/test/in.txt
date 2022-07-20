@@ -1,6 +1,13 @@
-    int a[5][3] = {10 , 9, 8, 7, 6, 5, 4, 3, 2, 1} ;
+int a[5][3] = {10 , 9, 8, 7, 6, 5, 4, 3, 2, 1} ;
 int b = 4;
+
+int add(int b, int a[][3]){
+    return a[1][2] + b;
+}
+
+
 int main() {
 
-    return a[1][2] + b;
+    putint(  add (b, a));
+    return 0;
 }

@@ -150,6 +150,7 @@ public class InstructionSelector {
         var mf = funcMap.get(bb.getParent());
         var mbb = mf.getBBMap().get(bb);
         var valueMap = mf.getValueMap();
+        new Comment(mbb, ir.toString()).pushBacktoInstList();
         switch (ir.getOp()) {
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
@@ -228,17 +229,8 @@ public class InstructionSelector {
                 var type = ir.getType();
                 assert type.isPointerTy();
                 DerivedTypes.PointerType pType = (DerivedTypes.PointerType) type;
-
-                if (pType.getElementType().isInt32Ty()) {
-                    var dest = new VirtualRegister();
-                    // 分配栈空间
-
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), 4).pushBacktoInstList();
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop()).pushBacktoInstList();
-                    // 保存一下位置
-                    valueMap.put(ir, dest);
-                    mf.addStackTop(4);
-                } else {
+                // TODO: Bug suspected
+                if (pType.getElementType().isArrayTy()) {
                     // TODO: 数组
                     assert pType.getElementType().isArrayTy();
 
@@ -254,6 +246,15 @@ public class InstructionSelector {
                     // 保存一下位置
                     valueMap.put(ir, dest);
 
+                } else {
+                    var dest = new VirtualRegister();
+                    // 分配栈空间
+
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), 4).pushBacktoInstList();
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop()).pushBacktoInstList();
+                    // 保存一下位置
+                    valueMap.put(ir, dest);
+                    mf.addStackTop(4);
                 }
             }
             case Store -> {
