@@ -53,6 +53,12 @@ public abstract class User extends Value {
         this.numOperands=OperandList.size();
     }
 
+    public void removeOperand(int idx){
+        OperandList.get(idx).removeUseByUser(this);
+        OperandList.remove(idx);
+        numOperands=OperandList.size();
+    }
+
     public Value opBegin(){
         if(OperandList.isEmpty()) return null;
         return OperandList.get(0);

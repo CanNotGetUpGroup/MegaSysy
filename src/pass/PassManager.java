@@ -4,6 +4,7 @@ import ir.Function;
 import ir.Module;
 import pass.passes.FuncInline;
 import pass.passes.Mem2Reg;
+import pass.passes.SimplifyCFG;
 
 import java.util.ArrayList;
 
@@ -19,6 +20,7 @@ public class PassManager {
 //        passes.add(new Hello());
 
         passes.add(new Mem2Reg());
+        passes.add(new SimplifyCFG());
 //        passes.add(new FuncInline());
     }
 
