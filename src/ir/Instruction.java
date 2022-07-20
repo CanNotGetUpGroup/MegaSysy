@@ -10,11 +10,7 @@ public abstract class Instruction extends User {
 
     public enum Ops {
         //Term
-<<<<<<< HEAD
         Ret, Br, Switch, CallBr,
-=======
-        Ret, Br ,CallBr,
->>>>>>> origin/frontend
         //Unary
         //Binary
         Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem,And,Or,Xor,

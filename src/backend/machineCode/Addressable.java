@@ -1,5 +1,7 @@
 package backend.machineCode;
 
-public interface Addressable {
+import backend.machineCode.Operand.MCOperand;
+
+public interface Addressable{
     public String getLabel();
 }

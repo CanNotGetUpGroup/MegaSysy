@@ -1,11 +1,13 @@
 package backend;
 
+import backend.machineCode.MachineDataBlock;
 import backend.machineCode.MachineFunction;
 import backend.pass.InstructionSelector;
 import backend.pass.RegAllocator;
 import frontend.SysyLexer;
 import frontend.SysyParser;
 import frontend.Visitor;
+import ir.DerivedTypes;
 import ir.Function;
 import ir.GlobalVariable;
 import ir.Module;
@@ -25,7 +27,8 @@ public class CodeGenManager {
     private static Module module;
     private static CodeGenManager codeGenManager;
 
-    //    private final ArrayList<GlobalVariable> globalVariables;
+    //        private final ArrayList<GlobalVariable> globalVariables;
+    private ArrayList<MachineDataBlock> dataBlockArrayList;
     private ArrayList<MachineFunction> funcList;
 
     private CodeGenManager() {
@@ -47,6 +50,7 @@ public class CodeGenManager {
         var selector = new InstructionSelector(module);
         selector.run();
         this.funcList = selector.getFuncList();
+        this.dataBlockArrayList = selector.getGlobalDataList();
 
         var allocator = new RegAllocator(funcList);
         allocator.run();
@@ -54,6 +58,10 @@ public class CodeGenManager {
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
+        sb.append(".data\n");
+        for (var block : dataBlockArrayList) {
+            sb.append(block);
+        }
 
         sb.append(".text\n");
         for (var func : funcList) {

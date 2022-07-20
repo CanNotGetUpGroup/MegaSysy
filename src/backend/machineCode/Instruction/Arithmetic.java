@@ -13,17 +13,19 @@ public class Arithmetic extends MachineInstruction {
     private Type type;
 
     // TODO: 取余数
-    public enum Type{
+    public enum Type {
         ADD,
         SUB,
         MUL,
         SDIV, // signed divide
     }
 
-    public Arithmetic(MachineBasicBlock parent, Type type, Register destReg, Register op1, MCOperand op2){
+    public Arithmetic(MachineBasicBlock parent, Type type, Register destReg, Register op1, MCOperand op2) {
         super(parent);
 
-        assert type != Type.MUL && type != Type.SDIV || op2 instanceof Register;
+        if (op2 == null || op1 == null) {
+            throw new RuntimeException("null operators");
+        }
 
         this.type = type;
         this.destReg = destReg;
@@ -31,24 +33,38 @@ public class Arithmetic extends MachineInstruction {
         this.op2 = op2;
     }
 
-    public Arithmetic(MachineBasicBlock parent, Type type, Register op1, MCOperand op2){
+    public Arithmetic(MachineBasicBlock parent, Type type, Register op1, MCOperand op2) {
+
         super(parent);
+
+        if (op2 == null || op1 == null) {
+            throw new RuntimeException("null operators");
+        }
+
         this.type = type;
         this.destReg = op1;
         this.op1 = op1;
         this.op2 = op2;
     }
 
-    public Arithmetic(MachineBasicBlock parent, Type type, Register op1, int op2){
+    public Arithmetic(MachineBasicBlock parent, Type type, Register op1, int op2) {
         super(parent);
+
+        if (op1 == null) {
+            throw new RuntimeException("null operators");
+        }
+
         this.type = type;
         this.destReg = op1;
         this.op1 = op1;
         this.op2 = new ImmediateNumber(op2);
     }
 
-    public Arithmetic(MachineBasicBlock parent, Type type,Register dest,  Register op1, int op2){
+    public Arithmetic(MachineBasicBlock parent, Type type, Register dest, Register op1, int op2) {
         super(parent);
+        if (op1 == null) {
+            throw new RuntimeException("null operators");
+        }
         this.type = type;
         this.destReg = dest;
         this.op1 = op1;

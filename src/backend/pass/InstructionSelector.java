@@ -35,28 +35,26 @@ public class InstructionSelector {
         return globalDataList;
     }
 
+
     public void run() {
         // 得到全局变量
         var irGlobalData = module.getGlobalVariables();
         for (var g : irGlobalData) {
             var name = g.getName().substring(1);
-            System.out.println(name);
             if (g.getType().getContainedTys(0).isArrayTy()) {
                 // 数组
-                for(((DerivedTypes.ArrayType) g
+                var dataBlock = new MachineDataBlock(name, g);
+                globalDataList.add(dataBlock);
+                globalDataHash.put(g, dataBlock);
             } else {
                 // 数值
                 if (g.getType().getContainedTys(0).isInt32Ty()) {
                     // global int
-                    globalDataList.add(new MachineDataBlock(name, ((Constants.ConstantInt) g.getOperand(0)).getVal()));
-
+                    var dataBlock = new MachineDataBlock(name, ((Constants.ConstantInt) g.getOperand(0)).getVal());
+                    globalDataList.add(dataBlock);
+                    globalDataHash.put(g, dataBlock);
                 }
             }
-
-            System.out.println(g);
-            System.out.println(g.getType());
-            System.out.println();
-            System.out.println(g.getOperand(0));
         }
 
 
@@ -88,6 +86,7 @@ public class InstructionSelector {
     }
 
     private HashMap<Function, MachineFunction> funcMap = new HashMap<>();
+    private HashMap<GlobalVariable, MachineDataBlock> globalDataHash = new HashMap<>();
 
     private void translateFunction(Function irFunction) {
         MachineFunction mf = funcMap.get(irFunction);
@@ -273,7 +272,9 @@ public class InstructionSelector {
                 var curIr = (Instructions.GetElementPtrInst) ir;
                 assert ir.getType().isPointerTy();
 
-                var srcAddr = valueMap.get(ir.getOperand(0));
+                var irOp = ir.getOperand(0);
+                var srcAddr = valueToReg(mbb, irOp);
+
 
                 int constOffset = 0;
 
@@ -364,7 +365,12 @@ public class InstructionSelector {
         var func = parent.getParent();
         var valueMap = func.getValueMap();
         var type = val.getType();
-        if (val instanceof Constant) {
+        if (val instanceof GlobalVariable) {
+            var dataBlock = globalDataHash.get(val);
+            Register dest = new VirtualRegister();
+            new LoadImm(parent, dest, dataBlock).pushBacktoInstList();
+            return dest;
+        } else if (val instanceof Constant) {
             if (type.isInt32Ty()) {
                 Constants.ConstantInt v = (Constants.ConstantInt) val;
                 int value = v.getVal();
