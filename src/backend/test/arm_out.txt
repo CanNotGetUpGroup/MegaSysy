@@ -1,3 +1,28 @@
+.data
+	.global	a
+	.align	2
+	.type	a, %object
+	.size	a,60
+a:
+	.word	10
+	.word	9
+	.word	8
+	.word	7
+	.word	6
+	.word	5
+	.word	4
+	.word	3
+	.word	2
+	.word	1
+	.word	0
+	.word	0
+	.space	12
+	.global	b
+	.align	2
+	.type	b, %object
+	.size	b,4
+b:
+	.word	4
 .text
 	.align	2
 	.arch armv7ve
@@ -9,7 +34,37 @@
 main:
 .main1:
 Push { LR }
-mov	r0, #0
+Push { r11 }
+ADD	r11, SP, #4
+SUB	SP, SP, #28
+movw	r4, #:lower16:a
+movt	r4, #:upper16:a
+
+STR r4, [ r11 , #-8 ]
+LDR r5, [ r11 , #-8 ]
+ADD	r4, r5, #12
+STR r4, [ r11 , #-12 ]
+LDR r5, [ r11 , #-12 ]
+ADD	r4, r5, #8
+STR r4, [ r11 , #-16 ]
+LDR r7, [ r11 , #-16 ]
+LDR r4, [ r7 ]
+STR r4, [ r11 , #-20 ]
+movw	r4, #:lower16:b
+movt	r4, #:upper16:b
+
+STR r4, [ r11 , #-24 ]
+LDR r7, [ r11 , #-24 ]
+LDR r4, [ r7 ]
+STR r4, [ r11 , #-28 ]
+LDR r5, [ r11 , #-20 ]
+LDR r6, [ r11 , #-28 ]
+ADD	r4, r5, r6
+STR r4, [ r11 , #-32 ]
+LDR r6, [ r11 , #-32 ]
+mov	r0, r6
+SUB	SP, r11, #4
+Pop { r11 }
 BX	LR
 
 .size	main, .-main

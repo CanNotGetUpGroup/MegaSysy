@@ -1,5 +1,6 @@
 package backend.pass;
 
+import backend.machineCode.Addressable;
 import backend.machineCode.Instruction.Arithmetic;
 import backend.machineCode.Instruction.LoadOrStore;
 import backend.machineCode.Instruction.PushOrPop;
