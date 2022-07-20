@@ -3,6 +3,7 @@ package util;
 import ir.*;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
+import ir.instructions.Instructions.*;
 import ir.Constants.*;
 import ir.Instruction.Ops;
 
@@ -255,5 +256,40 @@ public class Folder {
         if(C instanceof ConstantInt && ((ConstantInt)C).getVal()!=0) return True;
         if(True==False) return True;
         return null;
+    }
+
+    public static boolean constantFoldTerminator(BasicBlock BB){
+        Instruction T=BB.getTerminator();
+        MyIRBuilder builder=MyIRBuilder.getInstance();
+        builder.setInsertPoint(T);
+        if(T instanceof BranchInst){
+            //br label不用优化
+            if(T.getNumOperands()==1) return false;
+            BranchInst BI=(BranchInst)T;
+            BasicBlock TrueBlock=(BI).getTrueBlock();
+            BasicBlock FalseBlock=BI.getFalseBlock();
+            if(TrueBlock==FalseBlock){
+                if(TrueBlock.front() instanceof PHIInst){
+                    TrueBlock.removePredecessor(BB);
+                    BranchInst newBI= (BranchInst) builder.createBr(TrueBlock);
+                    BI.remove();
+                    //TODO:删除BI的Cond
+                    return true;
+                }
+            }
+
+            if(BI.getCond() instanceof ConstantInt){
+                ConstantInt cond= (ConstantInt) BI.getCond();
+                BasicBlock dest=cond.getVal()==1?TrueBlock:FalseBlock;
+                BasicBlock oldDest=cond.getVal()==0?TrueBlock:FalseBlock;
+
+                oldDest.removePredecessor(BB);
+                BranchInst newBI= (BranchInst) builder.createBr(dest);
+                BI.remove();
+                return true;
+            }
+            return false;
+        }
+        return false;
     }
 }

@@ -1,5 +1,6 @@
 package ir;
 
+import ir.instructions.Instructions.*;
 import util.IList;
 import util.IListNode;
 
@@ -48,7 +49,7 @@ public class BasicBlock extends Value {
     }
 
     public Function getParent() {
-        return Parent;
+        return bbNode.getParent().getVal();
     }
 
     public void setParent(Function parent) {
@@ -98,8 +99,43 @@ public class BasicBlock extends Value {
         return ret;
     }
 
+    public BasicBlock getPredecessor(int i){
+        return ((Instruction)getUseList().get(i).getU()).getParent();
+    }
+
     public int getPredecessorsNum(){
         return getUseList().size();
+    }
+
+    public void removePredecessor(BasicBlock Pred){
+        if(!(front() instanceof PHIInst)){
+            return;
+        }
+        int numPred= front().getNumOperands();
+        for(Instruction I:getInstList()){
+            if(!(I instanceof PHIInst)){
+                break;
+            }
+            PHIInst Phi=(PHIInst)I;
+            Phi.removeIncomingValue(Pred);
+            if(numPred==1) continue;
+            Value PhiConstant=Phi.hasConstantValue();
+            if(PhiConstant!=null){
+                Phi.replaceAllUsesWith(PhiConstant);
+                Phi.remove();
+            }
+        }
+    }
+
+    public BasicBlock getOnlyPredecessor(){
+        if(getPredecessorsNum()==0) return null;
+        BasicBlock B=getPredecessor(0);
+        for(int i=1;i<getPredecessorsNum();i++){
+            if(getPredecessor(i)!=B){
+                return null;
+            }
+        }
+        return B;
     }
 
     /**
@@ -119,6 +155,17 @@ public class BasicBlock extends Value {
 
     public void setSuccessor(int idx,BasicBlock BB){
         getTerminator().setSuccessor(idx,BB);
+    }
+
+    public BasicBlock getOnlySuccessor(){
+        if(getSuccessorsNum()==0) return null;
+        BasicBlock B=getSuccessor(0);
+        for(int i=1;i<getSuccessorsNum();i++){
+            if(getSuccessor(i)!=B){
+                return null;
+            }
+        }
+        return B;
     }
 
     public boolean isEntryBlock(){

@@ -108,7 +108,9 @@ public abstract class Instruction extends User {
         };
     }
 
-    //从基本块中删除
+    /**
+     * 从基本块中删除
+     */
     public void remove(){
         instNode.remove();
         dropUsesAsValue();
