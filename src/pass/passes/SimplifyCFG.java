@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.Set;
 
 /**
+ * 消除不可达的基本块
  * 如果仅有一个前驱且该前驱仅有一个后继，将基本块与且前驱合并
  * 消除只有一个前驱的基本块的PHI节点
  * 消除仅包含无条件分支的基本块
@@ -81,37 +82,50 @@ public class SimplifyCFG extends FunctionPass {
         boolean Changed = false;
         boolean LocalChange = true;
 
-        ArrayList<Pair<BasicBlock,BasicBlock >> Edges=new ArrayList<>();
-//        FindFunctionBackedges(F, Edges);
-        Set<BasicBlock> LoopHeaders = new HashSet<>();
-        for (int i = 0, e = Edges.size(); i != e; ++i)
-            LoopHeaders.add(Edges.get(i).b);
-
         while (LocalChange) {
             LocalChange = false;
-
-            // Loop over all of the basic blocks and remove them if they are unneeded.
             for (BasicBlock BB:F.getBbList()) {
-                if (simplifyCFG(BB,LoopHeaders)) {
+                if (simplifyCFG(BB)) {
                     LocalChange = true;
                 }
             }
-            Changed |= LocalChange;
+            Changed|=LocalChange;
         }
         return Changed;
     }
 
-    public boolean simplifyCFG(BasicBlock BB,Set<BasicBlock> Loop){
+    public boolean simplifyCFG(BasicBlock BB){
         boolean ret=false;
         //化简终结指令
-        ret|=Folder.constantFoldTerminator(BB);
+        ret = Folder.constantFoldTerminator(BB);
         DT.update(BB.getParent());
         //如果仅有一个前驱且该前驱仅有一个后继，将基本块与且前驱合并
         if(mergeBlockIntoPredecessor(BB)){
             return true;
         }
+        //TODO:消除仅包含无条件分支的基本块
+        if(BB.front()==BB.getTerminator()){
+            if(BB.getTerminator() instanceof BranchInst){
+                BranchInst BI=(BranchInst)BB.getTerminator();
+                if(BI.getNumOperands()==1){
+                    BB.replaceAllUsesWith(BI.getOperand(0));
+                }
+            }
+        }
 
         return ret;
+    }
+
+    public boolean removeEmptyBrBlock(BasicBlock BB){
+        if(BB.front()==BB.getTerminator()){
+            if(BB.getTerminator() instanceof BranchInst){
+                BranchInst BI=(BranchInst)BB.getTerminator();
+                if(BI.getNumOperands()==1){
+                    BB.replaceAllUsesWith(BI.getOperand(0));
+                }
+            }
+        }
+        return false;
     }
 
     public boolean mergeBlockIntoPredecessor(BasicBlock BB){
@@ -137,6 +151,9 @@ public class SimplifyCFG extends FunctionPass {
         return true;
     }
 
+    /**
+     * 消除只有一个前驱的基本块的PHI节点
+     */
     public boolean foldSinglePHIInst(BasicBlock BB){
         if(!(BB.front() instanceof PHIInst)) return false;
         for(Instruction I:BB.getInstList()){
