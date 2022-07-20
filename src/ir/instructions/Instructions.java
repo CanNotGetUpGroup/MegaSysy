@@ -522,6 +522,37 @@ public abstract class Instructions {
             if(i>getNumOperands()) return null;
             return blocks.get(i);
         }
+
+        public Value getIncomingValue(int i){
+            if(i>getNumOperands()) return null;
+            return getOperand(i);
+        }
+
+        public void removeIncomingValue(BasicBlock BB){
+            removeOperand(blocks.indexOf(BB));
+            blocks.remove(BB);
+            if(getNumOperands()==0){
+                replaceAllUsesWith(Constants.UndefValue.get(getType()));
+                remove();
+            }
+        }
+
+        /**
+         * 若phi都返回同一个Value，则返回这个Value，否则返回null
+         * 注意：可能返回phi本身 %1 = phi [%1, %br1] [%2, %br2]
+         */
+        public Value hasConstantValue() {
+            Value ConstantValue = getIncomingValue(0);
+            for (int i = 1, e = getNumOperands(); i != e; ++i)
+                if (getIncomingValue(i) != ConstantValue && getIncomingValue(i) != this) {
+                    if (ConstantValue != this)
+                        return null;
+                    ConstantValue = getIncomingValue(i);
+                }
+            if (ConstantValue == this)
+                return Constants.UndefValue.get(getType());
+            return ConstantValue;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -598,6 +629,11 @@ public abstract class Instructions {
 
         public BranchInst(BasicBlock IfTrue) {
             super(Type.getVoidTy(), Ops.Br, 1);
+            addOperand(IfTrue);
+        }
+
+        public BranchInst(BasicBlock IfTrue,BasicBlock InsertAtEnd) {
+            super(Type.getVoidTy(), Ops.Br, 1,InsertAtEnd);
             addOperand(IfTrue);
         }
 
@@ -698,6 +734,10 @@ public abstract class Instructions {
 
         public static BranchInst create(BasicBlock IfTrue) {
             return new BranchInst(IfTrue);
+        }
+
+        public static BranchInst create(BasicBlock IfTrue,BasicBlock InsertAtEnd) {
+            return new BranchInst(IfTrue,InsertAtEnd);
         }
 
         public static BranchInst create(BasicBlock IfTrue, BasicBlock IfFalse, Value Cond) {
