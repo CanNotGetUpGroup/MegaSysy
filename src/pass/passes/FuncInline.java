@@ -79,7 +79,7 @@ public class FuncInline extends ModulePass {
         }while(localChanged);
     }
 
-    /**
+    /** TODO：
      * 1. 参数处理: 处理Caller传递给Callee的调用参数
      * 根据值传递，引用传递创建实参变量(alloc内存)
      * 将callee中的BasicBlock中对参数的引用替换为对新建变量的引用
@@ -98,6 +98,11 @@ public class FuncInline extends ModulePass {
 
     }
 
+    /**
+     * 判断是否值得inline
+     * @param CI
+     * @return
+     */
     public boolean shouldInline(CallInst CI){
         Function caller=CI.getFunction();
         Function F=CI.getCalledFunction();

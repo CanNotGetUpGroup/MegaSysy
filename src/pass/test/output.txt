@@ -1,10 +1,3 @@
-@sheet1 = dso_local global [500 x [500 x i32]] zeroinitializer
-@sheet2 = dso_local global [500 x [500 x i32]] zeroinitializer
-@active = dso_local global i32 1
-@width = dso_local global i32 0
-@height = dso_local global i32 0
-@steps = dso_local global i32 0
-
 declare i32 @getint()
 declare float @getfloat()
 declare i32 @getarray(i32*)
@@ -19,320 +12,48 @@ declare void @memset(i32*,i32,i32)
 declare void @starttime()
 declare void @stoptime()
 
-define dso_local void @read_map(){
+define dso_local i32 @ifElseIf(){
 entry:     
-  %0 = call i32 @getint()     ; call getint()
-  store i32 %0, i32* @width     ; width=getint()
-  %1 = call i32 @getint()     ; call getint()
-  store i32 %1, i32* @height     ; height=getint()
-  %2 = call i32 @getint()     ; call getint()
-  store i32 %2, i32* @steps     ; steps=getint()
-  %3 = call i32 @getch()     ; call getch()
-  br label %4     
+  %0= icmp eq i32 5, 6     ; a==6
+  br i1 %0, label %3, label %1     
 
-4:     ; judge j<=height
-  %j.0 = phi i32 [ 1, %entry ] , [ %24, %22 ]      
-  %5 = load i32, i32* @height     
-  %6= icmp sle i32 %j.0, %5     ; j<=height
-  br i1 %6, label %7, label %25     
+1:     
+  %2= icmp eq i32 10, 11     ; a==6 || b==0xb
+  br i1 %2, label %3, label %4     ; judge a==6||b==0xb
 
-7:     ; while Stmt
-  br label %8     
+3:     ; if Stmt
+  %merge = phi i32 [ 5, %1 ] , [ 5, %entry ] , [ 25, %6 ] , [ %13, %12 ] , [ %15, %14 ]      
+  ret i32 %merge     
 
-8:     ; judge i<=width
-  %i.0 = phi i32 [ 1, %7 ] , [ %21, %20 ]      
-  %9 = load i32, i32* @width     
-  %10= icmp sle i32 %i.0, %9     ; i<=width
-  br i1 %10, label %11, label %22     
+4:     ; else Stmt
+  %5= icmp eq i32 10, 10     ; b==10
+  br i1 %5, label %6, label %8     
 
-11:     ; while Stmt
-  %12 = call i32 @getch()     ; call getch()
-  %13= icmp eq i32 %12, 35     ; get==35
-  br i1 %13, label %14, label %17     ; judge get==35
+6:     
+  %7= icmp eq i32 5, 1     ; b==10 && a==1
+  br i1 %7, label %3, label %8     ; judge b==10&&a==1
 
-14:     ; if Stmt
-  %15= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet1 , i32 0, i32 %j.0     
-  %16= getelementptr [500 x i32],[500 x i32]* %15 , i32 0, i32 %i.0     
-  store i32 1, i32* %16     ; sheet1[j][i]=1
-  br label %20     
+8:     ; else Stmt
+  %9= icmp eq i32 10, 10     ; b==10
+  br i1 %9, label %10, label %14     
 
-17:     ; else Stmt
-  %18= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet1 , i32 0, i32 %j.0     
-  %19= getelementptr [500 x i32],[500 x i32]* %18 , i32 0, i32 %i.0     
-  store i32 0, i32* %19     ; sheet1[j][i]=0
-  br label %20     
-
-20:     
-  %21 = add i32 %i.0, 1     ; i+1
-  br label %8     
-
-22:     ; exit while
-  %23 = call i32 @getch()     ; call getch()
-  %24 = add i32 %j.0, 1     ; j+1
-  br label %4     
-
-25:     ; exit while
-  ret void     
-}
-
-define dso_local void @put_map(){
-entry:     
-  br label %0     
-
-0:     ; judge j<=height
-  %j0.0 = phi i32 [ 1, %entry ] , [ %17, %16 ]      
-  %1 = load i32, i32* @height     
-  %2= icmp sle i32 %j0.0, %1     ; j<=height
-  br i1 %2, label %3, label %18     
-
-3:     ; while Stmt
-  br label %4     
-
-4:     ; judge i<=width
-  %i0.0 = phi i32 [ 1, %3 ] , [ %15, %14 ]      
-  %5 = load i32, i32* @width     
-  %6= icmp sle i32 %i0.0, %5     ; i<=width
-  br i1 %6, label %7, label %16     
-
-7:     ; while Stmt
-  %8= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet1 , i32 0, i32 %j0.0     
-  %9= getelementptr [500 x i32],[500 x i32]* %8 , i32 0, i32 %i0.0     
-  %10 = load i32, i32* %9     
-  %11= icmp eq i32 %10, 1     ; sheet1[j][i]==1
-  br i1 %11, label %12, label %13     ; judge sheet1[j][i]==1
+10:     
+  %11= icmp eq i32 5, -5     ; b==10 && a==-5
+  br i1 %11, label %12, label %14     ; judge b==10&&a==-5
 
 12:     ; if Stmt
-  call void @putch(i32 35)     ; call putch(35)
-  br label %14     
+  %13 = add i32 5, 15     ; a+15
+  br label %3     
 
-13:     ; else Stmt
-  call void @putch(i32 46)     ; call putch(46)
-  br label %14     
-
-14:     
-  %15 = add i32 %i0.0, 1     ; i+1
-  br label %4     
-
-16:     ; exit while
-  call void @putch(i32 10)     ; call putch(10)
-  %17 = add i32 %j0.0, 1     ; j+1
-  br label %0     
-
-18:     ; exit while
-  ret void     
-}
-
-define dso_local void @swap12(){
-entry:     
-  br label %0     
-
-0:     ; judge j<=height
-  %j1.0 = phi i32 [ 1, %entry ] , [ %15, %14 ]      
-  %1 = load i32, i32* @height     
-  %2= icmp sle i32 %j1.0, %1     ; j<=height
-  br i1 %2, label %3, label %16     
-
-3:     ; while Stmt
-  br label %4     
-
-4:     ; judge i<=width
-  %i1.0 = phi i32 [ 1, %3 ] , [ %13, %7 ]      
-  %5 = load i32, i32* @width     
-  %6= icmp sle i32 %i1.0, %5     ; i<=width
-  br i1 %6, label %7, label %14     
-
-7:     ; while Stmt
-  %8= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet1 , i32 0, i32 %j1.0     
-  %9= getelementptr [500 x i32],[500 x i32]* %8 , i32 0, i32 %i1.0     
-  %10= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet2 , i32 0, i32 %j1.0     
-  %11= getelementptr [500 x i32],[500 x i32]* %10 , i32 0, i32 %i1.0     
-  %12 = load i32, i32* %11     
-  store i32 %12, i32* %9     ; sheet1[j][i]=sheet2[j][i]
-  %13 = add i32 %i1.0, 1     ; i+1
-  br label %4     
-
-14:     ; exit while
-  %15 = add i32 %j1.0, 1     ; j+1
-  br label %0     
-
-16:     ; exit while
-  ret void     
-}
-
-define dso_local void @step([500 x i32]* %0,[500 x i32]* %1){
-entry:     
-  %2 = alloca [500 x i32]*     ; [500 x i32]* target
-  %3 = alloca [500 x i32]*     ; [500 x i32]* source
-  store [500 x i32]* %0, [500 x i32]** %3     
-  store [500 x i32]* %1, [500 x i32]** %2     
-  br label %4     
-
-4:     ; judge j<=height
-  %j2.0 = phi i32 [ 1, %entry ] , [ %88, %87 ]      
-  %5 = load i32, i32* @height     
-  %6= icmp sle i32 %j2.0, %5     ; j<=height
-  br i1 %6, label %7, label %89     
-
-7:     ; while Stmt
-  br label %8     
-
-8:     ; judge i<=width
-  %i2.0 = phi i32 [ 1, %7 ] , [ %86, %85 ]      
-  %9 = load i32, i32* @width     
-  %10= icmp sle i32 %i2.0, %9     ; i<=width
-  br i1 %10, label %11, label %87     
-
-11:     ; while Stmt
-  %12 = load [500 x i32]*, [500 x i32]** %3     
-  %13 = sub i32 %j2.0, 1     ; j-1
-  %14= getelementptr [500 x i32],[500 x i32]* %12 , i32 %13     
-  %15 = sub i32 %i2.0, 1     ; i-1
-  %16= getelementptr [500 x i32],[500 x i32]* %14 , i32 0, i32 %15     
-  %17 = load i32, i32* %16     
-  %18 = load [500 x i32]*, [500 x i32]** %3     
-  %19 = sub i32 %j2.0, 1     ; j-1
-  %20= getelementptr [500 x i32],[500 x i32]* %18 , i32 %19     
-  %21= getelementptr [500 x i32],[500 x i32]* %20 , i32 0, i32 %i2.0     
-  %22 = load i32, i32* %21     
-  %23 = add i32 %17, %22     ; source[j-1][i-1]+source[j-1][i]
-  %24 = load [500 x i32]*, [500 x i32]** %3     
-  %25 = sub i32 %j2.0, 1     ; j-1
-  %26= getelementptr [500 x i32],[500 x i32]* %24 , i32 %25     
-  %27 = add i32 %i2.0, 1     ; i+1
-  %28= getelementptr [500 x i32],[500 x i32]* %26 , i32 0, i32 %27     
-  %29 = load i32, i32* %28     
-  %30 = add i32 %23, %29     ; source[j-1][i-1]+source[j-1][i]+source[j-1][i+1]
-  %31 = load [500 x i32]*, [500 x i32]** %3     
-  %32= getelementptr [500 x i32],[500 x i32]* %31 , i32 %j2.0     
-  %33 = sub i32 %i2.0, 1     ; i-1
-  %34= getelementptr [500 x i32],[500 x i32]* %32 , i32 0, i32 %33     
-  %35 = load i32, i32* %34     
-  %36 = add i32 %30, %35     ; source[j-1][i-1]+source[j-1][i]+source[j-1][i+1]+source[j][i-1]
-  %37 = load [500 x i32]*, [500 x i32]** %3     
-  %38= getelementptr [500 x i32],[500 x i32]* %37 , i32 %j2.0     
-  %39 = add i32 %i2.0, 1     ; i+1
-  %40= getelementptr [500 x i32],[500 x i32]* %38 , i32 0, i32 %39     
-  %41 = load i32, i32* %40     
-  %42 = add i32 %36, %41     ; source[j-1][i-1]+source[j-1][i]+source[j-1][i+1]+source[j][i-1]+source[j][i+1]
-  %43 = load [500 x i32]*, [500 x i32]** %3     
-  %44 = add i32 %j2.0, 1     ; j+1
-  %45= getelementptr [500 x i32],[500 x i32]* %43 , i32 %44     
-  %46 = sub i32 %i2.0, 1     ; i-1
-  %47= getelementptr [500 x i32],[500 x i32]* %45 , i32 0, i32 %46     
-  %48 = load i32, i32* %47     
-  %49 = add i32 %42, %48     ; source[j-1][i-1]+source[j-1][i]+source[j-1][i+1]+source[j][i-1]+source[j][i+1]+source[j+1][i-1]
-  %50 = load [500 x i32]*, [500 x i32]** %3     
-  %51 = add i32 %j2.0, 1     ; j+1
-  %52= getelementptr [500 x i32],[500 x i32]* %50 , i32 %51     
-  %53= getelementptr [500 x i32],[500 x i32]* %52 , i32 0, i32 %i2.0     
-  %54 = load i32, i32* %53     
-  %55 = add i32 %49, %54     ; source[j-1][i-1]+source[j-1][i]+source[j-1][i+1]+source[j][i-1]+source[j][i+1]+source[j+1][i-1]+source[j+1][i]
-  %56 = load [500 x i32]*, [500 x i32]** %3     
-  %57 = add i32 %j2.0, 1     ; j+1
-  %58= getelementptr [500 x i32],[500 x i32]* %56 , i32 %57     
-  %59 = add i32 %i2.0, 1     ; i+1
-  %60= getelementptr [500 x i32],[500 x i32]* %58 , i32 0, i32 %59     
-  %61 = load i32, i32* %60     
-  %62 = add i32 %55, %61     ; source[j-1][i-1]+source[j-1][i]+source[j-1][i+1]+source[j][i-1]+source[j][i+1]+source[j+1][i-1]+source[j+1][i]+source[j+1][i+1]
-  %63 = load [500 x i32]*, [500 x i32]** %3     
-  %64= getelementptr [500 x i32],[500 x i32]* %63 , i32 %j2.0     
-  %65= getelementptr [500 x i32],[500 x i32]* %64 , i32 0, i32 %i2.0     
-  %66 = load i32, i32* %65     
-  %67= icmp eq i32 %66, 1     ; source[j][i]==1
-  br i1 %67, label %68, label %74     
-
-68:     
-  %69= icmp eq i32 %62, 2     ; source[j][i]==1 && alive_count==2
-  br i1 %69, label %70, label %74     ; judge source[j][i]==1&&alive_count==2
-
-70:     ; if Stmt
-  %71 = load [500 x i32]*, [500 x i32]** %2     
-  %72= getelementptr [500 x i32],[500 x i32]* %71 , i32 %j2.0     
-  %73= getelementptr [500 x i32],[500 x i32]* %72 , i32 0, i32 %i2.0     
-  store i32 1, i32* %73     ; target[j][i]=1
-  br label %85     
-
-74:     ; else Stmt
-  %75= icmp eq i32 %62, 3     ; alive_count==3
-  br i1 %75, label %76, label %80     ; judge alive_count==3
-
-76:     ; if Stmt
-  %77 = load [500 x i32]*, [500 x i32]** %2     
-  %78= getelementptr [500 x i32],[500 x i32]* %77 , i32 %j2.0     
-  %79= getelementptr [500 x i32],[500 x i32]* %78 , i32 0, i32 %i2.0     
-  store i32 1, i32* %79     ; target[j][i]=1
-  br label %84     
-
-80:     ; else Stmt
-  %81 = load [500 x i32]*, [500 x i32]** %2     
-  %82= getelementptr [500 x i32],[500 x i32]* %81 , i32 %j2.0     
-  %83= getelementptr [500 x i32],[500 x i32]* %82 , i32 0, i32 %i2.0     
-  store i32 0, i32* %83     ; target[j][i]=0
-  br label %84     
-
-84:     
-  br label %85     
-
-85:     
-  %86 = add i32 %i2.0, 1     ; i+1
-  br label %8     
-
-87:     ; exit while
-  %88 = add i32 %j2.0, 1     ; j+1
-  br label %4     
-
-89:     ; exit while
-  ret void     
+14:     ; else Stmt
+  %15 = sub i32 0, 5     ; -+a
+  br label %3     
 }
 
 define dso_local i32 @main(){
 entry:     
-  call void @read_map()     ; call read_map()
-  call void @starttime()     ; call starttime()
-  br label %0     
-
-0:     ; judge steps>0
-  %1 = load i32, i32* @steps     
-  %2= icmp sgt i32 %1, 0     ; steps>0
-  br i1 %2, label %3, label %15     
-
-3:     ; while Stmt
-  %4 = load i32, i32* @active     
-  %5= icmp eq i32 %4, 1     ; active==1
-  br i1 %5, label %6, label %9     ; judge active==1
-
-6:     ; if Stmt
-  %7= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet1 , i32 0, i32 0     
-  %8= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet2 , i32 0, i32 0     
-  call void @step([500 x i32]* %7,[500 x i32]* %8)     ; call step(sheet1,sheet2)
-  store i32 2, i32* @active     ; active=2
-  br label %12     
-
-9:     ; else Stmt
-  %10= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet2 , i32 0, i32 0     
-  %11= getelementptr [500 x [500 x i32]],[500 x [500 x i32]]* @sheet1 , i32 0, i32 0     
-  call void @step([500 x i32]* %10,[500 x i32]* %11)     ; call step(sheet2,sheet1)
-  store i32 1, i32* @active     ; active=1
-  br label %12     
-
-12:     
-  %13 = load i32, i32* @steps     
-  %14 = sub i32 %13, 1     ; steps-1
-  store i32 %14, i32* @steps     ; steps=steps-1
-  br label %0     
-
-15:     ; exit while
-  call void @stoptime()     ; call stoptime()
-  %16 = load i32, i32* @active     
-  %17= icmp eq i32 %16, 2     ; active==2
-  br i1 %17, label %18, label %19     ; judge active==2
-
-18:     ; if Stmt
-  call void @swap12()     ; call swap12()
-  br label %19     
-
-19:     
-  call void @put_map()     ; call put_map()
+  %0 = call i32 @ifElseIf()     ; call ifElseIf()
+  call void @putint(i32 %0)     ; call putint(ifElseIf())
   ret i32 0     
 }
 

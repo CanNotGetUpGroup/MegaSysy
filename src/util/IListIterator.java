@@ -30,5 +30,9 @@ public interface IListIterator<T> extends Iterator<T> {
     void remove();
 
     void set(T e);
+
+    /**
+     * 添加在当前节点前
+     */
     void add(T e);
 }

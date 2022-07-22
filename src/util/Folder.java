@@ -45,17 +45,17 @@ public class Folder {
         ConstantFP R = (ConstantFP) RHS;
 
         switch (P) {
-            case FCMP_OEQ,FCMP_UEQ:
+            case FCMP_OEQ, FCMP_UEQ:
                 return ConstantInt.get(ResultType, L.getVal() == R.getVal() ? 1 : 0);
-            case FCMP_ONE,FCMP_UNE:
+            case FCMP_ONE, FCMP_UNE:
                 return ConstantInt.get(ResultType, L.getVal() != R.getVal() ? 1 : 0);
-            case FCMP_OLT,FCMP_ULT:
+            case FCMP_OLT, FCMP_ULT:
                 return ConstantInt.get(ResultType, L.getVal() < R.getVal() ? 1 : 0);
-            case FCMP_OGT,FCMP_UGT:
+            case FCMP_OGT, FCMP_UGT:
                 return ConstantInt.get(ResultType, L.getVal() > R.getVal() ? 1 : 0);
-            case FCMP_OLE,FCMP_ULE:
+            case FCMP_OLE, FCMP_ULE:
                 return ConstantInt.get(ResultType, L.getVal() <= R.getVal() ? 1 : 0);
-            case FCMP_OGE,FCMP_UGE:
+            case FCMP_OGE, FCMP_UGE:
                 return ConstantInt.get(ResultType, L.getVal() >= R.getVal() ? 1 : 0);
         }
         return null;
@@ -92,14 +92,14 @@ public class Folder {
                 case Add:
                     // X - 0 == X
                     // X + 0 == X
-                    if (CI2.getVal()==0) {
+                    if (CI2.getVal() == 0) {
                         return LHS;
                     }
                     break;
                 case Mul:
                     // X * 0 == 0
                     // X * 1 == X
-                    if (CI2.getVal()==0) {
+                    if (CI2.getVal() == 0) {
                         return RHS;
                     }
                     if (CI2.getVal() == 1) {
@@ -121,26 +121,26 @@ public class Folder {
                 case And:
                     // X & 0 == 0
                     // X & -1 == X
-                    if (CI2.getVal()==0) return RHS;
+                    if (CI2.getVal() == 0) return RHS;
                     if (CI2.getVal() == -1)
                         return LHS;
                     break;
                 case Or:
                     // X | 0 == X
                     // X | -1 == -1
-                    if (CI2.getVal()==0) return LHS;
+                    if (CI2.getVal() == 0) return LHS;
                     if (CI2.getVal() == -1)
                         return RHS;
                     break;
                 case Xor:
                     // X ^ 0 == X
-                    if (CI2.getVal()==0) return LHS;
+                    if (CI2.getVal() == 0) return LHS;
                     break;
             }
-        }else if(LHS instanceof ConstantInt){
+        } else if (LHS instanceof ConstantInt) {
             // If C1 is a ConstantInt and C2 is not, swap the operands.
-            if(Instruction.isCommutative(Opc)){
-                return createBinOp(Opc,RHS,LHS);
+            if (Instruction.isCommutative(Opc)) {
+                return createBinOp(Opc, RHS, LHS);
             }
         }
 
@@ -148,59 +148,60 @@ public class Folder {
             ConstantInt CI1 = (ConstantInt) LHS;
             if (RHS instanceof ConstantInt) {
                 ConstantInt CI2 = (ConstantInt) RHS;
-                int C1V=CI1.getVal(),C2V=CI2.getVal();
+                int C1V = CI1.getVal(), C2V = CI2.getVal();
                 switch (Opc) {
                     default:
                         break;
                     case Sub:
-                        return ConstantInt.get(C1V-C2V);
+                        return ConstantInt.get(C1V - C2V);
                     case Add:
-                        return ConstantInt.get(C1V+C2V);
+                        return ConstantInt.get(C1V + C2V);
                     case Mul:
-                        return ConstantInt.get(C1V*C2V);
+                        return ConstantInt.get(C1V * C2V);
                     case SDiv:
-                        assert C2V!=0;
-                        return ConstantInt.get(C1V/C2V);
+                        assert C2V != 0;
+                        return ConstantInt.get(C1V / C2V);
                     case SRem:
-                        assert C2V!=0;
-                        return ConstantInt.get(C1V%C2V);
+                        assert C2V != 0;
+                        return ConstantInt.get(C1V % C2V);
                     case And:
-                        return ConstantInt.get(C1V&C2V);
+                        return ConstantInt.get(C1V & C2V);
                     case Or:
-                        return ConstantInt.get(C1V|C2V);
+                        return ConstantInt.get(C1V | C2V);
                     case Xor:
-                        return ConstantInt.get(C1V^C2V);
+                        return ConstantInt.get(C1V ^ C2V);
                 }
             }
             switch (Opc) {
                 case SDiv:
                 case SRem:
-                    if(LHS.equals(ConstantInt.const_0())){
+                    if (LHS.equals(ConstantInt.const_0())) {
                         return LHS;
                     }
                     break;
-                default:break;
+                default:
+                    break;
             }
-        }else if(LHS instanceof ConstantFP){
+        } else if (LHS instanceof ConstantFP) {
             ConstantFP CFP1 = (ConstantFP) LHS;
             if (RHS instanceof ConstantFP) {
                 ConstantFP CFP2 = (ConstantFP) RHS;
-                float C1V=CFP1.getVal(),C2V=CFP2.getVal();
+                float C1V = CFP1.getVal(), C2V = CFP2.getVal();
                 switch (Opc) {
                     default:
                         break;
                     case FSub:
-                        return ConstantFP.get(C1V-C2V);
+                        return ConstantFP.get(C1V - C2V);
                     case FAdd:
-                        return ConstantFP.get(C1V+C2V);
+                        return ConstantFP.get(C1V + C2V);
                     case FMul:
-                        return ConstantFP.get(C1V*C2V);
+                        return ConstantFP.get(C1V * C2V);
                     case FDiv:
-                        assert C2V!=0;
-                        return ConstantFP.get(C1V/C2V);
+                        assert C2V != 0;
+                        return ConstantFP.get(C1V / C2V);
                     case FRem:
-                        assert C2V!=0;
-                        return ConstantFP.get(C1V%C2V);
+                        assert C2V != 0;
+                        return ConstantFP.get(C1V % C2V);
                 }
             }
         }
@@ -208,83 +209,84 @@ public class Folder {
     }
 
     public static Constant createAdd(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.Add,LHS,RHS);
+        return createBinOp(Ops.Add, LHS, RHS);
     }
 
     public static Constant createFAdd(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.FAdd,LHS,RHS);
+        return createBinOp(Ops.FAdd, LHS, RHS);
     }
 
     public static Constant createSub(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.Sub,LHS,RHS);
+        return createBinOp(Ops.Sub, LHS, RHS);
     }
 
     public static Constant createFSub(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.FSub,LHS,RHS);
+        return createBinOp(Ops.FSub, LHS, RHS);
     }
 
     public static Constant createMul(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.Mul,LHS,RHS);
+        return createBinOp(Ops.Mul, LHS, RHS);
     }
 
     public static Constant createFMul(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.FMul,LHS,RHS);
+        return createBinOp(Ops.FMul, LHS, RHS);
     }
 
     public static Constant createSDiv(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.SDiv,LHS,RHS);
+        return createBinOp(Ops.SDiv, LHS, RHS);
     }
 
     public static Constant createFDiv(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.FDiv,LHS,RHS);
+        return createBinOp(Ops.FDiv, LHS, RHS);
     }
 
     public static Constant createAnd(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.And,LHS,RHS);
+        return createBinOp(Ops.And, LHS, RHS);
     }
 
     public static Constant createOr(Constant LHS, Constant RHS) {
-        return createBinOp(Ops.Or,LHS,RHS);
+        return createBinOp(Ops.Or, LHS, RHS);
     }
 
-    public static Constant createNot(Constant C){
-        return createBinOp(Ops.Xor,C,ConstantInt.const1_1());
+    public static Constant createNot(Constant C) {
+        return createBinOp(Ops.Xor, C, ConstantInt.const1_1());
     }
 
-    public static Constant createSelect(Constant C ,Constant True, Constant False){
-        if(C.isNullValue()) return False;
-        if(C instanceof ConstantInt && ((ConstantInt)C).getVal()!=0) return True;
-        if(True==False) return True;
+    public static Constant createSelect(Constant C, Constant True, Constant False) {
+        if (C.isNullValue()) return False;
+        if (C instanceof ConstantInt && ((ConstantInt) C).getVal() != 0) return True;
+        if (True == False) return True;
         return null;
     }
 
-    public static boolean constantFoldTerminator(BasicBlock BB){
-        Instruction T=BB.getTerminator();
-        MyIRBuilder builder=MyIRBuilder.getInstance();
+    /**
+     * 化简终结指令（br i1 %1, label %2, label %2 或 br i1 1, label %2, label %3）-> (br label %2)
+     */
+    public static boolean constantFoldTerminator(BasicBlock BB) {
+        Instruction T = BB.getTerminator();
+        MyIRBuilder builder = MyIRBuilder.getInstance();
         builder.setInsertPoint(T);
-        if(T instanceof BranchInst){
+        if (T instanceof BranchInst) {
             //br label不用优化
-            if(T.getNumOperands()==1) return false;
-            BranchInst BI=(BranchInst)T;
-            BasicBlock TrueBlock=(BI).getTrueBlock();
-            BasicBlock FalseBlock=BI.getFalseBlock();
-            if(TrueBlock==FalseBlock){
-                if(TrueBlock.front() instanceof PHIInst){
-                    TrueBlock.removePredecessor(BB);
-                    BranchInst newBI= (BranchInst) builder.createBr(TrueBlock);
-                    BI.remove();
-                    //TODO:删除BI的Cond
-                    return true;
-                }
+            if (T.getNumOperands() == 1) return false;
+            BranchInst BI = (BranchInst) T;
+            BasicBlock TrueBlock = (BI).getTrueBlock();
+            BasicBlock FalseBlock = BI.getFalseBlock();
+            if (TrueBlock == FalseBlock) {
+                TrueBlock.removePredecessor(BB);
+                BranchInst newBI = (BranchInst) builder.createBr(TrueBlock);
+                BI.remove();
+                //TODO:删除BI的Cond
+                return true;
             }
 
-            if(BI.getCond() instanceof ConstantInt){
-                ConstantInt cond= (ConstantInt) BI.getCond();
-                BasicBlock dest=cond.getVal()==1?TrueBlock:FalseBlock;
-                BasicBlock oldDest=cond.getVal()==0?TrueBlock:FalseBlock;
+            if (BI.getCond() instanceof ConstantInt) {
+                ConstantInt cond = (ConstantInt) BI.getCond();
+                BasicBlock dest = cond.getVal() == 1 ? TrueBlock : FalseBlock;
+                BasicBlock oldDest = cond.getVal() == 0 ? TrueBlock : FalseBlock;
 
                 oldDest.removePredecessor(BB);
-                BranchInst newBI= (BranchInst) builder.createBr(dest);
+                BranchInst newBI = (BranchInst) builder.createBr(dest);
                 BI.remove();
                 return true;
             }
