@@ -1,5 +1,8 @@
 package util;
 
+import ir.BasicBlock;
+import ir.Instruction;
+
 import java.util.*;
 
 /**
@@ -13,6 +16,7 @@ public class IList<T, P> implements Iterable<T> {
     private IListNode<T, P> tail = new IListNode<>();
     private P Val;
     private int list_size;
+    private IListIterator<T> end = new ListItr(null);
 
     public IList(P val) {
         Val = val;
@@ -96,6 +100,17 @@ public class IList<T, P> implements Iterable<T> {
         }
     }
 
+    /**
+     * 在insertHead前插入insertList
+     */
+    public void splice(IListIterator<T> insertHead,IList<T,P> insertList){
+        IListNode<T, P> First=insertList.getFirst();
+        while(First!=null){
+            insertHead.add(First.getVal());
+            First=First.getNext();
+        }
+    }
+
     public boolean isEmpty(){
         return getFirst()==null;
     }
@@ -145,7 +160,11 @@ public class IList<T, P> implements Iterable<T> {
             if (H == T) break;
             T = T.getPrev();
         }
-        return H.getVal() == t ? new ListItr(H) : null;
+        return H.getVal() == t ? new ListItr(H) : end;
+    }
+
+    public Iterator<T> end(){
+        return end;
     }
 
     private class ListItr implements IListIterator<T> {
@@ -187,6 +206,12 @@ public class IList<T, P> implements Iterable<T> {
                 throw new IllegalStateException();
 
             IListNode<T, P> lastNext = lastReturned.getNext();
+            if(lastReturned.getVal() instanceof BasicBlock){
+                ((BasicBlock)lastReturned.getVal()).remove();
+            }else if(lastReturned.getVal() instanceof Instruction){
+                ((Instruction) lastReturned.getVal()).remove();
+            }
+
             lastReturned.remove();
             if (nodePtr == lastReturned)
                 nodePtr = lastNext;

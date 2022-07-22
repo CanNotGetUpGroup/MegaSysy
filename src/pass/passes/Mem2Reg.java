@@ -39,7 +39,7 @@ public class Mem2Reg extends FunctionPass {
 
         DominatorTree DT=new DominatorTree(F);
         promoteMem2Reg(F,DT);
-        Module.getInstance().rename();
+        Module.getInstance().rename(F);
     }
 
     public static FunctionPass createMem2Reg(){
