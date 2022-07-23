@@ -181,6 +181,7 @@ public class InstructionSelector {
                 newInst.pushBacktoInstList();
             }
             case Br -> {
+                // TODO: float num cmp
                 if (ir.getNumOperands() == 1) { // unconditional branch
                     var dest = ir.getOperand(0);
                     new Branch(mbb, mf.getBBMap().get((BasicBlock) dest), false, Branch.Type.Block).pushBacktoInstList();
@@ -366,6 +367,23 @@ public class InstructionSelector {
                     case SDiv -> Arithmetic.Type.DIV;
                     default -> null;
                 }, dest, op1, op2).pushBacktoInstList();
+            }
+            case SRem -> {
+                mf.setLeaf(false);
+                Register r1 = valueToReg(mbb, ir.getOperand(0)),
+                        r2 = valueToReg(mbb, ir.getOperand(1));
+
+
+                    new Move(mbb, new MCRegister(Register.Content.Int,  0), r1).pushBacktoInstList();
+                    new Move(mbb, new MCRegister(Register.Content.Int,  1), r2).pushBacktoInstList();
+
+
+                new Branch(mbb, "__aeabi_idivmod", true, Branch.Type.Call).pushBacktoInstList();
+
+
+                var dest = new VirtualRegister();
+                new Move(mbb, dest, new MCRegister(MCRegister.RegName.r1)).pushBacktoInstList();
+                valueMap.put(ir, dest);
             }
 
             case FAdd, FDiv, FMul, FSub -> {
