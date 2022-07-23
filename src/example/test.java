@@ -1,3 +1,5 @@
+package example;
+
 import ir.*;
 import ir.Module;
 import ir.DerivedTypes.*;

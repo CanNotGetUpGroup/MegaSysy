@@ -29,6 +29,7 @@ public class testPass {
         FileWriter fw=new FileWriter("src/pass/test/output.txt");
         PrintWriter pw=new PrintWriter(fw);
 
+        PassManager.initialization();
         PassManager.run(module);
         pw.println(module.toLL());
         pw.flush();

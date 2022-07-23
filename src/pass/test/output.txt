@@ -12,19 +12,48 @@ declare void @memset(i32*,i32,i32)
 declare void @starttime()
 declare void @stoptime()
 
+define dso_local i32 @ifElseIf(){
+entry:     
+  %0= icmp eq i32 5, 6     ; a==6
+  br i1 %0, label %3, label %1     
+
+1:     
+  %2= icmp eq i32 10, 11     ; a==6 || b==0xb
+  br i1 %2, label %3, label %4     ; judge a==6||b==0xb
+
+3:     ; if Stmt
+  %merge = phi i32 [ 5, %1 ] , [ 5, %entry ] , [ 25, %6 ] , [ %13, %12 ] , [ %15, %14 ]      
+  ret i32 %merge     
+
+4:     ; else Stmt
+  %5= icmp eq i32 10, 10     ; b==10
+  br i1 %5, label %6, label %8     
+
+6:     
+  %7= icmp eq i32 5, 1     ; b==10 && a==1
+  br i1 %7, label %3, label %8     ; judge b==10&&a==1
+
+8:     ; else Stmt
+  %9= icmp eq i32 10, 10     ; b==10
+  br i1 %9, label %10, label %14     
+
+10:     
+  %11= icmp eq i32 5, -5     ; b==10 && a==-5
+  br i1 %11, label %12, label %14     ; judge b==10&&a==-5
+
+12:     ; if Stmt
+  %13 = add i32 5, 15     ; a+15
+  br label %3     
+
+14:     ; else Stmt
+  %15 = sub i32 0, 5     ; -+a
+  br label %3     
+}
+
 define dso_local i32 @main(){
 entry:     
-  %0= icmp sgt i32 1, 0     ; cond>0
-  br i1 %0, label %1, label %2     ; judge cond>0
-
-1:     ; if Stmt
-  br label %3     
-
-2:     ; else Stmt
-  br label %3     
-
-3:     
-  %x.0 = phi i32 [ 1, %1 ] , [ -1, %2 ]      
-  ret i32 %x.0     
+  %0 = call i32 @ifElseIf()     ; call ifElseIf()
+  call void @putint(i32 %0)     ; call putint(ifElseIf())
+  ret i32 0     
 }
 
