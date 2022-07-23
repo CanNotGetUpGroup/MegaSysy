@@ -8,7 +8,7 @@ import backend.machineCode.Operand.Register;
 
 public class Branch extends MachineInstruction {
     // 暂时没考虑过Thumb2指令集
-    private boolean storeLR = false;
+    private boolean storeLR;
     private Register destReg;
 
     // TODO: 这里需要改改
