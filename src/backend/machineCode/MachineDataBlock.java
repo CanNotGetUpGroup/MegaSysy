@@ -15,13 +15,6 @@ import static backend.machineCode.Operand.MCOperand.Type.Addr;
  */
 public class MachineDataBlock extends MCOperand implements Addressable {
 
-    public enum Type {
-        Float,
-        Int,
-    }
-
-    private Type type;
-
     private GlobalVariable irVal = null;
     private int size;
     private int singleValue;
@@ -29,7 +22,6 @@ public class MachineDataBlock extends MCOperand implements Addressable {
 
     public MachineDataBlock(String label, int value) {
         super(Addr);
-        type = Type.Int;
         this.label = label;
         size = 1;
         singleValue = value;
