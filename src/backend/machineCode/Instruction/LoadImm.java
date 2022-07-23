@@ -49,7 +49,7 @@ public class LoadImm extends MachineInstruction {
         if (src instanceof Addressable) {
             sb.append("movw\t").append(dest)
                     .append(", #:lower16:").append(((Addressable) src).getLabel()).append("\n")
-                    .append("movt\t").append(dest)
+                    .append("\tmovt\t").append(dest)
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
         } else if (src instanceof ImmediateNumber){
             int value = ((ImmediateNumber) src).getValue();
