@@ -72,10 +72,10 @@ public class MachineFunction implements Addressable{
                         \t.arch armv7ve
                         \t.syntax unified
                         \t.arm
-                        \t.fpu vfp
+                        \t.fpu vfpv4
                         """)
                 .append("\t.global\t").append(this.name).append("\n")
-                .append("\t.type\t").append(this.name).append("\t%function\n")
+                .append("\t.type\t").append(this.name).append(", %function\n")
                 .append(this.name).append(":").append("\n");
 
         var head = bbList.getHead();
@@ -86,7 +86,7 @@ public class MachineFunction implements Addressable{
             sb.append(bb.toString()).append("\n");
         }
         // size
-        sb.append(".size\t").append(name).append(", .-").append(name).append("\n");
+        sb.append("\t.size\t").append(name).append(", .-").append(name).append("\n");
         return sb.toString();
     }
 
