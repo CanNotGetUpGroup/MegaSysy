@@ -14,6 +14,7 @@ public class Branch extends MachineInstruction {
     // TODO: 这里需要改改
     private MachineBasicBlock destBB;
     private MachineFunction destf;
+    private String destStr;
     private Type type;
 
     public enum Type {
@@ -40,6 +41,7 @@ public class Branch extends MachineInstruction {
         REG,
         LABEL,
         FUNC,
+        String
     }
 
     private DestType destType;
@@ -57,6 +59,14 @@ public class Branch extends MachineInstruction {
         this.destf = f;
         this.storeLR = storeLR;
         destType = DestType.FUNC;
+        this.type = type;
+    }
+
+    public Branch(MachineBasicBlock parent, String f, boolean storeLR, Type type) {
+        super(parent);
+        this.destStr = f;
+        this.storeLR = storeLR;
+        destType = DestType.String;
         this.type = type;
     }
 
@@ -80,6 +90,7 @@ public class Branch extends MachineInstruction {
             case REG -> inst + "\t" + destReg.toString();
             case LABEL -> inst + "\t" + destBB.getLabel();
             case FUNC -> inst + "\t" + destf.getLabel();
+            case String -> inst + "\t" + destStr;
         };
     }
 
