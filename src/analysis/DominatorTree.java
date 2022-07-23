@@ -2,7 +2,6 @@ package analysis;
 
 import ir.BasicBlock;
 import ir.Function;
-import org.antlr.runtime.tree.Tree;
 import org.antlr.v4.runtime.misc.Pair;
 
 import java.util.*;
@@ -37,12 +36,15 @@ public class DominatorTree {
     /**
      * 消除不可到达的基本块
      */
-    public void removeUnreachableBB(){
+    public boolean removeUnreachableBB(){
+        boolean ret=false;
         for(BasicBlock BB:Parent.getBbList()){
             if(getNode(BB)==null){
+                ret=true;
                 BB.remove();
             }
         }
+        return ret;
     }
 
     /**
@@ -71,6 +73,11 @@ public class DominatorTree {
         removeUnreachableBB();
         calculateDomTree();
         calculateDomFrontier();
+    }
+
+    public void update(Function F){
+        clear();
+        computeOnFunction(F);
     }
 
     public void computeOnCFG(ArrayList<BasicBlock> BBs) {

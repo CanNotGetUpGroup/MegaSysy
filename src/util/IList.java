@@ -1,21 +1,26 @@
 package util;
 
+import ir.BasicBlock;
+import ir.Instruction;
+
 import java.util.*;
 
 /**
  * 遍历方法 for(T t:IList){}
+ *
  * @param <T>
  * @param <P>
  */
-public class IList<T, P> implements Iterable<T>{
-    private IListNode<T, P> head=new IListNode<>();
-    private IListNode<T, P> tail=new IListNode<>();
+public class IList<T, P> implements Iterable<T> {
+    private IListNode<T, P> head = new IListNode<>();
+    private IListNode<T, P> tail = new IListNode<>();
     private P Val;
     private int list_size;
+    private IListIterator<T> end = new ListItr(null);
 
     public IList(P val) {
         Val = val;
-        list_size=0;
+        list_size = 0;
         head.setNext(tail);
         tail.setPrev(head);
         head.setParent(this);
@@ -54,30 +59,66 @@ public class IList<T, P> implements Iterable<T>{
         this.list_size = list_size;
     }
 
-    public IListNode<T,P> getFirst(){
+    public IListNode<T, P> getFirst() {
         return head.getNext();
     }
 
-    public IListNode<T,P> getLast(){
+    public IListNode<T, P> getLast() {
         return tail.getPrev();
     }
 
     public void insertAtHead(T e) {
-        new IListNode<T,P>(e,this).insertAfter(head);
+        new IListNode<T, P>(e, this).insertAfter(head);
     }
 
-    public void insertBefore(T e, IListNode<T,P> succ){
-        new IListNode<T,P>(e,this).insertBefore(succ);
+    public void insertBefore(T e, IListNode<T, P> succ) {
+        new IListNode<T, P>(e, this).insertBefore(succ);
     }
 
     public void pushBack(T e) {
-        new IListNode<T,P>(e,this).insertBefore(tail);
+        new IListNode<T, P>(e, this).insertBefore(tail);
     }
 
-    public int indexOf(T e){
-        int ret=0;
-        for(T t:this){
-            if(t.equals(e)){
+    public void mergeList(IList<T, P> follow) {
+        IListNode<T, P> last=getLast();
+        IListNode<T, P> followFirst=follow.getFirst();
+        if(followFirst==null){
+            return;
+        }
+        tail = follow.getTail();
+        if(last==null){
+            head=follow.getHead();
+            return;
+        }
+
+        last.setNext(followFirst);
+        followFirst.setPrev(last);
+        followFirst.setParent(this);
+        while(followFirst.getNext()!=null){
+            followFirst=followFirst.getNext();
+            followFirst.setParent(this);
+        }
+    }
+
+    /**
+     * 在insertHead前插入insertList
+     */
+    public void splice(IListIterator<T> insertHead,IList<T,P> insertList){
+        IListNode<T, P> First=insertList.getFirst();
+        while(First!=null){
+            insertHead.add(First.getVal());
+            First=First.getNext();
+        }
+    }
+
+    public boolean isEmpty(){
+        return getFirst()==null;
+    }
+
+    public int indexOf(T e) {
+        int ret = 0;
+        for (T t : this) {
+            if (t.equals(e)) {
                 return ret;
             }
             ret++;
@@ -85,16 +126,16 @@ public class IList<T, P> implements Iterable<T>{
         return -1;
     }
 
-    IListNode<T,P> node(int index) {
+    IListNode<T, P> node(int index) {
         // assert isElementIndex(index);
 
         if (index < (list_size >> 1)) {
-            IListNode<T,P> x = getFirst();
+            IListNode<T, P> x = getFirst();
             for (int i = 0; i < index; i++)
                 x = x.getNext();
             return x;
         } else {
-            IListNode<T,P> x = getLast();
+            IListNode<T, P> x = getLast();
             for (int i = list_size - 1; i > index; i--)
                 x = x.getPrev();
             return x;
@@ -106,15 +147,31 @@ public class IList<T, P> implements Iterable<T>{
         return new ListItr(head.getNext());
     }
 
-    public Iterator<T> iterator(IListNode<T,P> N) {
-        return new ListItr(N);
+    public IListIterator<T> iterator(T t) {
+        IListNode<T, P> H = head.getNext(), T = tail.getPrev();
+        while ((H != T)) {
+            if (H.getVal() == t) {
+                return new ListItr(H);
+            }
+            if (T.getVal() == t) {
+                return new ListItr(T);
+            }
+            H = H.getNext();
+            if (H == T) break;
+            T = T.getPrev();
+        }
+        return H.getVal() == t ? new ListItr(H) : end;
+    }
+
+    public Iterator<T> end(){
+        return end;
     }
 
     private class ListItr implements IListIterator<T> {
-        private IListNode<T,P> lastReturned;
-        private IListNode<T,P> nodePtr;
+        private IListNode<T, P> lastReturned;
+        private IListNode<T, P> nodePtr;
 
-        ListItr(IListNode<T,P> N) {
+        ListItr(IListNode<T, P> N) {
             // assert isPositionIndex(index);
             nodePtr = N;
         }
@@ -133,7 +190,7 @@ public class IList<T, P> implements Iterable<T>{
         }
 
         public boolean hasPrevious() {
-            return (nodePtr==null) ? tail.getPrev()!=null : nodePtr.getPrev()!=null;
+            return (nodePtr == null) ? tail.getPrev() != null : nodePtr.getPrev() != null;
         }
 
         public T previous() {
@@ -148,7 +205,13 @@ public class IList<T, P> implements Iterable<T>{
             if (lastReturned == null)
                 throw new IllegalStateException();
 
-            IListNode<T,P> lastNext = lastReturned.getNext();
+            IListNode<T, P> lastNext = lastReturned.getNext();
+            if(lastReturned.getVal() instanceof BasicBlock){
+                ((BasicBlock)lastReturned.getVal()).remove();
+            }else if(lastReturned.getVal() instanceof Instruction){
+                ((Instruction) lastReturned.getVal()).remove();
+            }
+
             lastReturned.remove();
             if (nodePtr == lastReturned)
                 nodePtr = lastNext;
