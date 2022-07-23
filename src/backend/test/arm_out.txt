@@ -1,4 +1,36 @@
 	.data
+	.global	a
+	.align	2
+	.type	a, %object
+	.size	a, 4
+a:
+	.word	1093559910
+	.global	aa
+	.align	2
+	.type	aa, %object
+	.size	aa, 20
+aa:
+	.word	1083179008
+	.word	1087792742
+	.word	1091462758
+	.word	0
+	.word	0
+	.global	ab
+	.align	2
+	.type	ab, %object
+	.size	ab, 4
+ab:
+	.word	10
+	.global	aab
+	.align	2
+	.type	aab, %object
+	.size	aab, 20
+aab:
+	.word	4
+	.word	6
+	.word	8
+	.word	0
+	.word	0
 	.text
 	.align	2
 	.arch armv7ve
@@ -12,59 +44,51 @@ main:
 	Push { LR }
 	Push { r11 }
 	ADD	r11, SP, #4
-	SUB	SP, SP, #48
-	@ %0 = alloca float
-	SUB	SP, SP, #4
-	SUB	r4, r11, #8
-	STR r4, [ r11 , #-12 ]
-	@ store float 0x40c541e660000000, float* %0
-	movw	r4, 3891
-	movt	r4, 17962
+	SUB	SP, SP, #44
+	@ %0= getelementptr [5 x float],[5 x float]* @aa , i32 0, i32 1
+	movw	r4, #:lower16:aa
+	movt	r4, #:upper16:aa
 
-	STR r4, [ r11 , #-16 ]
-	LDR r5, [ r11 , #-16 ]
-	LDR r7, [ r11 , #-12 ]
-	STR r5, [ r7 ]
+	STR r4, [ r11 , #-8 ]
+	LDR r5, [ r11 , #-8 ]
+	ADD	r4, r5, #4
+	STR r4, [ r11 , #-12 ]
 	@ %1 = load float, float* %0
 	LDR r7, [ r11 , #-12 ]
 	LDR r4, [ r7 ]
-	STR r4, [ r11 , #-20 ]
-	@ %2 = fdiv float %1, 0x4043d999a0000000
-	movw	r4, 52429
-	movt	r4, 16926
+	STR r4, [ r11 , #-16 ]
+	@ %2= getelementptr [5 x float],[5 x float]* @aa , i32 0, i32 2
+	movw	r4, #:lower16:aa
+	movt	r4, #:upper16:aa
 
+	STR r4, [ r11 , #-20 ]
+	LDR r5, [ r11 , #-20 ]
+	ADD	r4, r5, #8
 	STR r4, [ r11 , #-24 ]
-	LDR r6, [ r11 , #-20 ]
-	vmov.f32	s15, r6
-	vSTR.32 s15, [ r11 , #-28 ]
-	LDR r6, [ r11 , #-24 ]
+	@ %3 = load float, float* %2
+	LDR r7, [ r11 , #-24 ]
+	LDR r4, [ r7 ]
+	STR r4, [ r11 , #-28 ]
+	@ %4 = fadd float %1, %3
+	LDR r6, [ r11 , #-16 ]
 	vmov.f32	s15, r6
 	vSTR.32 s15, [ r11 , #-32 ]
-	vLDR.32 s16, [ r11 , #-28 ]
-	vLDR.32 s17, [ r11 , #-32 ]
-	vDIV.f32	s15, s16, s17
-	vSTR.32 s15, [ r11 , #-36 ]
-	@ %3 = fadd float %2, 0x402c666660000000
-	movw	r4, 13107
-	movt	r4, 16739
-
-	STR r4, [ r11 , #-40 ]
-	LDR r6, [ r11 , #-40 ]
+	LDR r6, [ r11 , #-28 ]
 	vmov.f32	s15, r6
-	vSTR.32 s15, [ r11 , #-44 ]
-	vLDR.32 s16, [ r11 , #-36 ]
-	vLDR.32 s17, [ r11 , #-44 ]
+	vSTR.32 s15, [ r11 , #-36 ]
+	vLDR.32 s16, [ r11 , #-32 ]
+	vLDR.32 s17, [ r11 , #-36 ]
 	vADD.f32	s15, s16, s17
-	vSTR.32 s15, [ r11 , #-48 ]
-	@ %4 = fptosi float %3 to i32
-	vLDR.32 s17, [ r11 , #-48 ]
+	vSTR.32 s15, [ r11 , #-40 ]
+	@ %5 = fptosi float %4 to i32
+	vLDR.32 s17, [ r11 , #-40 ]
 	vcvt.s32.f32	s15, s17
-	vSTR.32 s15, [ r11 , #-52 ]
-	vLDR.32 s17, [ r11 , #-52 ]
+	vSTR.32 s15, [ r11 , #-44 ]
+	vLDR.32 s17, [ r11 , #-44 ]
 	vmov	r4, s17
-	STR r4, [ r11 , #-56 ]
-	@ ret i32 %4
-	LDR r6, [ r11 , #-56 ]
+	STR r4, [ r11 , #-48 ]
+	@ ret i32 %5
+	LDR r6, [ r11 , #-48 ]
 	mov	r0, r6
 	SUB	SP, r11, #4
 	Pop { r11 }

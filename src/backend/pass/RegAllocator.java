@@ -88,7 +88,6 @@ public class RegAllocator {
 
             for (var bb : func.getBbList()) {
                 for (var inst : bb.getInstList()) {
-                    System.out.println(inst);
                     var dest = inst.getDest();
                     var op1 = inst.getOp1();
                     var op2 = inst.getOp2();

@@ -11,13 +11,10 @@ import ir.Module;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
 
-import javax.print.DocFlavor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import static ir.Instruction.Ops.Load;
-import static ir.Instruction.Ops.Switch;
 
 public class InstructionSelector {
     private Module module;
@@ -51,12 +48,19 @@ public class InstructionSelector {
                 globalDataHash.put(g, dataBlock);
             } else {
                 // 数值
+                int value;
+
                 if (g.getType().getContainedTys(0).isInt32Ty()) {
                     // global int
-                    var dataBlock = new MachineDataBlock(name, ((Constants.ConstantInt) g.getOperand(0)).getVal());
-                    globalDataList.add(dataBlock);
-                    globalDataHash.put(g, dataBlock);
+                    value = ((Constants.ConstantInt)g.getOperand(0)).getVal();
+                } else if (g.getType().getContainedTys(0).isFloatTy()){
+                    value =  Float.floatToIntBits(((Constants.ConstantFP) g.getOperand(0)).getVal());
+                } else{
+                    throw new RuntimeException("Shouldn't be here");
                 }
+                var dataBlock = new MachineDataBlock(name, value);
+                globalDataList.add(dataBlock);
+                globalDataHash.put(g, dataBlock);
             }
         }
 
