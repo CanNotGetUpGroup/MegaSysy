@@ -4,11 +4,9 @@ import ir.Module;
 
 public abstract class Pass {
     enum PassKind {
-        Loop,
         Function,
-        CallGraphSCC,
         Module,
-        PassManager
+        MachineCode,
     }
     private PassKind kind;
 
