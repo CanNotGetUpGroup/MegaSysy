@@ -14,6 +14,7 @@ import ir.instructions.Instructions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 
 public class InstructionSelector {
@@ -52,10 +53,10 @@ public class InstructionSelector {
 
                 if (g.getType().getContainedTys(0).isInt32Ty()) {
                     // global int
-                    value = ((Constants.ConstantInt)g.getOperand(0)).getVal();
-                } else if (g.getType().getContainedTys(0).isFloatTy()){
-                    value =  Float.floatToIntBits(((Constants.ConstantFP) g.getOperand(0)).getVal());
-                } else{
+                    value = ((Constants.ConstantInt) g.getOperand(0)).getVal();
+                } else if (g.getType().getContainedTys(0).isFloatTy()) {
+                    value = Float.floatToIntBits(((Constants.ConstantFP) g.getOperand(0)).getVal());
+                } else {
                     throw new RuntimeException("Shouldn't be here");
                 }
                 var dataBlock = new MachineDataBlock(name, value);
@@ -172,14 +173,12 @@ public class InstructionSelector {
 
                 if (mf.isLeaf()) {
                     newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
-                    newInst.setEpilogue(true);
-                    newInst.pushBacktoInstList();
 
                 } else {
                     newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
-                    newInst.setEpilogue(true);
-                    newInst.pushBacktoInstList();
                 }
+                newInst.setEpilogue(true);
+                newInst.pushBacktoInstList();
             }
             case Br -> {
                 if (ir.getNumOperands() == 1) { // unconditional branch
@@ -274,7 +273,7 @@ public class InstructionSelector {
             case Store -> {
                 Register op1 = valueToReg(mbb, ir.getOperand(0)),
                         op2 = valueToReg(mbb, ir.getOperand(1));
-                new LoadOrStore(mbb, LoadOrStore.Type.STORE, (Register) op1, new Address(op2)).pushBacktoInstList();
+                new LoadOrStore(mbb, LoadOrStore.Type.STORE, op1, new Address(op2)).pushBacktoInstList();
             }
             case Load -> {
                 Register src = valueToReg(mbb, ir.getOperand(0));
@@ -330,15 +329,12 @@ public class InstructionSelector {
             }
 
             // TODO: Mod
-            case Sub, Add, Mul, SDiv -> {
+            case Sub, Add -> {
                 MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)),
                         op2 = valueToMCOperand(mbb, ir.getOperand(1));
 
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
-
-                assert op1 instanceof ImmediateNumber || op1 instanceof Register;
-                assert op2 instanceof ImmediateNumber || op2 instanceof Register;
 
                 if (op1 instanceof ImmediateNumber) {
                     if (Instruction.isCommutative(ir.getOp())) {
@@ -351,22 +347,25 @@ public class InstructionSelector {
                         op1 = n;
                     }
                 }
-                if (op2 instanceof ImmediateNumber
-                        && (ir.getOp() == Instruction.Ops.Mul || ir.getOp() == Instruction.Ops.SDiv)) {
-                    MCOperand n = new VirtualRegister();
-                    new Move(mbb, n, op2).pushBacktoInstList();
-                    op2 = n;
-                }
+
                 Arithmetic.Type mcType = switch (ir.getOp()) {
                     case Sub -> Arithmetic.Type.SUB;
                     case Add -> Arithmetic.Type.ADD;
-                    case Mul -> Arithmetic.Type.MUL;
-                    case SDiv -> Arithmetic.Type.SDIV;
                     default -> null;
                 };
-                assert mcType != null;
                 new Arithmetic(mbb, mcType, dest, (Register) op1, op2).pushBacktoInstList();
+            }
+            case Mul, SDiv -> {
+                Register op1 = valueToReg(mbb, ir.getOperand(0)),
+                        op2 = valueToReg(mbb, ir.getOperand(1));
 
+                Register dest = new VirtualRegister();
+                valueMap.put(ir, dest);
+                new Arithmetic(mbb, switch (ir.getOp()) {
+                    case Mul -> Arithmetic.Type.MUL;
+                    case SDiv -> Arithmetic.Type.DIV;
+                    default -> null;
+                }, dest, op1, op2).pushBacktoInstList();
             }
 
             case FAdd, FDiv, FMul, FSub -> {
@@ -396,7 +395,7 @@ public class InstructionSelector {
                     default -> null;
                 },
                         dest, r1, r2).setForFloat(new ArrayList<>(
-                        Arrays.asList("f32"))).pushBacktoInstList();
+                        List.of("f32"))).pushBacktoInstList();
             }
             case FPToSI -> {
                 var ori = valueToReg(mbb, ir.getOperand(0));
