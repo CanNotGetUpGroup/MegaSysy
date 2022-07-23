@@ -11,10 +11,13 @@ import ir.Module;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
 
+import javax.print.DocFlavor;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import static ir.Instruction.Ops.Load;
+import static ir.Instruction.Ops.Switch;
 
 public class InstructionSelector {
     private Module module;
@@ -202,7 +205,14 @@ public class InstructionSelector {
             case Call -> {
                 mf.setLeaf(false);
                 // TODO : change after phi
+
+                // TODO : Float num
+
+                //  float: from s0 to s15
+                // int : from r0 to r3
+
                 int paraNum = ir.getNumOperands();
+
 
                 for (--paraNum; paraNum > 4; paraNum--) {
                     new PushOrPop(mbb, PushOrPop.Type.Push, valueToReg(mbb, ir.getOperand(paraNum))).pushBacktoInstList();
@@ -229,7 +239,6 @@ public class InstructionSelector {
                 var type = ir.getType();
                 assert type.isPointerTy();
                 DerivedTypes.PointerType pType = (DerivedTypes.PointerType) type;
-                // TODO: Bug suspected
                 if (pType.getElementType().isArrayTy()) {
                     // TODO: 数组
                     assert pType.getElementType().isArrayTy();
@@ -247,6 +256,7 @@ public class InstructionSelector {
                     valueMap.put(ir, dest);
 
                 } else {
+                    // int or float
                     var dest = new VirtualRegister();
                     // 分配栈空间
 
@@ -317,7 +327,6 @@ public class InstructionSelector {
 
             // TODO: Mod
             case Sub, Add, Mul, SDiv -> {
-                assert ir.getNumOperands() == 2;
                 MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)),
                         op2 = valueToMCOperand(mbb, ir.getOperand(1));
 
@@ -356,6 +365,53 @@ public class InstructionSelector {
 
             }
 
+            case FAdd, FDiv, FMul, FSub -> {
+                Register r1 = valueToReg(mbb, ir.getOperand(0)),
+                        r2 = valueToReg(mbb, ir.getOperand(1));
+                if (!r1.isFloat()) {
+                    Register rr1 = new VirtualRegister(Register.Content.Float);
+                    ArrayList<String> info = new ArrayList<>();
+                    info.add("f32");
+                    new Move(mbb, rr1, r1).setForFloat(info).pushBacktoInstList();
+                    r1 = rr1;
+                }
+                if (!r2.isFloat()) {
+                    Register rr2 = new VirtualRegister(Register.Content.Float);
+                    ArrayList<String> info = new ArrayList<>();
+                    info.add("f32");
+                    new Move(mbb, rr2, r2).setForFloat(info).pushBacktoInstList();
+                    r2 = rr2;
+                }
+                Register dest = new VirtualRegister(Register.Content.Float);
+                valueMap.put(ir, dest);
+                new Arithmetic(mbb, switch (ir.getOp()) {
+                    case FAdd -> Arithmetic.Type.ADD;
+                    case FMul -> Arithmetic.Type.MUL;
+                    case FDiv -> Arithmetic.Type.DIV;
+                    case FSub -> Arithmetic.Type.SUB;
+                    default -> null;
+                },
+                        dest, r1, r2).setForFloat(new ArrayList<>(
+                        Arrays.asList("f32"))).pushBacktoInstList();
+            }
+            case FPToSI -> {
+                var ori = valueToReg(mbb, ir.getOperand(0));
+                var temp = new VirtualRegister(Register.Content.Float);
+                var dest = new VirtualRegister();
+                new VCVT(mbb, temp, ori).setForFloat(new ArrayList<>(Arrays.asList("s32", "f32"))).pushBacktoInstList();
+                new Move(mbb, dest, temp).setForFloat(new ArrayList<>()).pushBacktoInstList();
+                valueMap.put(ir, dest);
+            }
+            case SIToFP -> {
+                var ori = valueToReg(mbb, ir.getOperand(0));
+                var temp = new VirtualRegister(Register.Content.Float);
+                var dest = new VirtualRegister(Register.Content.Float);
+                new Move(mbb, temp, ori).setForFloat(new ArrayList<>()).pushBacktoInstList();
+                new VCVT(mbb, dest, temp).setForFloat(new ArrayList<>(Arrays.asList("f32", "s32"))).pushBacktoInstList();
+                valueMap.put(ir, dest);
+            }
+
+
             default -> {
 //                System.out.println("Didn't process command: " + ir);
             }
@@ -373,6 +429,7 @@ public class InstructionSelector {
             return dest;
         } else if (val instanceof Constant) {
             if (type.isInt32Ty()) {
+
                 Constants.ConstantInt v = (Constants.ConstantInt) val;
                 int value = v.getVal();
                 if (ImmediateNumber.isLegalImm(value))
@@ -380,9 +437,14 @@ public class InstructionSelector {
                 else {
                     // not a legal immediate number, has to load a literal value
                     Register dest = new VirtualRegister();
-                    new LoadOrStore(parent, LoadOrStore.Type.LOAD, dest, new ImmediateNumber(value)).pushBacktoInstList();
+                    new LoadImm(parent, dest, value).pushBacktoInstList();
                     return dest;
                 }
+            } else if (type.isFloatTy()) {
+                float value = ((Constants.ConstantFP) val).getVal();
+                Register dest = new VirtualRegister();
+                new LoadImm(parent, dest, value).pushBacktoInstList();
+                return dest;
             } else if (type.isPointerTy()) {
                 // TODO: ???
                 return valueMap.get(val);
@@ -395,7 +457,7 @@ public class InstructionSelector {
             return valueMap.get(val);
         }
 
-        throw new RuntimeException("Unreachable point");
+        throw new RuntimeException("Unreachable point: " + val);
     }
 
     private Register valueToReg(MachineBasicBlock parent, Value val) {

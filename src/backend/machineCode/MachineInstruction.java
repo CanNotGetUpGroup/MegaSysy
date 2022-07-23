@@ -9,10 +9,45 @@ import util.IList;
 import util.IListNode;
 import util.MyIRBuilder;
 
+import java.util.ArrayList;
+
 public abstract class MachineInstruction {
     private MachineBasicBlock parent;
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
+
+    public boolean isForFloat() {
+        return forFloat;
+    }
+
+    public MachineInstruction setForFloat(boolean forFloat, ArrayList<String> typeinfo) {
+        this.forFloat = forFloat;
+        if (forFloat)
+            this.typeinfo = typeinfo;
+        return this;
+    }
+
+    public MachineInstruction setForFloat(ArrayList<String> typeinfo) {
+        this.forFloat = true;
+        this.typeinfo = typeinfo;
+        return this;
+    }
+
+    public ArrayList<String> getTypeinfo() {
+        return typeinfo;
+    }
+
+    public String typeInfoString() {
+        if (!isForFloat()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (var i : typeinfo) {
+            sb.append(".").append(i);
+        }
+        return sb.toString();
+    }
+
+    private boolean forFloat = false;
+    private ArrayList<String> typeinfo = null;
 
     private String comment;
 
@@ -24,11 +59,11 @@ public abstract class MachineInstruction {
         this.cond = cond;
     }
 
+
     private Condition cond;
 
 
-
-    public enum Condition{
+    public enum Condition {
         EQ, ///> Equal
         NE, ///> Not Equal
         GE, ///> Signed greater than or equal
@@ -36,8 +71,8 @@ public abstract class MachineInstruction {
         GT, ///> Signed greater than
         LE; ///> Signed less than or equal
 
-        static public Condition getOpposite(Condition cond){
-            return switch (cond){
+        static public Condition getOpposite(Condition cond) {
+            return switch (cond) {
                 case EQ -> NE;
                 case NE -> EQ;
                 case GE -> LT;
@@ -131,7 +166,6 @@ public abstract class MachineInstruction {
     }
 
 
-
     public Register getDest() {
         return null;
     }
@@ -145,15 +179,15 @@ public abstract class MachineInstruction {
         return null;
     }
 
-     public void setOp1(MCOperand op) {
+    public void setOp1(MCOperand op) {
 
-     }
+    }
 
     public MCOperand getOp2() {
         return null;
     }
 
-    public void setOp2(MCOperand op){
+    public void setOp2(MCOperand op) {
     }
 
 

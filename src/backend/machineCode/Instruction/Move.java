@@ -9,7 +9,7 @@ public class Move extends MachineInstruction {
     private Register dest;
     private MCOperand op;
 
-    public Move(MachineBasicBlock parent, MCOperand dest, MCOperand op){
+    public Move(MachineBasicBlock parent, MCOperand dest, MCOperand op) {
         super(parent);
         assert dest instanceof Register;
         this.dest = (Register) dest;
@@ -41,7 +41,12 @@ public class Move extends MachineInstruction {
         this.op = op;
     }
 
-    public String toString(){
-        return "mov\t" + dest.toString() + ", " + op.toString();
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        if (isForFloat()) sb.append("v");
+        sb.append("mov");
+        if (isForFloat()) sb.append(typeInfoString());
+        sb.append( "\t").append(dest.toString() ).append(", ") .append(op);
+        return sb.toString();
     }
 }

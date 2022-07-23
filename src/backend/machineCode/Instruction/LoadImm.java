@@ -19,11 +19,19 @@ public class LoadImm extends MachineInstruction {
         this.dest = dest;
     }
 
+
     public LoadImm(MachineBasicBlock parent, Register dest, int src) {
         super(parent);
         this.src = new ImmediateNumber(src);
         this.dest = dest;
     }
+
+    public LoadImm(MachineBasicBlock parent, Register dest, float src) {
+        super(parent);
+        this.src = new ImmediateNumber(src);
+        this.dest = dest;
+    }
+
 
     @Override
     public Register getDest() {
@@ -45,8 +53,8 @@ public class LoadImm extends MachineInstruction {
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
         } else if (src instanceof ImmediateNumber){
             int value = ((ImmediateNumber) src).getValue();
-            sb.append("movw\t").append(dest).append(value & 0xFFFF).append("\n")
-                    .append("movt\t").append(dest).append(value & 0xFFFF0000).append("\n");
+            sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
+                    .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000)>>>16).append("\n");
         } else {
             throw new RuntimeException("Unknown type");
         }

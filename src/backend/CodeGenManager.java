@@ -58,12 +58,12 @@ public class CodeGenManager {
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
-        sb.append(".data\n");
+        sb.append("\t.data\n");
         for (var block : dataBlockArrayList) {
             sb.append(block);
         }
 
-        sb.append(".text\n");
+        sb.append("\t.text\n");
         for (var func : funcList) {
             sb.append(func.toString());
         }
