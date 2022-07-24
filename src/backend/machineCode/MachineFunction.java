@@ -52,7 +52,7 @@ public class MachineFunction implements Addressable{
      * 生成一个MachineFunction对象
      *
      * @param name
-     * @return
+     * @return MachineFunction对象
      */
     public MachineFunction(String name) {
         bbList = new IList<>(this);

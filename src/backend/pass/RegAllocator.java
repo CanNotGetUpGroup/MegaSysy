@@ -9,8 +9,8 @@ import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import static backend.machineCode.Instruction.Arithmetic.Type.ADD;
 import static backend.machineCode.Instruction.Arithmetic.Type.SUB;
@@ -53,7 +53,7 @@ public class RegAllocator {
                 MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
                 MachineInstruction newInst;
 
-                // reserve space for temp varible on stack
+                // reserve space for temp variable on stack
                 for (var inst : firstBb.getInstList()) {
                     if (!inst.isPrologue()) {
                         // Push FP
@@ -102,7 +102,7 @@ public class RegAllocator {
 //                        System.out.println(dest instanceof  ImmediateNumber);
                         new LoadOrStore(bb, LoadOrStore.Type.STORE, reg,
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - func.getStackTop()))
-                                .setForFloat(((VirtualRegister) dest).isFloat(), new ArrayList<>(Arrays.asList("32")))
+                                .setForFloat(dest.isFloat(), new ArrayList<>(List.of("32")))
                                 .getInstNode().insertAfter(inst.getInstNode());
                         inst.setDest(reg);
                     }
@@ -116,7 +116,7 @@ public class RegAllocator {
 
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, reg,
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - func.getStackTop()))
-                                .setForFloat(((VirtualRegister) op1).isFloat(), new ArrayList<>(Arrays.asList("32")))
+                                .setForFloat(((VirtualRegister) op1).isFloat(), new ArrayList<>(List.of("32")))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         inst.setOp1(reg);
                     }
@@ -129,7 +129,7 @@ public class RegAllocator {
                         }
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, reg,
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - func.getStackTop()))
-                                .setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(Arrays.asList("32")))
+                                .setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(List.of("32")))
                                 .getInstNode().insertBefore(inst.getInstNode());
 
                         inst.setOp2(reg);
