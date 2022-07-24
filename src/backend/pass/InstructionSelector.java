@@ -186,7 +186,7 @@ public class InstructionSelector {
                     var dest = ir.getOperand(0);
                     new Branch(mbb, mf.getBBMap().get((BasicBlock) dest), false, Branch.Type.Block).pushBacktoInstList();
                 } else { // conditional branch
-                    if (ir.getOperand(0).getType().isInt1Ty()) {
+                    if (ir.getOperand(0) instanceof Constants.ConstantInt) {
                         int val = ((Constants.ConstantInt)(ir.getOperand(0))).getVal();
                         if(val == 0){
                              new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();

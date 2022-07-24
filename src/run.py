@@ -4,7 +4,7 @@ import os
 abspath=os.path.abspath(os.path.join(os.getcwd(), "..")) # D:\JavaProject\MegaSysy
 testcase=abspath+"\\testcase"
 out_directory="E:\VMshare\\bisai\MC"
-classpath=abspath+"\out\production\MegaSysy;"+abspath+"\lib\\antlr-4.10.1-complete.jar"
+classpath=abspath+"\out\production\MegaSysy;"+abspath+"\lib\\antlr-4.8-complete.jar"
 
 functional_testcase=testcase+"\\functional\\"
 functional_out_pass=out_directory+"\\functional\\"

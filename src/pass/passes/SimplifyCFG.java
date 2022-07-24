@@ -17,6 +17,7 @@ import java.util.Set;
 
 /**
  * 消除不可达的基本块
+ * 合并只有ret和phi指令的基本块
  * 化简终结指令（br i1 %1, label %2, label %2 或 br i1 1, label %2, label %3）-> (br label %2)
  * 基本块与前驱合并
  * 消除只有一个前驱的基本块的PHI节点
@@ -39,6 +40,9 @@ public class SimplifyCFG extends FunctionPass {
         Module.getInstance().rename(F);
     }
 
+    /**
+     * 合并只有ret和phi指令的基本块
+     */
     public boolean mergeEmptyReturnBlocks(Function F) {
         boolean Changed = false;
 
@@ -217,7 +221,6 @@ public class SimplifyCFG extends FunctionPass {
         BB.remove(removeTerminator);
         return true;
     }
-
 
     /**
      * 基本块与前驱合并
