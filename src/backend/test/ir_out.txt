@@ -14,13 +14,18 @@ declare void @stoptime()
 
 define dso_local i32 @main(){
 entry:     
-  %0 = alloca i32     ; i32 b=3
-  %1 = alloca i32     ; i32 a=10
-  store i32 10, i32* %1     ; a=i32 10
-  store i32 3, i32* %0     ; b=i32 3
-  %2 = load i32, i32* %1     
-  %3 = load i32, i32* %0     
-  %4 = srem i32 %2, %3     ; a%b
-  ret i32 %4     
+  %0 = alloca i32     ; i32 a=0
+  store i32 0, i32* %0     ; a=i32 0
+  %1 = load i32, i32* %0     
+  %2= icmp eq i32 %1, 0     ; !a
+  %3 = zext i1 %2 to i32     
+  %4= icmp eq i32 %3, 1     ; !a==1
+  br i1 %4, label %5, label %6     ; judge !a==1
+
+5:     ; if Stmt
+  ret i32 1     
+
+6:     
+  ret i32 0     
 }
 

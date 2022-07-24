@@ -328,6 +328,14 @@ public class InstructionSelector {
                 if (dest == null) dest = srcAddr;
                 valueMap.put(ir, dest);
             }
+            case ICmp -> {
+                // pass; will do it when needed
+            }
+
+//            case ZExt -> {
+//                System.out.println(ir);
+//                Register r1 = valueToReg(mbb, ir.getOperand(0));
+//            }
 
             // TODO: Mod
             case Sub, Add -> {
@@ -434,7 +442,8 @@ public class InstructionSelector {
 
 
             default -> {
-//                System.out.println("Didn't process command: " + ir);
+                throw new RuntimeException("Didn't process command: " + ir);
+
             }
         }
     }
