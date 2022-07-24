@@ -15,12 +15,12 @@ public class DominatorTree {
     public Function Parent;
     public TreeNode Root;
     public HashMap<BasicBlock, TreeNode> DomTreeNodes;
-    public ArrayList<TreeNode> PostOrder;//后序遍历CFG
-    public ArrayList<TreeNode> ReversePostOrder;//逆后序遍历CFG
+    public ArrayList<TreeNode> PostOrder;// 后序遍历CFG
+    public ArrayList<TreeNode> ReversePostOrder;// 逆后序遍历CFG
     public ArrayList<BasicBlock> Vertex;
     public HashMap<TreeNode, ArrayList<TreeNode>> PredecessorsOfCFG;
     public HashMap<TreeNode, Set<TreeNode>> DominanceFrontier;
-    public ArrayList<TreeNode> JoinNodes;//CFG中拥有多个前驱的节点
+    public ArrayList<TreeNode> JoinNodes;// CFG中拥有多个前驱的节点
 
     public DominatorTree(Function F) {
         DomTreeNodes = new HashMap<>();
@@ -37,11 +37,11 @@ public class DominatorTree {
     /**
      * 消除不可到达的基本块
      */
-    public boolean removeUnreachableBB(){
-        boolean ret=false;
-        for(BasicBlock BB:Parent.getBbList()){
-            if(getNode(BB)==null){
-                ret=true;
+    public boolean removeUnreachableBB() {
+        boolean ret = false;
+        for (BasicBlock BB : Parent.getBbList()) {
+            if (getNode(BB) == null) {
+                ret = true;
                 BB.remove();
             }
         }
@@ -52,7 +52,8 @@ public class DominatorTree {
      * 按照CFG生成TreeNode，IDom信息在CalculateDomTree中生成
      */
     public void initTreeNode(TreeNode p) {
-        if (p == null) return;
+        if (p == null)
+            return;
         for (var child : p.BB.getSuccessors()) {
             if (DomTreeNodes.containsKey(child)) {
                 DomTreeNodes.get(child).Predecessors.add(p);
@@ -69,24 +70,25 @@ public class DominatorTree {
         Parent = F;
         TreeNode root = new TreeNode(F.getEntryBB());
         Root = root;
-        DomTreeNodes.put(F.getEntryBB(),Root);
+        DomTreeNodes.put(F.getEntryBB(), Root);
         initTreeNode(root);
         removeUnreachableBB();
         calculateDomTree();
         calculateDomFrontier();
     }
 
-    public void update(Function F){
+    public void update(Function F) {
         clear();
         computeOnFunction(F);
     }
 
     public void computeOnCFG(ArrayList<BasicBlock> BBs) {
-        if (BBs.isEmpty()) return;
+        if (BBs.isEmpty())
+            return;
         Parent = BBs.get(0).getParent();
         TreeNode root = new TreeNode(BBs.get(0));
         Root = root;
-        DomTreeNodes.put(BBs.get(0),Root);
+        DomTreeNodes.put(BBs.get(0), Root);
         initTreeNode(root);
         calculateDomTree();
         calculateDomFrontier();
@@ -139,12 +141,16 @@ public class DominatorTree {
      * A是否支配B
      */
     public boolean dominates(BasicBlock A, BasicBlock B) {
-        if (B == A) return true;
+        if (B == A)
+            return true;
         TreeNode TA = DomTreeNodes.get(A);
         TreeNode TB = DomTreeNodes.get(B);
-        if (TB.IDom == TA) return true;
-        if (TA.IDom == TB) return false;
-        if (TA.level >= TB.level) return false;
+        if (TB.IDom == TA)
+            return true;
+        if (TA.IDom == TB)
+            return false;
+        if (TA.level >= TB.level)
+            return false;
         return TB.dominatedBy(TA);
     }
 
@@ -171,7 +177,7 @@ public class DominatorTree {
     public void calculateDomTree() {
         getReversePostOrder();
         boolean changed = true;
-        Root.IDom=Root;
+        Root.IDom = Root;
         while (changed) {
             changed = false;
             for (var cur : ReversePostOrder) {
@@ -180,14 +186,14 @@ public class DominatorTree {
                 }
                 var PredDomNode = cur.Predecessors;
                 TreeNode usefulNode = null;
-                //查找IDom不为null的前驱节点
+                // 查找IDom不为null的前驱节点
                 for (var pre : PredDomNode) {
                     if (pre.IDom != null) {
                         usefulNode = pre;
                         break;
                     }
                 }
-                //查找公共父节点
+                // 查找公共父节点
                 for (var pre : PredDomNode) {
                     if (pre == usefulNode) {
                         continue;
@@ -196,7 +202,7 @@ public class DominatorTree {
                         usefulNode = findSharedParent(usefulNode, pre);
                     }
                 }
-                //检查IDom是否改变
+                // 检查IDom是否改变
                 if (cur.IDom != usefulNode) {
                     cur.setIDom(usefulNode);
                     changed = true;
@@ -211,8 +217,8 @@ public class DominatorTree {
             for (var pred : node.Predecessors) {
                 runner = pred;
                 while (runner != node.IDom) {
-                    if(!DominanceFrontier.containsKey(runner)){
-                        DominanceFrontier.put(runner,new HashSet<>());
+                    if (!DominanceFrontier.containsKey(runner)) {
+                        DominanceFrontier.put(runner, new HashSet<>());
                     }
                     DominanceFrontier.get(runner).add(node);
                     runner = runner.IDom;
@@ -222,7 +228,7 @@ public class DominatorTree {
     }
 
     public void updateDFSNumbers() {
-        Stack<Pair<TreeNode,Iterator<TreeNode>>> WorkStack = new Stack<>();
+        Stack<Pair<TreeNode, Iterator<TreeNode>>> WorkStack = new Stack<>();
         TreeNode ThisRoot = Root;
         WorkStack.push(new Pair<>(ThisRoot, ThisRoot.Children.iterator()));
 
@@ -231,14 +237,14 @@ public class DominatorTree {
 
         while (!WorkStack.empty()) {
             TreeNode Node = WorkStack.peek().a;
-            Iterator<TreeNode> ChildIt=WorkStack.peek().b;
+            Iterator<TreeNode> ChildIt = WorkStack.peek().b;
             if (!ChildIt.hasNext()) {
                 Node.DFSOutNum = DFSNum++;
                 WorkStack.pop();
             } else {
                 TreeNode Child = ChildIt.next();
 
-                WorkStack.push(new Pair<>(Child,Child.Children.iterator()));
+                WorkStack.push(new Pair<>(Child, Child.Children.iterator()));
                 Child.DFSInNum = DFSNum++;
             }
         }
@@ -246,16 +252,18 @@ public class DominatorTree {
 
     public static class TreeNode {
         public BasicBlock BB;
-        public TreeNode IDom;//直接支配节点
-        public ArrayList<TreeNode> Children=new ArrayList<>();
+        public TreeNode IDom;// 直接支配节点
+        public ArrayList<TreeNode> Children = new ArrayList<>();
         public int level;
 
         public TreeNode Father;
 
-        public enum color {WHITE, GRAY, BLACK}
+        public enum color {
+            WHITE, GRAY, BLACK
+        }
 
         private int DFSInNum, DFSOutNum;
-        private int PostNumber;//CFG前序遍历序号
+        private int PostNumber;// CFG前序遍历序号
         private color VisitColor;
         private ArrayList<TreeNode> Predecessors = new ArrayList<>();
 
@@ -296,7 +304,7 @@ public class DominatorTree {
                 TB = IDom;
             }
             return TB == TA;
-//            return this.DFSInNum>=other.DFSInNum&&this.DFSOutNum<=other.DFSOutNum;
+            // return this.DFSInNum>=other.DFSInNum&&this.DFSOutNum<=other.DFSOutNum;
         }
 
         @Override
@@ -341,7 +349,8 @@ public class DominatorTree {
 
         // 广度优先遍历更新level
         public void updateLevel() {
-            if (level == IDom.level + 1) return;
+            if (level == IDom.level + 1)
+                return;
             Stack<TreeNode> stack = new Stack<>();
             stack.push(this);
             while (!stack.isEmpty()) {
