@@ -1,0 +1,45 @@
+	.data
+	.text
+	.align	2
+	.arch armv7ve
+	.syntax unified
+	.arm
+	.fpu vfpv4
+	.global	main
+	.type	main, %function
+main:
+.main1:
+	Push { LR }
+	Push { r11 }
+	ADD	r11, SP, #4
+	SUB	SP, SP, #8
+	@ br i1 0, label %0, label %1
+	B	.main3
+
+.main2:
+	@ call void @putint(i32 2)
+	mov	r0, #2
+	BLX	putint
+	mov	r4, r0
+	STR r4, [ r11 , #-8 ]
+	@ br label %2
+	B	.main4
+
+.main3:
+	@ call void @putint(i32 3)
+	mov	r0, #3
+	BLX	putint
+	mov	r4, r0
+	STR r4, [ r11 , #-12 ]
+	@ br label %2
+	B	.main4
+
+.main4:
+	@ ret i32 0
+	mov	r0, #0
+	SUB	SP, r11, #4
+	Pop { r11 }
+	Pop { PC }
+
+	.size	main, .-main
+
