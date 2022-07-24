@@ -13,6 +13,17 @@ public class IListNode<T, P> {
 
     public IListNode(T val,IList<T,P> parent) {
         Val = val;
+        if(val instanceof Instruction){
+            Instruction I=((Instruction) val);
+            if(I.getInstNode()!=null){
+                I.setInstNode((IListNode<Instruction, BasicBlock>) this);
+            }
+        }else if(val instanceof BasicBlock){
+            BasicBlock BB=(BasicBlock)val;
+            if(BB.getBbNode()!=null){
+                BB.setBbNode((IListNode<BasicBlock, Function>) this);
+            }
+        }
         Parent=parent;
         Prev=Next=null;
     }
@@ -114,18 +125,12 @@ public class IListNode<T, P> {
         insertBefore(list.getTail());
     }
 
-    /**
-     * 删除后继结点
-     */
-    public void cutFollow(Iterator<T> itr){
-        while(itr.hasNext()){
-            itr.next();
-            itr.remove();
-        }
-    }
-
     public boolean isBorder(){
         return Prev==null||Next==null;
+    }
+
+    public IListIterator<T> getIterator(){
+        return getParent().iterator(Val);
     }
 
 }

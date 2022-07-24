@@ -1,6 +1,7 @@
 package ir;
 
 import ir.instructions.Instructions.*;
+import org.antlr.v4.runtime.misc.Pair;
 import util.IList;
 import util.IListNode;
 
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 
 public class BasicBlock extends Value {
     private Function Parent;
+    private ArrayList<PHIInst> PHIs;
     private IListNode<BasicBlock, Function> bbNode;
     private IList<Instruction, BasicBlock> instList;
     private boolean isEntryBlock = false;
@@ -29,6 +31,7 @@ public class BasicBlock extends Value {
     public BasicBlock(Function parent) {
         super(Type.getLabelTy());
         Parent = parent;
+        PHIs = new ArrayList<>();
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
         // 插入到parent末尾
@@ -38,6 +41,7 @@ public class BasicBlock extends Value {
     public BasicBlock(String name, Function parent) {
         super(Type.getLabelTy(), name);
         Parent = parent;
+        PHIs = new ArrayList<>();
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
         // 插入到parent末尾
@@ -47,6 +51,14 @@ public class BasicBlock extends Value {
     @Override
     public String toString() {
         return getName() + ":";
+    }
+
+    public ArrayList<PHIInst> getPHIs() {
+        return PHIs;
+    }
+
+    public void setPHIs(ArrayList<PHIInst> PHIs) {
+        this.PHIs = PHIs;
     }
 
     public Function getParent() {
@@ -77,7 +89,17 @@ public class BasicBlock extends Value {
     public void remove() {
         bbNode.remove();
         dropUsesAsValue();
+        PHIs.clear();
         getTerminator().dropUsesAsUser();
+    }
+
+    // 从函数中删除（终结指令已移除）
+    public void remove(boolean terminatorHasRemoved) {
+        bbNode.remove();
+        dropUsesAsValue();
+        PHIs.clear();
+        if (!terminatorHasRemoved)
+            getTerminator().dropUsesAsUser();
     }
 
     /**
@@ -118,7 +140,7 @@ public class BasicBlock extends Value {
                 break;
             }
             PHIInst Phi = (PHIInst) I;
-            Phi.removeIncomingValue(Pred);
+            Phi.removeIncomingValue(Pred, true);
             if (numPred == 1)
                 continue;
             Value PhiConstant = Phi.hasConstantValue();
@@ -188,7 +210,6 @@ public class BasicBlock extends Value {
     }
 
     /**
-     *
      * @return 最后一条指令
      */
     public Instruction back() {
@@ -201,5 +222,33 @@ public class BasicBlock extends Value {
      */
     public int getLoopDepth() {
         return this.getParent().getLoopInfo().getLoopDepthForBB(this);
+    }
+
+    /**
+     * 第一条非PHI指令
+     */
+    public Instruction getFirstNonPHI() {
+        for (Instruction I : getInstList()) {
+            if (!(I instanceof PHIInst)) {
+                return I;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 将所有引用this的operand转换为引用BB，并清除this的UseList，为V的UseList加上对应的Use
+     * BasicBlock的User可能为br或phi
+     * 若User为phi指令，则替换的不是operand，而是block
+     */
+    public void replaceAllUsesWith(BasicBlock BB) {
+        for (Use use : getUseList()) {
+            use.getU().setOperand(use.getOperandNo(), BB);
+        }
+        getUseList().clear();
+        for (var PI : PHIs) {
+            PI.replaceIncomingBlock(this, BB);
+        }
+        PHIs.clear();
     }
 }

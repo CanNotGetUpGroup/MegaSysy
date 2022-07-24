@@ -1,5 +1,4 @@
-package pass.test;
-
+import backend.CodeGenManager;
 import frontend.SysyLexer;
 import frontend.SysyParser;
 import frontend.Visitor;
@@ -14,14 +13,20 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-public class PassTest {
+public class Compiler {
+    /**
+     * 功能测试：compiler -S -o testcase.s testcase.sy
+     * 性能测试：compiler -S -o testcase.s testcase.sy -O2
+     */
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName(args[0]); // 获取输入流
-        FileWriter fw=new FileWriter(args[1]);
+        CharStream inputStream = CharStreams.fromFileName(args[3]); // 获取输入流
+        FileWriter fw=new FileWriter(args[2]);
         PrintWriter pw=new PrintWriter(fw);
+        boolean O2=false;
+        if(args.length==5&&args[4].equals("-O2"))
+            O2=true;
 
         SysyLexer lexer = new SysyLexer(inputStream);
-
         CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
         Visitor visitor=new Visitor();
         SysyParser parser = new SysyParser(tokenStream);
@@ -30,11 +35,18 @@ public class PassTest {
         Module module = Module.getInstance();
         module.rename();
 
-        //添加Pass
-        PassManager.initialization();
+        if(O2){
+            PassManager.initialization();
+            PassManager.initializationMC();
+        }
         PassManager.run(module);
 
-        pw.println(module.toLL());
+        var mc = CodeGenManager.getInstance();
+        mc.loadModule(module);
+        mc.run();
+        PassManager.runMC(mc);
+
+        pw.println(mc.toArm());
         pw.flush();
     }
 }

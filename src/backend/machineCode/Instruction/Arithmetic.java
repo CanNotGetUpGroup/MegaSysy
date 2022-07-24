@@ -17,6 +17,7 @@ public class Arithmetic extends MachineInstruction {
         ADD,
         SUB,
         MUL,
+        DIV, // for float div
         SDIV, // signed divide
     }
 
@@ -73,7 +74,7 @@ public class Arithmetic extends MachineInstruction {
 
     @Override
     public String toString() {
-        return type.toString() + "\t" + destReg.toString() + ", " + op1.toString() + ", " + op2.toString();
+        return (isForFloat() ? "v" : "") + type.toString() + typeInfoString() + "\t" + destReg.toString() + ", " + op1.toString() + ", " + op2.toString();
     }
 
     @Override
