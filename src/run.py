@@ -3,7 +3,7 @@ import os
 # testcase="D:\JavaProject\MegaSysy\oldtestcases"
 abspath=os.path.abspath(os.path.join(os.getcwd(), "..")) # D:\JavaProject\MegaSysy
 testcase=abspath+"\\testcase"
-out_directory="E:\VMshare\\bisai\MC"
+out_directory=abspath+"\MC"
 classpath=abspath+"\out\production\MegaSysy;"+abspath+"\lib\\antlr-4.8-complete.jar"
 
 functional_testcase=testcase+"\\functional\\"
