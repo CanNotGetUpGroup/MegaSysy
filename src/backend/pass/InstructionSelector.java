@@ -187,9 +187,9 @@ public class InstructionSelector {
                     new Branch(mbb, mf.getBBMap().get((BasicBlock) dest), false, Branch.Type.Block).pushBacktoInstList();
                 } else { // conditional branch
                     if (ir.getOperand(0) instanceof Constants.ConstantInt) {
-                        int val = ((Constants.ConstantInt)(ir.getOperand(0))).getVal();
-                        if(val == 0){
-                             new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
+                        int val = ((Constants.ConstantInt) (ir.getOperand(0))).getVal();
+                        if (val == 0) {
+                            new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
                         } else {  // must be 1
                             new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block).pushBacktoInstList();
                         }
@@ -198,16 +198,9 @@ public class InstructionSelector {
                         var op = cond.getPredicate();
                         new Cmp(mbb, valueToReg(mbb, cond.getOperand(0)), valueToMCOperand(mbb, cond.getOperand(1))).pushBacktoInstList();
                         // TODO: change the ir.getOperand(2) after merge
+                        // TODO: Float number
                         MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
-                        inst.setCond(switch (op) {
-                            case ICMP_EQ -> MachineInstruction.Condition.EQ;
-                            case ICMP_NE -> MachineInstruction.Condition.NE;
-                            case ICMP_SGE -> MachineInstruction.Condition.GE;
-                            case ICMP_SGT -> MachineInstruction.Condition.GT;
-                            case ICMP_SLE -> MachineInstruction.Condition.LE;
-                            case ICMP_SLT -> MachineInstruction.Condition.LT;
-                            default -> null;
-                        });
+                        inst.setCond(MachineInstruction.Condition.irToMCCond(op));
                         inst.pushBacktoInstList();
 
                         new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
@@ -313,7 +306,11 @@ public class InstructionSelector {
                     } else {
                         assert op instanceof Register;
                         Register op2 = new VirtualRegister();
-                        new Arithmetic(mbb, Arithmetic.Type.MUL, op2, (Register) op, 4 * size).pushBacktoInstList();
+
+                        Register temp = new VirtualRegister();
+                       new LoadImm(mbb, temp, 4 * size).pushBacktoInstList();
+
+                        new Arithmetic(mbb, Arithmetic.Type.MUL, op2, (Register) op, temp).pushBacktoInstList();
 
                         if (dest == null) {
                             dest = new VirtualRegister();
@@ -341,9 +338,19 @@ public class InstructionSelector {
             }
 
             case ZExt -> {
-                System.out.println(ir);
-                Register r1 = valueToReg(mbb, ir.getOperand(0));
+                var cond = (CmpInst) ir.getOperand(0);
+                var op = cond.getPredicate();
+                Register dest = new VirtualRegister();
+                new Cmp(mbb, valueToReg(mbb, cond.getOperand(0)), valueToMCOperand(mbb, cond.getOperand(1))).pushBacktoInstList();
 
+                new Move(mbb, dest, new ImmediateNumber(0)).pushBacktoInstList();
+
+                MachineInstruction inst = new Move(mbb, dest, new ImmediateNumber(1));
+
+                inst.setCond(MachineInstruction.Condition.irToMCCond(op));
+                inst.pushBacktoInstList();
+
+                valueMap.put(ir, dest);
             }
 
             // TODO: Mod

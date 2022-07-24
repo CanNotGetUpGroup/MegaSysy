@@ -53,6 +53,9 @@ public class LoadImm extends MachineInstruction {
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
         } else if (src instanceof ImmediateNumber){
             int value = ((ImmediateNumber) src).getValue();
+            if(ImmediateNumber.isLegalImm(value)){
+                sb.append("mov\t").append(dest).append(", ").append(value);
+            }else
             sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
                     .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000)>>>16).append("\n");
         } else {
