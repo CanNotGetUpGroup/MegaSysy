@@ -14,18 +14,17 @@ declare void @stoptime()
 
 define dso_local i32 @main(){
 entry:     
-  %0 = alloca i32     ; i32 a=0
-  store i32 0, i32* %0     ; a=i32 0
-  %1 = load i32, i32* %0     
-  %2= icmp eq i32 %1, 0     ; !a
-  %3 = zext i1 %2 to i32     
-  %4= icmp eq i32 %3, 1     ; !a==1
-  br i1 %4, label %5, label %6     ; judge !a==1
+  br i1 0, label %0, label %1     ; judge 0
 
-5:     ; if Stmt
-  ret i32 1     
+0:     ; if Stmt
+  call void @putint(i32 2)     ; call putint(2)
+  br label %2     
 
-6:     
+1:     ; else Stmt
+  call void @putint(i32 3)     ; call putint(3)
+  br label %2     
+
+2:     
   ret i32 0     
 }
 

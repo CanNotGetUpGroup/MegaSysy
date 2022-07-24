@@ -186,24 +186,32 @@ public class InstructionSelector {
                     var dest = ir.getOperand(0);
                     new Branch(mbb, mf.getBBMap().get((BasicBlock) dest), false, Branch.Type.Block).pushBacktoInstList();
                 } else { // conditional branch
-                    var cond = (CmpInst) ir.getOperand(0);
-                    var op = cond.getPredicate();
-                    new Cmp(mbb, valueToReg(mbb, cond.getOperand(0)), valueToMCOperand(mbb, cond.getOperand(1))).pushBacktoInstList();
-                    // TODO: change the ir.getOperand(2) after merge
-                    MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
-                    inst.setCond(switch (op) {
-                        case ICMP_EQ -> MachineInstruction.Condition.EQ;
-                        case ICMP_NE -> MachineInstruction.Condition.NE;
-                        case ICMP_SGE -> MachineInstruction.Condition.GE;
-                        case ICMP_SGT -> MachineInstruction.Condition.GT;
-                        case ICMP_SLE -> MachineInstruction.Condition.LE;
-                        case ICMP_SLT -> MachineInstruction.Condition.LT;
-                        default -> null;
-                    });
-                    inst.pushBacktoInstList();
+                    if (ir.getOperand(0).getType().isInt1Ty()) {
+                        int val = ((Constants.ConstantInt)(ir.getOperand(0))).getVal();
+                        if(val == 0){
+                             new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
+                        } else {  // must be 1
+                            new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block).pushBacktoInstList();
+                        }
+                    } else { // cond is an instruction
+                        var cond = (CmpInst) ir.getOperand(0);
+                        var op = cond.getPredicate();
+                        new Cmp(mbb, valueToReg(mbb, cond.getOperand(0)), valueToMCOperand(mbb, cond.getOperand(1))).pushBacktoInstList();
+                        // TODO: change the ir.getOperand(2) after merge
+                        MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
+                        inst.setCond(switch (op) {
+                            case ICMP_EQ -> MachineInstruction.Condition.EQ;
+                            case ICMP_NE -> MachineInstruction.Condition.NE;
+                            case ICMP_SGE -> MachineInstruction.Condition.GE;
+                            case ICMP_SGT -> MachineInstruction.Condition.GT;
+                            case ICMP_SLE -> MachineInstruction.Condition.LE;
+                            case ICMP_SLT -> MachineInstruction.Condition.LT;
+                            default -> null;
+                        });
+                        inst.pushBacktoInstList();
 
-                    new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
-
+                        new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
+                    }
                 }
             }
             case Call -> {
@@ -332,10 +340,11 @@ public class InstructionSelector {
                 // pass; will do it when needed
             }
 
-//            case ZExt -> {
-//                System.out.println(ir);
-//                Register r1 = valueToReg(mbb, ir.getOperand(0));
-//            }
+            case ZExt -> {
+                System.out.println(ir);
+                Register r1 = valueToReg(mbb, ir.getOperand(0));
+
+            }
 
             // TODO: Mod
             case Sub, Add -> {
@@ -372,7 +381,7 @@ public class InstructionSelector {
                 valueMap.put(ir, dest);
                 new Arithmetic(mbb, switch (ir.getOp()) {
                     case Mul -> Arithmetic.Type.MUL;
-                    case SDiv -> Arithmetic.Type.DIV;
+                    case SDiv -> Arithmetic.Type.SDIV;
                     default -> null;
                 }, dest, op1, op2).pushBacktoInstList();
             }
@@ -382,8 +391,8 @@ public class InstructionSelector {
                         r2 = valueToReg(mbb, ir.getOperand(1));
 
 
-                    new Move(mbb, new MCRegister(Register.Content.Int,  0), r1).pushBacktoInstList();
-                    new Move(mbb, new MCRegister(Register.Content.Int,  1), r2).pushBacktoInstList();
+                new Move(mbb, new MCRegister(Register.Content.Int, 0), r1).pushBacktoInstList();
+                new Move(mbb, new MCRegister(Register.Content.Int, 1), r2).pushBacktoInstList();
 
 
                 new Branch(mbb, "__aeabi_idivmod", true, Branch.Type.Call).pushBacktoInstList();
