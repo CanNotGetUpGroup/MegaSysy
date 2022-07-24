@@ -1,5 +1,6 @@
+package util;
+
 import ir.Instruction;
-import ir.Value;
 import ir.instructions.BinaryInstruction;
 
 public class LoopUtils {
@@ -13,6 +14,7 @@ public class LoopUtils {
         if (inst instanceof BinaryInstruction) {
             copy = (Instruction) myIRBuilder.createBinary(inst.getOp(), ops.get(0), ops.get(1));
         }
+        return copy;
     }
 
 }
