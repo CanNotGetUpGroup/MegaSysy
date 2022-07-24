@@ -1,19 +1,15 @@
 package backend.pass;
 
-import backend.machineCode.Addressable;
 import backend.machineCode.Instruction.Arithmetic;
 import backend.machineCode.Instruction.LoadOrStore;
 import backend.machineCode.Instruction.PushOrPop;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
-import backend.machineCode.Operand.Address;
-import backend.machineCode.Operand.ImmediateNumber;
-import backend.machineCode.Operand.MCRegister;
-import backend.machineCode.Operand.VirtualRegister;
-
+import backend.machineCode.Operand.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import static backend.machineCode.Instruction.Arithmetic.Type.ADD;
@@ -97,30 +93,55 @@ public class RegAllocator {
                     var op2 = inst.getOp2();
 
                     if (dest instanceof VirtualRegister) {
-                        new LoadOrStore(bb, LoadOrStore.Type.STORE, new MCRegister(MCRegister.RegName.r4),
+                        Register reg;
+                        if (dest.isFloat()) {
+                            reg = new MCRegister(Register.Content.Float, 15);
+                        } else {
+                            reg = new MCRegister(Register.Content.Int, 4);
+                        }
+//                        System.out.println(dest instanceof  ImmediateNumber);
+                        new LoadOrStore(bb, LoadOrStore.Type.STORE, reg,
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) dest) - func.getStackTop()))
+                                .setForFloat(((VirtualRegister) dest).isFloat(), new ArrayList<>(Arrays.asList("32")))
                                 .getInstNode().insertAfter(inst.getInstNode());
-                        inst.setDest(new MCRegister(MCRegister.RegName.r4));
+                        inst.setDest(reg);
                     }
-                    if (op1 instanceof VirtualRegister ) {
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r5),
+                    if (op1 instanceof VirtualRegister) {
+                        Register reg;
+                        if (((VirtualRegister) op1).isFloat()) {
+                            reg = new MCRegister(Register.Content.Float, 16);
+                        } else {
+                            reg = new MCRegister(Register.Content.Int, 5);
+                        }
+
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, reg,
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op1) - func.getStackTop()))
+                                .setForFloat(((VirtualRegister) op1).isFloat(), new ArrayList<>(Arrays.asList("32")))
                                 .getInstNode().insertBefore(inst.getInstNode());
-                        inst.setOp1(new MCRegister(MCRegister.RegName.r5));
+                        inst.setOp1(reg);
                     }
                     if (op2 instanceof VirtualRegister) {
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r6),
+                        Register reg;
+                        if (((VirtualRegister) op2).isFloat()) {
+                            reg = new MCRegister(Register.Content.Float, 17);
+                        } else {
+                            reg = new MCRegister(Register.Content.Int, 6);
+                        }
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, reg,
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get((VirtualRegister) op2) - func.getStackTop()))
+                                .setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(Arrays.asList("32")))
                                 .getInstNode().insertBefore(inst.getInstNode());
-                        inst.setOp2(new MCRegister(MCRegister.RegName.r6));
-                    } else if (op2 instanceof Address && ((Address) op2).getReg() instanceof VirtualRegister){
+
+                        inst.setOp2(reg);
+
+                    } else if (op2 instanceof Address && ((Address) op2).getReg() instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r7),
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get(((Address) op2).getReg()) - func.getStackTop()))
                                 .getInstNode().insertBefore(inst.getInstNode());
                         ((Address) op2).setReg(new MCRegister(MCRegister.RegName.r7));
                     }
-                    // TODO: 地址的第二个参数可能也是reg
-                    else if (op2 instanceof Address && ((Address) op2).getOffset() instanceof VirtualRegister){
+                    //  地址的第二个参数可能也是reg, 肯定还得是int
+                    else if (op2 instanceof Address && ((Address) op2).getOffset() instanceof VirtualRegister) {
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, new MCRegister(MCRegister.RegName.r8),
                                 new Address(new MCRegister(MCRegister.RegName.r11), -4 * vRegHash.get(((Address) op2).getOffset()) - func.getStackTop()))
                                 .getInstNode().insertBefore(inst.getInstNode());

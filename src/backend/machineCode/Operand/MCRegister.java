@@ -1,32 +1,44 @@
 package backend.machineCode.Operand;
 
-public class MCRegister extends Register{
+public class MCRegister extends Register {
 
     private int id;
     private RegName name;
 
-    public enum RegName{
-        r0,
-        r1,
-        r2,
-        r3,
-        r4,
-        r5,
-        r6,
-        r7,
-        r8,
-        r9,
-        r10,
-        r11,
-        IP,
-        SP,
-        LR,
-        PC,
-        CPSR
+
+    private String strName;
+
+    public enum RegName {
+        r0(0),
+        r1(1),
+        r2(2),
+        r3(3),
+        r4(4),
+        r5(5),
+        r6(6),
+        r7(7),
+        r8(8),
+        r9(9),
+        r10(10),
+        r11(11),
+        IP(12),
+        SP(13),
+        LR(14),
+        PC(15),
+        CPSR(16);
+        private final int value;
+
+        private RegName(int value) {
+            this.value = value;
+        }
+
+        public int getValue() {
+            return value;
+        }
     }
 
-    public static RegName idTORegName(int id){
-        return switch (id){
+    public static RegName idTORegName(int id) {
+        return switch (id) {
             case 0 -> RegName.r0;
             case 1 -> RegName.r1;
             case 11 -> RegName.r11;
@@ -47,9 +59,16 @@ public class MCRegister extends Register{
         };
     }
 
-    public MCRegister(RegName reg){
-        super(Type.MACHINE);
+    public MCRegister(RegName reg) {
+        super(Register.Type.MACHINE);
         this.name = reg;
+        this.id = reg.getValue();
+
+    }
+
+    public MCRegister(Content type, int id) {
+        super(Register.Type.MACHINE, type);
+        this.id = id;
     }
 
     public RegName getName() {
@@ -58,6 +77,18 @@ public class MCRegister extends Register{
 
     @Override
     public String toString() {
-        return name.toString();
+        if (isInt()) {
+            RegName reg = switch (id) {
+                case 12 -> RegName.IP;
+                case 13 -> RegName.SP;
+                case 14 -> RegName.LR;
+                case 15 -> RegName.PC;
+                case 16 -> RegName.CPSR;
+                default -> null;
+            };
+            if (reg != null) return reg.name();
+        }
+        return (isInt() ? "r" : "s") + id;
     }
+
 }

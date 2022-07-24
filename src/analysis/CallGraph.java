@@ -108,6 +108,11 @@ public class CallGraph {
             }
         }
 
+        /**
+         * 添加CGN到CalledFunctions，并将本节点添加到CallerFunctions
+         * @param CI
+         * @param CGN
+         */
         public void addCalledFunction(CallInst CI,CallGraphNode CGN){
             CalledFunctions.add(new Pair<>(CI,CGN));
             CGN.getCallerFunctions().add(new Pair<>(CI,this));

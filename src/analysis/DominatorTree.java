@@ -2,7 +2,6 @@ package analysis;
 
 import ir.BasicBlock;
 import ir.Function;
-import org.antlr.runtime.tree.Tree;
 import org.antlr.v4.runtime.misc.Pair;
 
 import java.util.*;

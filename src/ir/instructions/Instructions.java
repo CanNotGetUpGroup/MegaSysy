@@ -3,8 +3,10 @@ package ir.instructions;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
+import org.antlr.v4.runtime.misc.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public abstract class Instructions {
     //===----------------------------------------------------------------------===//
@@ -16,8 +18,8 @@ public abstract class Instructions {
         private Type AllocatedType;
         private boolean undef = true;
 
-        public ArrayList<BasicBlock> definingBlocks=new ArrayList<>(); //store的基本块
-        public ArrayList<BasicBlock> usingBlocks=new ArrayList<>(); //load的基本块
+        public ArrayList<BasicBlock> definingBlocks = new ArrayList<>(); //store的基本块
+        public ArrayList<BasicBlock> usingBlocks = new ArrayList<>(); //load的基本块
         public StoreInst onlyStore;
         public boolean onlyUsedInOne;
         public BasicBlock onlyBlock;
@@ -32,12 +34,12 @@ public abstract class Instructions {
             AllocatedType = type;
         }
 
-        public void resetAnalyzeInfo(){
+        public void resetAnalyzeInfo() {
             definingBlocks.clear();
             usingBlocks.clear();
-            onlyStore=null;
-            onlyUsedInOne=true;
-            onlyBlock=null;
+            onlyStore = null;
+            onlyUsedInOne = true;
+            onlyBlock = null;
         }
 
         @Override
@@ -180,7 +182,7 @@ public abstract class Instructions {
             if (IdxList.isEmpty()) {
                 return Type;
             }
-            for (Value V : IdxList.subList(1,IdxList.size())) {
+            for (Value V : IdxList.subList(1, IdxList.size())) {
                 if (!(V.getType().isIntegerTy())) {
                     Type = null;
                 }
@@ -224,13 +226,13 @@ public abstract class Instructions {
             ResultElementType = resultElementType;
         }
 
-        public boolean allIndicesZero(){
-            for(int i=1;i<getNumOperands();i++){
-                if(getOperand(i) instanceof Constants.ConstantInt){
-                    if(!((Constants.ConstantInt)getOperand(i)).isZero()){
+        public boolean allIndicesZero() {
+            for (int i = 1; i < getNumOperands(); i++) {
+                if (getOperand(i) instanceof Constants.ConstantInt) {
+                    if (!((Constants.ConstantInt) getOperand(i)).isZero()) {
                         return false;
                     }
-                }else{
+                } else {
                     return false;
                 }
             }
@@ -364,12 +366,12 @@ public abstract class Instructions {
             return new CallInst(Func.getType(), Func, Args);
         }
 
-        public Function getCalledFunction(){
-            return (Function)getOperand(0);
+        public Function getCalledFunction() {
+            return (Function) getOperand(0);
         }
 
-        public ArrayList<Value> getArgs(){
-            return new ArrayList<>(getOperandList().subList(1,getNumOperands()-1));
+        public ArrayList<Value> getArgs() {
+            return new ArrayList<>(getOperandList().subList(1, getNumOperands() - 1));
         }
     }
 
@@ -397,7 +399,7 @@ public abstract class Instructions {
     public static class ZExtInst extends CastInst {
         /**
          * @param type 指令类型
-         * @param V 目标类型
+         * @param V    目标类型
          */
         public ZExtInst(Type type, Value V) {
             super(type, Ops.ZExt, V);
@@ -417,7 +419,7 @@ public abstract class Instructions {
     public static class SIToFPInst extends CastInst {
         /**
          * @param type 指令类型
-         * @param V 目标类型
+         * @param V    目标类型
          */
         public SIToFPInst(Type type, Value V) {
             super(type, Ops.SIToFP, V);
@@ -437,7 +439,7 @@ public abstract class Instructions {
     public static class FPToSIInst extends CastInst {
         /**
          * @param type 指令类型
-         * @param V 目标类型
+         * @param V    目标类型
          */
         public FPToSIInst(Type type, Value V) {
             super(type, Ops.FPToSI, V);
@@ -457,82 +459,122 @@ public abstract class Instructions {
     // Value存在OperandList中，BasicBlock存在blocks对应位置
     //
     public static class PHIInst extends Instruction {
-        private final ArrayList<BasicBlock> blocks=new ArrayList<>();
-        private int ReservedSpace;
+        private final ArrayList<BasicBlock> blocks = new ArrayList<>();
 
-        public PHIInst(Type ty,int block_number) {
+        public PHIInst(Type ty, int block_number) {
             super(ty, Ops.PHI, 0);
-            ReservedSpace=block_number;
         }
 
-        public PHIInst(Type ty,int block_number,String Name, Instruction InsertBefore) {
-            super(ty, Ops.PHI, 0,InsertBefore);
-            ReservedSpace=block_number;
+        public PHIInst(Type ty, int block_number, String Name, Instruction InsertBefore) {
+            super(ty, Ops.PHI, 0, InsertBefore);
             setName(Name);
         }
 
-        public PHIInst(Type ty,int block_number,String Name, BasicBlock InsertAtEnd) {
-            super(ty, Ops.PHI, 0,InsertAtEnd);
-            ReservedSpace=block_number;
+        public PHIInst(Type ty, int block_number, String Name, BasicBlock InsertAtEnd) {
+            super(ty, Ops.PHI, 0, InsertAtEnd);
             setName(Name);
         }
 
         @Override
         public String toString() {
-            StringBuilder sb=new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             sb.append(getName()).append(" = phi ").append(getType()).append(" ");
-            for(int i=0;i<getNumOperands();i++){
+            for (int i = 0; i < getNumOperands(); i++) {
                 sb.append("[ ").append(getOperand(i).getName()).append(", %").append(getBlocks().get(i).getName()).append(" ] ");
-                if(i!=getNumOperands()-1){
+                if (i != getNumOperands() - 1) {
                     sb.append(", ");
                 }
             }
             return sb.toString();
         }
 
-        public static PHIInst create(Type ty,int block_num) {
-            return new PHIInst(ty,block_num);
+        public static PHIInst create(Type ty, int block_num) {
+            return new PHIInst(ty, block_num);
         }
 
-        public static PHIInst create(Type ty,int block_num,String Name, BasicBlock InsertAtEnd) {
-            return new PHIInst(ty,block_num,Name,InsertAtEnd);
+        public static PHIInst create(Type ty, int block_num, String Name, BasicBlock InsertAtEnd) {
+            return new PHIInst(ty, block_num, Name, InsertAtEnd);
         }
 
-        public static PHIInst create(Type ty,int block_num,String Name, Instruction InsertBefore) {
-            return new PHIInst(ty,block_num,Name,InsertBefore);
+        public static PHIInst create(Type ty, int block_num, String Name, Instruction InsertBefore) {
+            return new PHIInst(ty, block_num, Name, InsertBefore);
         }
 
-        public ArrayList<BasicBlock> getBlocks(){
+        public ArrayList<BasicBlock> getBlocks() {
             return blocks;
         }
 
-        public void addIncomingValue(Value V){
+        public void addIncomingValue(Value V) {
             addOperand(V);
         }
 
-        public void addIncomingBlock(BasicBlock BB){
+        public void addIncomingBlock(BasicBlock BB) {
             blocks.add(BB);
         }
 
-        public void addIncoming(Value V,BasicBlock BB){
+        public void addIncoming(Value V, BasicBlock BB) {
             addIncomingValue(V);
             addIncomingBlock(BB);
+            BB.getPHIs().add(this);
         }
 
-        public BasicBlock getIncomingBlock(int i){
-            if(i>getNumOperands()) return null;
+        public void setIncomingBlock(int i,BasicBlock BB) {
+            if (i > getNumOperands()||i<0) return ;
+            blocks.set(i,BB);
+            BB.getPHIs().add(this);
+        }
+
+        public void replaceIncomingBlock(BasicBlock OLD,BasicBlock BB) {
+            int i=blocks.indexOf(OLD);
+            if (i > getNumOperands()||i<0) return ;
+            blocks.set(i,BB);
+            BB.getPHIs().add(this);
+        }
+
+        public BasicBlock getIncomingBlock(int i) {
+            if (i > getNumOperands()) return null;
             return blocks.get(i);
         }
 
-        public Value getIncomingValue(int i){
-            if(i>getNumOperands()) return null;
+        public BasicBlock getIncomingBlock(Use U) {
+            if (this != U.getU()) return null;
+            return blocks.get(getOperandList().indexOf(U.getVal()));
+        }
+
+        public Value getIncomingValue(int i) {
+            if (i > getNumOperands()) return null;
             return getOperand(i);
         }
 
-        public void removeIncomingValue(BasicBlock BB){
+        public Value getIncomingValueByBlock(BasicBlock BB) {
+            int i = blocks.indexOf(BB);
+            if (i > getNumOperands() || i < 0) return null;
+            return getOperand(i);
+        }
+
+        /**
+         * 设置来自BB的Value为V，若不存在BB，则添加
+         */
+        public void setOrAddIncomingValueByBlock(Value V,BasicBlock BB) {
+            int i = blocks.indexOf(BB);
+            if (i < 0) {
+                addIncoming(V,BB);
+            }else{
+                setOperand(i,V);
+            }
+        }
+
+        /**
+         * 删除来自某基本块的Value
+         *
+         * @param BB         来源基本块
+         * @param removeThis 在phi指令没有Value后，是否将其删除
+         */
+        public void removeIncomingValue(BasicBlock BB, boolean removeThis) {
             removeOperand(blocks.indexOf(BB));
+            BB.getPHIs().remove(new Pair<>(this,blocks.indexOf(BB)));
             blocks.remove(BB);
-            if(getNumOperands()==0){
+            if (removeThis && getNumOperands() == 0) {
                 replaceAllUsesWith(Constants.UndefValue.get(getType()));
                 remove();
             }
@@ -553,6 +595,56 @@ public abstract class Instructions {
             if (ConstantValue == this)
                 return Constants.UndefValue.get(getType());
             return ConstantValue;
+        }
+
+        /**
+         * 重置PHI指令Value的来源
+         *
+         * @param BB    来源基本块（待合并）
+         * @param Preds 来源基本块的前驱
+         */
+        public void redirectValuesFromPredecessors(BasicBlock BB, ArrayList<BasicBlock> Preds) {
+            Value oldVal = getIncomingValueByBlock(BB);
+            removeIncomingValue(BB, false);
+            HashMap<BasicBlock, Value> incomingValues = new HashMap<>();
+            for (int i = 0; i < getNumOperands(); i++) {
+                //加入不是undef的value
+                if (!Constants.UndefValue.isUndefValue(getIncomingValue(i))) {
+                    incomingValues.put(getIncomingBlock(i), getIncomingValue(i));
+                }
+            }
+            if (oldVal instanceof PHIInst && ((PHIInst) oldVal).getParent() == BB) {
+                PHIInst oldValPI = (PHIInst) (oldVal);
+                for (int i = 0; i < oldValPI.getNumOperands(); i++) {
+                    //当前phi指令和oldValPI指令可能有相同的前驱，若来自oldValPI
+                    //指令所在基本块的Value是undef，则考虑二者是否有共同前驱，有则
+                    //用来自共同前驱的值替换；若不是undef，则没有共同前驱，或共同前驱
+                    //的Value与OldValuePI的相同
+                    BasicBlock PredBB = oldValPI.getIncomingBlock(i);
+                    Value Selected = oldValPI.getIncomingValue(i);
+                    if (Constants.UndefValue.isUndefValue(Selected)) {
+                        //没有共同前驱
+                        if (!incomingValues.containsKey(PredBB)) {
+                            addIncoming(Selected, PredBB);
+                        }
+                    } else {
+                        incomingValues.put(PredBB, Selected);
+                        setOrAddIncomingValueByBlock(Selected,PredBB);
+                    }
+                }
+            } else {
+                for (BasicBlock PredBB : Preds) {
+                    if (Constants.UndefValue.isUndefValue(oldVal)) {
+                        //没有共同前驱
+                        if (!incomingValues.containsKey(PredBB)) {
+                            addIncoming(oldVal, PredBB);
+                        }
+                    } else {
+                        incomingValues.put(PredBB, oldVal);
+                        setOrAddIncomingValueByBlock(oldVal,PredBB);
+                    }
+                }
+            }
         }
     }
 
@@ -590,25 +682,25 @@ public abstract class Instructions {
             return new ReturnInst();
         }
 
-        public ArrayList<BasicBlock> getSuccessors(){
+        public ArrayList<BasicBlock> getSuccessors() {
             return new ArrayList<>();
         }
 
-        public int getSuccessorsNum(){
+        public int getSuccessorsNum() {
             return 0;
         }
 
-        public BasicBlock getSuccessor(int idx){
+        public BasicBlock getSuccessor(int idx) {
             return null;
         }
 
-        public void setSuccessor(int idx,BasicBlock BB){
+        public void setSuccessor(int idx, BasicBlock BB) {
             System.out.println("return指令没有后继基本块！");
         }
 
         @Override
         public String toString() {
-            if(getOperandList().size()==0){
+            if (getOperandList().size() == 0) {
                 return "ret void";
             }
             return "ret " + getOperand(0).getType() + " " + getOperand(0).getName();
@@ -633,8 +725,8 @@ public abstract class Instructions {
             addOperand(IfTrue);
         }
 
-        public BranchInst(BasicBlock IfTrue,BasicBlock InsertAtEnd) {
-            super(Type.getVoidTy(), Ops.Br, 1,InsertAtEnd);
+        public BranchInst(BasicBlock IfTrue, BasicBlock InsertAtEnd) {
+            super(Type.getVoidTy(), Ops.Br, 1, InsertAtEnd);
             addOperand(IfTrue);
         }
 
@@ -645,100 +737,100 @@ public abstract class Instructions {
             addOperand(IfTrue);
         }
 
-        public void setCond(Value Cond){
-            setOperand(0,Cond);
+        public void setCond(Value Cond) {
+            setOperand(0, Cond);
         }
 
-        public void setIfFalse(BasicBlock IfFalse){
-            setOperand(1,IfFalse);
+        public void setIfFalse(BasicBlock IfFalse) {
+            setOperand(1, IfFalse);
         }
 
-        public void setIfTrue(BasicBlock IfTrue){
-            setOperand(2,IfTrue);
+        public void setIfTrue(BasicBlock IfTrue) {
+            setOperand(2, IfTrue);
         }
 
-        public void setBr(BasicBlock BB){
-            setOperand(0,BB);
+        public void setBr(BasicBlock BB) {
+            setOperand(0, BB);
         }
 
-        public BasicBlock getTrueBlock(){
-            if(getNumOperands()==3){
+        public BasicBlock getTrueBlock() {
+            if (getNumOperands() == 3) {
                 return (BasicBlock) getOperand(2);
-            }else{
+            } else {
                 return (BasicBlock) getOperand(0);
             }
         }
 
         public BasicBlock getFalseBlock() {
-            if(getNumOperands()==3){
+            if (getNumOperands() == 3) {
                 return (BasicBlock) getOperand(1);
-            }else{
+            } else {
                 return (BasicBlock) getOperand(0);
             }
         }
 
-        public Value getCond(){
-            if(getNumOperands()==3){
+        public Value getCond() {
+            if (getNumOperands() == 3) {
                 return getOperand(0);
-            }else{
+            } else {
                 return Constants.ConstantInt.const1_1();
             }
         }
 
-        public ArrayList<BasicBlock> getSuccessors(){
-            ArrayList<BasicBlock> ret=new ArrayList<>();
-            if(getNumOperands()==3){
+        public ArrayList<BasicBlock> getSuccessors() {
+            ArrayList<BasicBlock> ret = new ArrayList<>();
+            if (getNumOperands() == 3) {
                 ret.add(getTrueBlock());
                 ret.add(getFalseBlock());
-            }else{
+            } else {
                 ret.add(getTrueBlock());
             }
             return ret;
         }
 
-        public int getSuccessorsNum(){
-            if(getNumOperands()==3){
+        public int getSuccessorsNum() {
+            if (getNumOperands() == 3) {
                 return 2;
-            }else{
+            } else {
                 return 1;
             }
         }
 
-        public BasicBlock getSuccessor(int idx){
-            if(getNumOperands()==3){
-                if(idx==0) return getTrueBlock();
-                else if(idx==1) return getFalseBlock();
+        public BasicBlock getSuccessor(int idx) {
+            if (getNumOperands() == 3) {
+                if (idx == 0) return getTrueBlock();
+                else if (idx == 1) return getFalseBlock();
                 else return null;
-            }else{
-                if(idx==0) return getTrueBlock();
+            } else {
+                if (idx == 0) return getTrueBlock();
                 else return null;
             }
         }
 
-        public void setSuccessor(int idx,BasicBlock BB){
-            assert idx<getSuccessorsNum();
-            if(getNumOperands()==3){
+        public void setSuccessor(int idx, BasicBlock BB) {
+            assert idx < getSuccessorsNum();
+            if (getNumOperands() == 3) {
                 idx++;
             }
-            setOperand(idx,BB);
+            setOperand(idx, BB);
         }
 
         @Override
         public String toString() {
-            if(getOperandList().size()==1){
-                return "br "+getOperand(0).getType()+" %"+getOperand(0).getName();
+            if (getOperandList().size() == 1) {
+                return "br " + getOperand(0).getType() + " %" + getOperand(0).getName();
             }
-            return "br "+getOperand(0).getType()+" "+getOperand(0).getName()+", "
-                    +getOperand(2).getType()+" %"+getOperand(2).getName()+", "
-                    +getOperand(1).getType()+" %"+getOperand(1).getName();
+            return "br " + getOperand(0).getType() + " " + getOperand(0).getName() + ", "
+                    + getOperand(2).getType() + " %" + getOperand(2).getName() + ", "
+                    + getOperand(1).getType() + " %" + getOperand(1).getName();
         }
 
         public static BranchInst create(BasicBlock IfTrue) {
             return new BranchInst(IfTrue);
         }
 
-        public static BranchInst create(BasicBlock IfTrue,BasicBlock InsertAtEnd) {
-            return new BranchInst(IfTrue,InsertAtEnd);
+        public static BranchInst create(BasicBlock IfTrue, BasicBlock InsertAtEnd) {
+            return new BranchInst(IfTrue, InsertAtEnd);
         }
 
         public static BranchInst create(BasicBlock IfTrue, BasicBlock IfFalse, Value Cond) {
@@ -761,9 +853,9 @@ public abstract class Instructions {
 
         @Override
         public String toString() {
-            return getName() + " = select "+getOperand(0).getType()+" "+getOperand(0).getName()+", "
-                    +getOperand(1).getType()+" "+getOperand(1).getName()+", "
-                    +getOperand(2).getType()+" "+getOperand(2).getName();
+            return getName() + " = select " + getOperand(0).getType() + " " + getOperand(0).getName() + ", "
+                    + getOperand(1).getType() + " " + getOperand(1).getName() + ", "
+                    + getOperand(2).getType() + " " + getOperand(2).getName();
         }
 
         public static SelectInst create(Value C, Value S1, Value S2) {
@@ -797,6 +889,7 @@ public abstract class Instructions {
 
     public static class BitCastInst extends Instruction {
         private Type targetType;
+
         public BitCastInst(Value C, Type targetType) {
             super(targetType, Ops.BitCast, 1);
             this.targetType = targetType;
@@ -805,7 +898,7 @@ public abstract class Instructions {
 
         @Override
         public String toString() {
-            return getName() + " = bitcast "+getOperand(0).getType()+" "+getOperand(0).getName()+" to "+ targetType;
+            return getName() + " = bitcast " + getOperand(0).getType() + " " + getOperand(0).getName() + " to " + targetType;
         }
 
         public static BitCastInst create(Value C, Type target) {

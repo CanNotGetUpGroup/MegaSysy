@@ -10,17 +10,31 @@ public class ImmediateNumber extends MCOperand {
         return value;
     }
 
+    public enum Type{
+       Int,
+       Float;
+    }
+
     final int value;
     final boolean isLegalImm;
+    final Type type;
 
     public ImmediateNumber(int value) {
-        super(Type.Imm);
+        super(MCOperand.Type.Imm);
         this.value = value;
+        this.type = Type.Int;
         this.isLegalImm = isLegalImm(value);
     }
 
+    public ImmediateNumber(float value) {
+        super(MCOperand.Type.Imm);
+        this.value = Float.floatToIntBits(value);
+        this.type = Type.Float;
+        this.isLegalImm = false;
+    }
+
     static public boolean isLegalImm(int num) {
-        if(num < 0) num = -num;
+        if (num < 0) num = -num;
         for (int i = 0; i < 16; i++) {
             int head = (num & 3) << 30;
             num = (num >>> 2) | head;
@@ -28,7 +42,6 @@ public class ImmediateNumber extends MCOperand {
         }
         return false;
     }
-
 
 
     static public MachineInstruction loadNum(MachineBasicBlock parent, Register reg, int num) {
