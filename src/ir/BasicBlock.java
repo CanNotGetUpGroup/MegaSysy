@@ -16,6 +16,7 @@ public class BasicBlock extends Value {
 
     /**
      * 生成基本块对象
+     * 
      * @param parent
      * @return
      */
@@ -30,20 +31,20 @@ public class BasicBlock extends Value {
     public BasicBlock(Function parent) {
         super(Type.getLabelTy());
         Parent = parent;
-        PHIs=new ArrayList<>();
+        PHIs = new ArrayList<>();
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
-        //插入到parent末尾
+        // 插入到parent末尾
         bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
     public BasicBlock(String name, Function parent) {
         super(Type.getLabelTy(), name);
         Parent = parent;
-        PHIs=new ArrayList<>();
+        PHIs = new ArrayList<>();
         bbNode = new IListNode<>(this, parent.getBbList());
         instList = new IList<>(this);
-        //插入到parent末尾
+        // 插入到parent末尾
         bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
@@ -84,7 +85,7 @@ public class BasicBlock extends Value {
         this.bbNode = bbNode;
     }
 
-    //从函数中删除
+    // 从函数中删除
     public void remove() {
         bbNode.remove();
         dropUsesAsValue();
@@ -92,7 +93,7 @@ public class BasicBlock extends Value {
         getTerminator().dropUsesAsUser();
     }
 
-    //从函数中删除（终结指令已移除）
+    // 从函数中删除（终结指令已移除）
     public void remove(boolean terminatorHasRemoved) {
         bbNode.remove();
         dropUsesAsValue();
@@ -140,7 +141,8 @@ public class BasicBlock extends Value {
             }
             PHIInst Phi = (PHIInst) I;
             Phi.removeIncomingValue(Pred, true);
-            if (numPred == 1) continue;
+            if (numPred == 1)
+                continue;
             Value PhiConstant = Phi.hasConstantValue();
             if (PhiConstant != null) {
                 Phi.replaceAllUsesWith(PhiConstant);
@@ -150,7 +152,8 @@ public class BasicBlock extends Value {
     }
 
     public BasicBlock getOnlyPredecessor() {
-        if (getPredecessorsNum() == 0) return null;
+        if (getPredecessorsNum() == 0)
+            return null;
         BasicBlock B = getPredecessor(0);
         for (int i = 1; i < getPredecessorsNum(); i++) {
             if (getPredecessor(i) != B) {
@@ -180,7 +183,8 @@ public class BasicBlock extends Value {
     }
 
     public BasicBlock getOnlySuccessor() {
-        if (getSuccessorsNum() == 0) return null;
+        if (getSuccessorsNum() == 0)
+            return null;
         BasicBlock B = getSuccessor(0);
         for (int i = 1; i < getSuccessorsNum(); i++) {
             if (getSuccessor(i) != B) {
@@ -213,6 +217,14 @@ public class BasicBlock extends Value {
     }
 
     /**
+     * 
+     * @return 返回该BB所在loop的深度
+     */
+    public int getLoopDepth() {
+        return this.getParent().getLoopInfo().getLoopDepthForBB(this);
+    }
+
+    /**
      * 第一条非PHI指令
      */
     public Instruction getFirstNonPHI() {
@@ -230,12 +242,12 @@ public class BasicBlock extends Value {
      * 若User为phi指令，则替换的不是operand，而是block
      */
     public void replaceAllUsesWith(BasicBlock BB) {
-        for(Use use:getUseList()){
-            use.getU().setOperand(use.getOperandNo(),BB);
+        for (Use use : getUseList()) {
+            use.getU().setOperand(use.getOperandNo(), BB);
         }
         getUseList().clear();
-        for(var PI:PHIs){
-            PI.replaceIncomingBlock(this,BB);
+        for (var PI : PHIs) {
+            PI.replaceIncomingBlock(this, BB);
         }
         PHIs.clear();
     }

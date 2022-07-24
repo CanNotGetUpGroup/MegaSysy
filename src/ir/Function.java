@@ -7,33 +7,37 @@ import util.IListNode;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
+import analysis.LoopInfo;
+
 public class Function extends Constant {
     private ArrayList<Argument> Arguments;
     private Module Parent;
     private IListNode<Function, Module> funcNode;
     private IList<BasicBlock, Function> bbList;
     private BasicBlock entryBB;
-    private boolean isDefined=true;
+    private boolean isDefined = true;
+    private LoopInfo loopInfo = new LoopInfo(); // function内的循环信息
 
     /**
      * 生成一个Function对象
+     * 
      * @param type
      * @param name
      * @param module
      * @return
      */
-    public static Function create(FunctionType type,String name,Module module){
+    public static Function create(FunctionType type, String name, Module module) {
         return new Function(type, name, module);
     }
 
     public Function(FunctionType type, String name, Module module) {
         super(type, name);
         Parent = module;
-        funcNode = new IListNode<>(this,module.getFuncList());
+        funcNode = new IListNode<>(this, module.getFuncList());
         bbList = new IList<>(this);
-        //添加到module
+        // 添加到module
         funcNode.insertIntoListEnd(Parent.getFuncList());
-        Arguments=new ArrayList<>();
+        Arguments = new ArrayList<>();
     }
 
     @Override
@@ -48,26 +52,26 @@ public class Function extends Constant {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        if(isDefined){
+        if (isDefined) {
             sb.append("define dso_local ")
                     .append(this.getType().getReturnType())
                     .append(" @")
                     .append(this.getName())
                     .append("(");
-            for(Argument arg:Arguments){
+            for (Argument arg : Arguments) {
                 sb.append(arg).append(",");
             }
             if (Arguments.size() != 0) {
                 sb.deleteCharAt(sb.length() - 1);
             }
             sb.append(")");
-        }else{
+        } else {
             sb.append("declare ")
                     .append(this.getType().getReturnType())
                     .append(" @")
                     .append(this.getName())
                     .append("(");
-            for(int i=0;i<getType().getParamNum();i++){
+            for (int i = 0; i < getType().getParamNum(); i++) {
                 sb.append(getType().getParamType(i)).append(",");
             }
             if (getType().getParamNum() != 0) {
@@ -119,9 +123,10 @@ public class Function extends Constant {
     }
 
     public BasicBlock getEntryBB() {
-        if(entryBB==null||entryBB!=getBbList().getFirst().getVal()){
-            if(entryBB!=null) entryBB.setEntryBlock(false);
-            entryBB=getBbList().getFirst().getVal();
+        if (entryBB == null || entryBB != getBbList().getFirst().getVal()) {
+            if (entryBB != null)
+                entryBB.setEntryBlock(false);
+            entryBB = getBbList().getFirst().getVal();
             entryBB.setEntryBlock(true);
         }
         return entryBB;
@@ -132,15 +137,15 @@ public class Function extends Constant {
         entryBB.setEntryBlock(true);
     }
 
-    //从module中删除
-    public void remove(){
+    // 从module中删除
+    public void remove() {
 
     }
 
     /**
      * @return 首个基本块
      */
-    public BasicBlock front(){
+    public BasicBlock front() {
         return getBbList().getFirst().getVal();
     }
 
@@ -148,8 +153,16 @@ public class Function extends Constant {
      *
      * @return 最后一个基本块
      */
-    public BasicBlock back(){
+    public BasicBlock back() {
         return getBbList().getLast().getVal();
+    }
+
+    /**
+     * 
+     * @return function内的循环信息
+     */
+    public LoopInfo getLoopInfo() {
+        return loopInfo;
     }
 
 }
