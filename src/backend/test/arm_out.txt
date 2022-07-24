@@ -12,43 +12,27 @@ main:
 	Push { LR }
 	Push { r11 }
 	ADD	r11, SP, #4
-	SUB	SP, SP, #24
+	SUB	SP, SP, #16
 	@ %0 = alloca i32
 	SUB	SP, SP, #4
 	SUB	r4, r11, #8
 	STR r4, [ r11 , #-12 ]
-	@ store i32 0, i32* %0
-	mov	r4, #0
+	@ store i32 3, i32* %0
+	mov	r4, #3
 	STR r4, [ r11 , #-16 ]
 	LDR r5, [ r11 , #-16 ]
 	LDR r7, [ r11 , #-12 ]
 	STR r5, [ r7 ]
-	@ %1 = load i32, i32* %0
-	LDR r7, [ r11 , #-12 ]
-	LDR r4, [ r7 ]
-	STR r4, [ r11 , #-20 ]
-	@ %2= icmp eq i32 %1, 0
-	@ %3 = zext i1 %2 to i32
-	LDR r5, [ r11 , #-20 ]
-	cmp r5 , #0
-	mov	r4, #0
-	STR r4, [ r11 , #-24 ]
-	mov	r4, #1
-	STR r4, [ r11 , #-24 ]
-	@ %4= icmp eq i32 %3, 1
-	@ br i1 %4, label %5, label %6
-	LDR r5, [ r11 , #-24 ]
-	cmp r5 , #1
-	BEQ	.main2
-	B	.main3
+	@ br i1 1, label %1, label %2
+	B	.main2
 
 .main2:
 	@ call void @putint(i32 1)
 	mov	r0, #1
 	BLX	putint
 	mov	r4, r0
-	STR r4, [ r11 , #-28 ]
-	@ br label %7
+	STR r4, [ r11 , #-20 ]
+	@ br label %3
 	B	.main4
 
 .main3:
@@ -56,8 +40,8 @@ main:
 	mov	r0, #0
 	BLX	putint
 	mov	r4, r0
-	STR r4, [ r11 , #-32 ]
-	@ br label %7
+	STR r4, [ r11 , #-24 ]
+	@ br label %3
 	B	.main4
 
 .main4:

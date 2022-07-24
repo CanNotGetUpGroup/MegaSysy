@@ -1,11 +1,10 @@
-
-int main() {
- int a = 0;
-   if( !a == 1){
-   putint(1);
-   } else {
-   putint(0);
-   }
-  return 0;
+int main(){
+    int a = 3.13;
+    if(3.14 >= 3.13){
+    putint(1);
+    } else{
+    putint(0);
+    }
+    return 0;
 
 }
