@@ -19,6 +19,7 @@ public class Arithmetic extends MachineInstruction {
         MUL,
         DIV, // for float div
         SDIV, // signed divide
+        LSL, // Logical Shift Left
     }
 
     public Arithmetic(MachineBasicBlock parent, Type type, Register destReg, Register op1, MCOperand op2) {
