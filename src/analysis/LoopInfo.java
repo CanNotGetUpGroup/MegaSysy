@@ -145,6 +145,12 @@ public class LoopInfo {
         PopulateLoopsDFS(travelMap, function.getEntryBB());
     }
 
+    /**
+     * 初始化CFG的TravelMap，false代表没有遍历过
+     * 
+     * @param travelMap
+     * @param bb
+     */
     public void InitTravelMap(HashMap<BasicBlock, Boolean> travelMap, BasicBlock bb) {
         if (travelMap.containsKey(bb)) {
             return;
@@ -156,6 +162,12 @@ public class LoopInfo {
         }
     }
 
+    /**
+     * DFS遍历CFG 维护loopInfo中的subloop、TopLevlLoops、bblist集合
+     * 
+     * @param travelMap
+     * @param bb
+     */
     public void PopulateLoopsDFS(HashMap<BasicBlock, Boolean> travelMap, BasicBlock bb) {
         if (travelMap.get(bb)) {
             return;
@@ -180,8 +192,13 @@ public class LoopInfo {
             Collections.reverse(subLoop.getBbList());
             subLoop.getBbList().add(0, bb);
             subLoop.getBbList().remove(subLoop.getBbList().size() - 1);
+            Collections.reverse(subLoop.getSubLoops());
+            subLoop = subLoop.getParentLoop(); // 实现：如果是headBlock，则不需要放到parent loop中，直接从parent-parentloop开始放置
         }
 
+        // 在每个祖先循环中加入当前basicblock
+        for (; subLoop != null; subLoop = subLoop.getParentLoop())
+            subLoop.getBbList().add(bb); // 维护loopp.bblist
     }
 
 }
