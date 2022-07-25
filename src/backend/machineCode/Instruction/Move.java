@@ -45,6 +45,7 @@ public class Move extends MachineInstruction {
         StringBuilder sb = new StringBuilder();
         if (isForFloat()) sb.append("v");
         sb.append("mov");
+        if(getCond() != null) sb.append(getCond());
         if (isForFloat()) sb.append(typeInfoString());
         sb.append( "\t").append(dest.toString() ).append(", ") .append(op);
         return sb.toString();
