@@ -6,6 +6,8 @@ import ir.Module;
 import pass.passes.FuncInline;
 import pass.passes.Mem2Reg;
 import pass.passes.SimplifyCFG;
+import pass.passes.InterproceduralAnalysis;
+import pass.passes.DeadCodeEmit;
 
 import java.util.ArrayList;
 
@@ -17,6 +19,8 @@ public class PassManager {
      * 初始化，在此处按照顺序添加IR pass
      */
     public static void initialization(){
+        passes.add(new InterproceduralAnalysis());
+        passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
         passes.add(new SimplifyCFG());
 //        passes.add(new FuncInline());
