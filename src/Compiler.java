@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import pass.PassManager;
+import pass.passes.SimplifyCFG;
 
 import java.io.FileWriter;
 import java.io.IOException;
