@@ -17,6 +17,9 @@ public class Function extends Constant {
     private BasicBlock entryBB;
     private boolean isDefined = true;
     private LoopInfo loopInfo = new LoopInfo(); // function内的循环信息
+    private ArrayList<Function> callerList;
+    private ArrayList<Function> calleeList;
+    private boolean sideEffect = false;
 
     /**
      * 生成一个Function对象
@@ -38,6 +41,8 @@ public class Function extends Constant {
         // 添加到module
         funcNode.insertIntoListEnd(Parent.getFuncList());
         Arguments = new ArrayList<>();
+        calleeList = new ArrayList<>();
+        callerList = new ArrayList<>();
     }
 
     @Override
@@ -137,9 +142,10 @@ public class Function extends Constant {
         entryBB.setEntryBlock(true);
     }
 
-    // 从module中删除
     public void remove() {
-
+        funcNode.remove();
+        dropUsesAsValue();
+        dropUsesAsUser();
     }
 
     /**
@@ -165,4 +171,31 @@ public class Function extends Constant {
         return loopInfo;
     }
 
+    /**
+     * 
+     * @return 调用该函数的函数列表
+     */
+    public ArrayList<Function> getCallerList() {
+        return callerList;
+    }
+
+    /**
+     * 
+     * @return 该函数调用的函数列表
+     */
+    public ArrayList<Function> getCalleeList() {
+        return calleeList;
+    }
+
+    /**
+     * 
+     * @return 函数是否有附加影响
+     */
+    public boolean hasSideEffect(){
+        return sideEffect;
+    }
+
+    public void setSideEffect(boolean sideEffect) {
+        this.sideEffect = sideEffect;
+    }
 }
