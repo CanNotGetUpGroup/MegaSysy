@@ -5,6 +5,7 @@ import backend.machineCode.Operand.Register;
 import ir.BasicBlock;
 import ir.Instruction;
 import ir.Type;
+import ir.instructions.CmpInst;
 import util.IList;
 import util.IListNode;
 import util.MyIRBuilder;
@@ -79,6 +80,18 @@ public abstract class MachineInstruction {
                 case LT -> GE;
                 case GT -> LE;
                 case LE -> GT;
+            };
+        }
+        static public Condition irToMCCond(CmpInst.Predicate cond){
+            return switch (cond) {
+                case ICMP_EQ -> MachineInstruction.Condition.EQ;
+                case ICMP_NE -> MachineInstruction.Condition.NE;
+                case ICMP_SGE -> MachineInstruction.Condition.GE;
+                case ICMP_SGT -> MachineInstruction.Condition.GT;
+                case ICMP_SLE -> MachineInstruction.Condition.LE;
+                case ICMP_SLT -> MachineInstruction.Condition.LT;
+//                            case FCMP_UEQ ->
+                default -> null;
             };
         }
     }
