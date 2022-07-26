@@ -110,6 +110,12 @@ public class InstructionSelector {
             mbb.pushBacktoBBList();
             bbMap.put(bb, mbb);
         }
+        for(var bb: bbList){
+            for(var inst : bb.getInstList()){
+                if(inst.getOp() == Instruction.Ops.Call)
+                    mf.setLeaf(false);
+            }
+        }
 
         // 稍微处理了一下参数。。。这个不太行。目前是用Virtual Regitser又转存了一次。TODO: 在完成Phi指令的时候应该顺便修改这里
         var firstbb = mf.getBbList().getFirst().getVal();
@@ -137,6 +143,11 @@ public class InstructionSelector {
 
             translateBB(bb);
         }
+
+        //
+        MachineInstruction newInst = new PushOrPop(mf.getBbList().getFirst().getVal(), PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
+        newInst.setPrologue(true);
+        newInst.pushtofront();
     }
 
     private void translateBB(BasicBlock bb) {
@@ -159,20 +170,17 @@ public class InstructionSelector {
         var mbb = mf.getBBMap().get(bb);
         var valueMap = mf.getValueMap();
         new Comment(mbb, ir.toString()).pushBacktoInstList();
+
         switch (ir.getOp()) {
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
                     var op1 = ir.getOperand(0);
                     new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, op1)).pushBacktoInstList();
                 }
-
+                MachineInstruction newInst;
                 // 不管是不是叶子节点都push了，为了解决栈上参数的问题 TODO：未来修改
-                MachineInstruction newInst = new PushOrPop(mf.getBbList().getFirst().getVal(), PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
-                newInst.setPrologue(true);
-                newInst.pushtofront();
-
                 if (mf.isLeaf()) {
-                    newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
+                     newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
 
                 } else {
                     newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
@@ -217,7 +225,7 @@ public class InstructionSelector {
                 }
             }
             case Call -> {
-                mf.setLeaf(false);
+
                 // TODO : change after phi
 
                 // TODO : Float num
@@ -537,7 +545,7 @@ public class InstructionSelector {
             return (Register) res;
         if (res instanceof ImmediateNumber) {
             var dest = new VirtualRegister();
-            ImmediateNumber.loadNum(parent, dest, ((ImmediateNumber) res).getValue()).pushBacktoInstList();
+            ImmediateNumber.loadNum(parent, dest, ((ImmediateNumber) res).getValue());
             return dest;
         }
         if (res instanceof Address) {

@@ -1,18 +1,24 @@
 package backend.machineCode.Operand;
 
+import backend.machineCode.Instruction.LoadImm;
 import backend.machineCode.Instruction.LoadOrStore;
 import backend.machineCode.Instruction.Move;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineInstruction;
+import util.IListNode;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class ImmediateNumber extends MCOperand {
     public int getValue() {
         return value;
     }
 
-    public enum Type{
-       Int,
-       Float;
+    public enum Type {
+        Int,
+        Float;
     }
 
     final int value;
@@ -44,13 +50,56 @@ public class ImmediateNumber extends MCOperand {
     }
 
 
-    static public MachineInstruction loadNum(MachineBasicBlock parent, Register reg, int num) {
+    static public Register loadNum(MachineBasicBlock parent, Register reg, int num) {
         if (isLegalImm(num)) {
-            return new Move(parent, reg, new ImmediateNumber(num));
+            new Move(parent, reg, new ImmediateNumber(num)).setForFloat(reg.isFloat(), new ArrayList<>(Arrays.asList("32"))).pushBacktoInstList();
+            return reg;
         } else {
-            return new LoadOrStore(parent, LoadOrStore.Type.LOAD, reg, new ImmediateNumber(num));
+
+
+                 if(! reg.isFloat()){
+                     new LoadImm(parent, reg, num).pushBacktoInstList();
+                     return reg;
+                 } else{
+                     var temp = new VirtualRegister();
+                     new LoadImm(parent, temp, num).pushBacktoInstList();
+                     new Move(parent, reg, temp);
+                     return reg;
+                 }
+
         }
     }
+
+    static public MCOperand getLegalOperand(MachineBasicBlock parent, int value) {
+        if (isLegalImm(value)) {
+            return new ImmediateNumber(value);
+        } else {
+            Register reg = new VirtualRegister();
+            new LoadImm(parent, reg, value).pushBacktoInstList();
+            return reg;
+        }
+    }
+
+    static public MCOperand getLegalOperandInsertBefore(IListNode<MachineInstruction, MachineBasicBlock> node, int value) {
+        if (isLegalImm(value)) {
+            return new ImmediateNumber(value);
+        } else {
+            Register reg = new VirtualRegister();
+            new LoadImm(node.getParent().getVal(), reg, value).getInstNode().insertBefore(node);
+            return reg;
+        }
+    }
+
+    static public MCOperand getLegalOperand(MachineBasicBlock parent, int value, Register.Content type) {
+        if (isLegalImm(value)) {
+            return new ImmediateNumber(value);
+        } else {
+            Register reg = new VirtualRegister(type);
+            new LoadImm(parent, reg, value).pushBacktoInstList();
+            return reg;
+        }
+    }
+
 
     @Override
     public String toString() {

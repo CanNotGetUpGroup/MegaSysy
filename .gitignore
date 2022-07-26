@@ -2,5 +2,5 @@
 /out/
 /testcase/
 /.idea/
-src/backend/test/
+/src/backend/test/*
 /MC/
