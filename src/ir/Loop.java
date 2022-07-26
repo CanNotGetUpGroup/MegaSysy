@@ -12,6 +12,7 @@ public class Loop {
     private ArrayList<BasicBlock> exitingBlocks; // 循环内即将退出循环的block
     private ArrayList<BasicBlock> exitBlocks; // 循环推出后第一个到达的block
     private ArrayList<BasicBlock> latchBlocks; // 跳转回到头部的基本块
+    private ArrayList<BasicBlock> preHeaderBlocks; // 循环前驱
 
     /**
      * 根据父循环生成loop对象
@@ -25,6 +26,7 @@ public class Loop {
         this.exitingBlocks = new ArrayList<>();
         this.exitBlocks = new ArrayList<>();
         this.latchBlocks = new ArrayList<>();
+        this.preHeaderBlocks = new ArrayList<>();
     }
 
     /**
@@ -39,6 +41,7 @@ public class Loop {
         this.exitingBlocks = new ArrayList<>();
         this.exitBlocks = new ArrayList<>();
         this.latchBlocks = new ArrayList<>();
+        this.preHeaderBlocks = new ArrayList<>();
         this.loopHeader = loopHeader;
         this.bbList.add(loopHeader);
     }
@@ -147,12 +150,11 @@ public class Loop {
     }
 
     public void removeBlock(BasicBlock bb) {
-        // var loop = this;
-        // while(loop != null){
-        // loop.getBbList().remove(bb);
-        // loop = loop.getParentLoop();
-        // }
-        this.bbList.remove(bb);
+        var loop = this;
+        while (loop != null) {
+            loop.getBbList().remove(bb);
+            loop = loop.getParentLoop();
+        }
     }
 
     public void addSubLoop(Loop subLoop) {
