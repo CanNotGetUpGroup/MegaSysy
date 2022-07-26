@@ -3,7 +3,7 @@ package util;
 import java.util.Iterator;
 import java.util.ListIterator;
 
-public interface IListIterator<T> extends Iterator<T> {
+public interface IListIterator<T,P> extends Iterator<T> {
     /**
      * 有后继节点
      */
@@ -34,5 +34,5 @@ public interface IListIterator<T> extends Iterator<T> {
     /**
      * 添加在当前节点前
      */
-    void add(T e);
+    void add(IListNode<T, P> e);
 }

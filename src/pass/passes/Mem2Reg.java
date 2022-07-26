@@ -247,7 +247,7 @@ public class Mem2Reg extends FunctionPass {
 
         // Otherwise, if the instruction is in the entry block and is not an invoke,
         // then it obviously dominates all phi nodes.
-        return I.getParent().isEntryBlock() && !(I instanceof CallBrInst);
+        return I.getParent().isEntryBlock();
     }
 
     /**

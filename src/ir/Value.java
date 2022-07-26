@@ -1,5 +1,7 @@
 package ir;
 
+import util.CloneMap;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -137,4 +139,6 @@ public abstract class Value {
     public void remove(){
 
     }
+
+    public abstract Value copy(CloneMap cloneMap);
 }

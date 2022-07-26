@@ -12,6 +12,7 @@ import java.util.HashMap;
 public class CallGraph {
     private Module M;
     private HashMap<Function,CallGraphNode> CallNodes;
+    private CallGraphNode Main;
 
     public CallGraph(Module m) {
         M = m;
@@ -28,6 +29,9 @@ public class CallGraph {
             return;
         }
         CallGraphNode CGN=getNode(F);
+        if(F.getName().equals("main")){
+            Main=CGN;
+        }
         for(BasicBlock BB:F.getBbList()){
             for(Instruction I:BB.getInstList()){
                 if(I instanceof CallInst){
@@ -62,6 +66,14 @@ public class CallGraph {
 
     public void setCallNodes(HashMap<Function, CallGraphNode> callNodes) {
         CallNodes = callNodes;
+    }
+
+    public CallGraphNode getMain() {
+        return Main;
+    }
+
+    public void setMain(CallGraphNode main) {
+        Main = main;
     }
 
     public static void main(String[] args) {
