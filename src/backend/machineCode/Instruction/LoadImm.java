@@ -51,13 +51,17 @@ public class LoadImm extends MachineInstruction {
                     .append(", #:lower16:").append(((Addressable) src).getLabel()).append("\n")
                     .append("\tmovt\t").append(dest)
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
-        } else if (src instanceof ImmediateNumber){
+        } else if (src instanceof ImmediateNumber) {
             int value = ((ImmediateNumber) src).getValue();
-            if(ImmediateNumber.isLegalImm(value)){
-                sb.append("mov\t").append(dest).append(", ").append(value);
-            }else
-            sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
-                    .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000)>>>16).append("\n");
+            if (ImmediateNumber.isLegalImm(value)) {
+                if (dest.isFloat())
+                    sb.append("v");
+                sb.append("mov");
+                if (dest.isFloat()) sb.append(typeInfoString());
+                sb.append("\t").append(dest).append(", ").append(value);
+            } else
+                sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
+                        .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16).append("\n");
         } else {
             throw new RuntimeException("Unknown type");
         }
