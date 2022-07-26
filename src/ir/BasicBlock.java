@@ -2,6 +2,7 @@ package ir;
 
 import ir.instructions.Instructions.*;
 import org.antlr.v4.runtime.misc.Pair;
+import util.CloneMap;
 import util.IList;
 import util.IListNode;
 
@@ -206,6 +207,7 @@ public class BasicBlock extends Value {
      * @return 首条指令
      */
     public Instruction front() {
+        if(getInstList().getFirst()==null) return null;
         return getInstList().getFirst().getVal();
     }
 
@@ -250,5 +252,13 @@ public class BasicBlock extends Value {
             PI.replaceIncomingBlock(this, BB);
         }
         PHIs.clear();
+    }
+
+    @Override
+    public BasicBlock copy(CloneMap cloneMap) {
+        if(cloneMap.get(this)!=null){
+            return (BasicBlock) cloneMap.get(this);
+        }
+        return null;
     }
 }

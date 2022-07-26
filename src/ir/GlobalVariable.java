@@ -1,5 +1,7 @@
 package ir;
 
+import util.CloneMap;
+
 public class GlobalVariable extends User {
     private Module parent;
     private boolean isConstantGlobal; // Is this a global constant?
@@ -85,5 +87,10 @@ public class GlobalVariable extends User {
     public String toString() {
         if(isConstantGlobal) return getName()+" = dso_local constant "+getOperand(0);
         return getName()+" = dso_local global "+getOperand(0);
+    }
+
+    @Override
+    public Value copy(CloneMap cloneMap) {
+        return this;
     }
 }

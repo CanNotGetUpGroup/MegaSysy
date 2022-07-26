@@ -4,7 +4,7 @@ import ir.Instruction;
 import ir.Type;
 import ir.Value;
 
-public class CmpInst extends Instruction {
+public abstract class CmpInst extends Instruction {
     public enum Predicate {
         ICMP_EQ,  ///< equal
         ICMP_NE,  ///< not equal
