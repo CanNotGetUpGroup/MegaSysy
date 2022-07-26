@@ -4,6 +4,7 @@ import ir.*;
 import ir.Module;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
+import analysis.AliasAnalysis;
 import analysis.DominatorTree.TreeNode;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -21,8 +22,8 @@ public class InterproceduralAnalysis extends ModulePass {
         for(Function F : M.getFuncList()) {
             F.getCalleeList().clear();
             F.getCallerList().clear();
-            F.setSideEffect(true); // TODO: sideEffect判断
-            // F.setSideEffect(!F.isDefined());
+            // F.setSideEffect(true); // TODO: sideEffect判断
+            F.setSideEffect(!F.isDefined());
         }
         for(Function F : M.getFuncList()) {
             for(BasicBlock BB : F.getBbList()) {
@@ -34,14 +35,36 @@ public class InterproceduralAnalysis extends ModulePass {
                             F.getCalleeList().add(calleeFunction);
                             calleeFunction.getCallerList().add(F);
                         }
-                        // case Store -> {
-
-                        // }
+                        case Store -> {
+                            Value addr = I.getOperand(1);
+                            if(addr instanceof AllocaInst && ((AllocaInst) addr).getAllocatedType().isInt32Ty()){
+                                continue;
+                            }
+                            Value pointer = AliasAnalysis.getPointerValue(addr);
+                            if(!AliasAnalysis.isLocal(pointer)){
+                                F.setSideEffect(true);
+                            }
+                        }
                         // case Load -> {
 
                         // }
                     }
                 }
+            }
+        }
+        
+        for(Function F : M.getFuncList()) {
+            if(F.hasSideEffect()){
+                spreadSideEffect(F);
+            }
+        }
+    }
+
+    public void spreadSideEffect(Function F) {
+        for(Function callerF : F.getCallerList()) {
+            if(!callerF.hasSideEffect()){
+                callerF.setSideEffect(true);
+                spreadSideEffect(callerF);
             }
         }
     }
