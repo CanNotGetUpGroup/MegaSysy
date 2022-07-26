@@ -19,6 +19,7 @@ public class Arithmetic extends MachineInstruction {
         MUL,
         DIV, // for float div
         SDIV, // signed divide
+        RSB, // reverse substract
         LSL, // Logical Shift Left
     }
 
@@ -59,7 +60,7 @@ public class Arithmetic extends MachineInstruction {
         this.type = type;
         this.destReg = op1;
         this.op1 = op1;
-        this.op2 = new ImmediateNumber(op2);
+        this.op2 = ImmediateNumber.getLegalOperand(parent, op2);
     }
 
     public Arithmetic(MachineBasicBlock parent, Type type, Register dest, Register op1, int op2) {
@@ -70,7 +71,7 @@ public class Arithmetic extends MachineInstruction {
         this.type = type;
         this.destReg = dest;
         this.op1 = op1;
-        this.op2 = new ImmediateNumber(op2);
+        this.op2 = ImmediateNumber.getLegalOperand(parent, op2);
     }
 
     @Override

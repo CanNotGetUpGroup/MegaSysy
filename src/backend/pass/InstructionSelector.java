@@ -272,7 +272,7 @@ public class InstructionSelector {
                     mf.addStackTop(size * 4);
 
                     var dest = new VirtualRegister();
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), size * 4).pushBacktoInstList();
+                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), ImmediateNumber.getLegalOperand(mbb, size * 4)).pushBacktoInstList();
                     new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop() - 4).pushBacktoInstList();
                     // 保存一下位置
                     valueMap.put(ir, dest);
