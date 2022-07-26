@@ -44,7 +44,7 @@ public class DeadCodeEmit extends ModulePass {
     }
 
     public void functionDCE(Function F) {
-        removeDeadStore(F);
+        // removeDeadStore
 
         usefulInstSet.clear();
         for(BasicBlock BB : F.getBbList()){
@@ -62,10 +62,6 @@ public class DeadCodeEmit extends ModulePass {
                 }
             }
         }
-    }
-
-    public void removeDeadStore(Function F) {
-        // TODO: 删除无效Store
     }
 
     /**
