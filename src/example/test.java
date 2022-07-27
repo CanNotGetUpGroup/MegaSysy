@@ -124,11 +124,11 @@ public class test {
                     I.remove();
                 }
                 //列表开头插入
-                BB.getInstList().insertAtHead(new Instructions.AllocaInst(Type.getInt32Ty()));
+                BB.getInstList().insertAtHead(new Instructions.AllocaInst(Type.getInt32Ty()).getInstNode());
                 //列表末尾插入
-                BB.getInstList().pushBack(new Instructions.StoreInst(m,alloca_n));
+                BB.getInstList().pushBack(new Instructions.StoreInst(m,alloca_n).getInstNode());
             }
         }
-//        System.out.println(module.toLL());
+        System.out.println(module.toLL());
     }
 }

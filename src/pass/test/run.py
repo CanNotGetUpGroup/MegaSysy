@@ -3,7 +3,7 @@ import os
 # testcase="D:\JavaProject\MegaSysy\oldtestcases"
 testcase="D:\JavaProject\MegaSysy\\testcase"
 out_directory="E:\VMshare\\bisai\pass"
-classpath="D:\JavaProject\MegaSysy\out\production\MegaSysy;D:\JavaProject\MegaSysy\lib\\antlr-4.10.1-complete.jar"
+classpath="D:\JavaProject\MegaSysy\out\production\MegaSysy;D:\JavaProject\MegaSysy\lib\\antlr-4.8-complete.jar"
 
 functional_testcase=testcase+"\\functional\\"
 functional_out_pass=out_directory+"\\functional\\"

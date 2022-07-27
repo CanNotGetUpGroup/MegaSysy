@@ -100,8 +100,9 @@ public abstract class User extends Value {
     /**
      * 作为User被删除时，将其使用的value对应的use删除
      */
-    public void dropUsesAsUser() {
-        for (Value v : getOperandList()) {
+    public void dropUsesAsUser(){
+        for(Value v:getOperandList()){
+            if(v==null) continue;
             v.removeUseByUser(this);
         }
     }

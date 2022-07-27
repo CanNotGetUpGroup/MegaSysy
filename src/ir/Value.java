@@ -1,5 +1,7 @@
 package ir;
 
+import util.CloneMap;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,7 +9,7 @@ import java.util.LinkedList;
 import java.util.logging.Logger;
 
 public abstract class Value {
-    private LinkedList<Use> UseList=new LinkedList<>();//自己在哪些地方被使用
+    private LinkedList<Use> UseList=new LinkedList<>();//自己在哪些地方被使用,遍历的途中remove掉value可能导致遍历失败，建议先复制一个ArrayList用于遍历
     private Type type;
     private String name;
     private String comment; //注释，用于debug
@@ -137,4 +139,6 @@ public abstract class Value {
     public void remove(){
 
     }
+
+    public abstract Value copy(CloneMap cloneMap);
 }

@@ -1,6 +1,8 @@
 package ir;
 
 import ir.DerivedTypes.FunctionType;
+import ir.instructions.Instructions;
+import util.CloneMap;
 import util.IList;
 import util.IListNode;
 
@@ -8,8 +10,11 @@ import java.util.ArrayList;
 import java.util.regex.Pattern;
 
 import analysis.LoopInfo;
+import util.MyIRBuilder;
 
-public class Function extends Constant {
+import javax.print.attribute.standard.NumberUp;
+
+public class Function extends User {
     private ArrayList<Argument> Arguments;
     private Module Parent;
     private IListNode<Function, Module> funcNode;
@@ -17,6 +22,9 @@ public class Function extends Constant {
     private BasicBlock entryBB;
     private boolean isDefined = true;
     private LoopInfo loopInfo = new LoopInfo(); // function内的循环信息
+    private ArrayList<Function> callerList;
+    private ArrayList<Function> calleeList;
+    private boolean sideEffect = false;
 
     /**
      * 生成一个Function对象
@@ -37,6 +45,14 @@ public class Function extends Constant {
         bbList = new IList<>(this);
         // 添加到module
         funcNode.insertIntoListEnd(Parent.getFuncList());
+        Arguments = new ArrayList<>();
+        calleeList = new ArrayList<>();
+        callerList = new ArrayList<>();
+    }
+
+    public Function(FunctionType type, String name) {
+        super(type, name);
+        bbList = new IList<>(this);
         Arguments = new ArrayList<>();
     }
 
@@ -64,12 +80,17 @@ public class Function extends Constant {
             if (Arguments.size() != 0) {
                 sb.deleteCharAt(sb.length() - 1);
             }
-            sb.append(")");
         } else {
+            String funcName=this.getName();
+            if(funcName.equals("_sysy_stoptime")){
+                funcName="stoptime";
+            }else if(funcName.equals("_sysy_startttime")){
+                funcName="starttime";
+            }
             sb.append("declare ")
                     .append(this.getType().getReturnType())
                     .append(" @")
-                    .append(this.getName())
+                    .append(funcName)
                     .append("(");
             for (int i = 0; i < getType().getParamNum(); i++) {
                 sb.append(getType().getParamType(i)).append(",");
@@ -77,8 +98,8 @@ public class Function extends Constant {
             if (getType().getParamNum() != 0) {
                 sb.deleteCharAt(sb.length() - 1);
             }
-            sb.append(")");
         }
+        sb.append(")");
         return sb.toString();
     }
 
@@ -137,9 +158,10 @@ public class Function extends Constant {
         entryBB.setEntryBlock(true);
     }
 
-    // 从module中删除
     public void remove() {
-
+        funcNode.remove();
+        dropUsesAsValue();
+        dropUsesAsUser();
     }
 
     /**
@@ -165,4 +187,70 @@ public class Function extends Constant {
         return loopInfo;
     }
 
+    /**
+     * 深拷贝该Function
+     */
+    @Override
+    public Function copy(CloneMap cloneMap) {
+        if(cloneMap.get(this)!=null){
+            return (Function) cloneMap.get(this);
+        }
+        Function ret=new Function(getType(),getName()+cloneMap.hashCode());
+        cloneMap.put(this,ret);
+        for(Argument argument:getArguments()){
+            Argument copy=argument.copy(cloneMap);
+            ret.getArguments().add(copy);
+            copy.setParent(ret);
+            copy.setArgNo(argument.getArgNo());
+        }
+        MyIRBuilder builder=MyIRBuilder.getInstance();
+        for(BasicBlock BB:getBbList()){
+            cloneMap.put(BB,builder.createBasicBlock(ret));
+            (BB.copy(cloneMap)).setComment(this.getName()+" "+BB.getComment());
+        }
+        for(BasicBlock BB:getBbList()){
+            for(Instruction I:BB.getInstList()){
+                if(I instanceof Instructions.PHIInst){
+                    continue;
+                }
+                ((Instruction)I.copy(cloneMap)).getInstNode().insertIntoListEnd(((BasicBlock)cloneMap.get(BB)).getInstList());
+                if(I.getComment()!= null) I.copy(cloneMap).setComment(I.getComment());
+            }
+        }
+        //添加phi
+        for(BasicBlock BB:getBbList()){
+            for(Instructions.PHIInst phi:BB.getPHIs()){
+                phi.copy(cloneMap);
+            }
+        }
+        ir.Module.getInstance().rename(ret);
+        return ret;
+    }
+    /**
+     *
+     * @return 调用该函数的函数列表
+     */
+    public ArrayList<Function> getCallerList() {
+        return callerList;
+    }
+
+    /**
+     *
+     * @return 该函数调用的函数列表
+     */
+    public ArrayList<Function> getCalleeList() {
+        return calleeList;
+    }
+
+    /**
+     *
+     * @return 函数是否有附加影响
+     */
+    public boolean hasSideEffect(){
+        return sideEffect;
+    }
+
+    public void setSideEffect(boolean sideEffect) {
+        this.sideEffect = sideEffect;
+    }
 }
