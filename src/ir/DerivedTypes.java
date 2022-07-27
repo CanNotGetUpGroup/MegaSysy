@@ -25,7 +25,7 @@ public abstract class DerivedTypes {
     /// Class to represent array types.
     ///
     /**
-     * e.g a[4][2]:NumElements=4,dim=2,eleSize=2
+     * e.g a[4][2]:NumElements=4,dim=2,eleSize=2,getKidType()=[2]
      */
     public static class ArrayType extends Type {
         private int NumElements;    //元素数量
