@@ -1,5 +1,6 @@
 package frontend;
 
+import backend.machineCode.Instruction.Branch;
 import ir.*;
 import ir.DerivedTypes.*;
 import ir.Constants.*;
@@ -584,6 +585,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
+    Instruction retAlloca=null;
+    Stack<Instruction> retBrStack=null;
+
     /**
      * funcDef : funcType IDENT LPAREN (funcFParams)? RPAREN  block;
      */
@@ -606,6 +610,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
         BasicBlock BB = builder.createBasicBlock("entry", curF);
         curF.setEntryBB(BB);
         builder.setInsertPoint(BB);
+        retAlloca=builder.createAlloca(FT.getReturnType());
+        retAlloca.setName("ret");
+        retAlloca.setVarName("ret");
+        retBrStack=new Stack<>();
         enterBlock = true;
         if (ctx.funcFParams() != null) {
             visit(ctx.funcFParams());
@@ -614,8 +622,15 @@ public class Visitor extends SysyBaseVisitor<Value> {
         BasicBlock endBB = curF.getBbList().getLast().getVal();
         IListNode<Instruction, BasicBlock> endInst = endBB.getInstList().getLast();
         if (endInst == null || !(endInst.getVal() instanceof Instructions.ReturnInst)) {
-            builder.createRet(Constant.getNullValue(retType));
+            retBrStack.push(builder.createBr(null));
         }
+        BasicBlock retBB=builder.createBasicBlock("ret",curF);
+        while(!retBrStack.isEmpty()){
+            ((Instructions.BranchInst)retBrStack.pop()).setBr(retBB);
+        }
+        builder.setInsertPoint(retBB);
+        var loadRet=builder.createLoad(retAlloca);
+        builder.createRet(loadRet);
         return null;
     }
 
@@ -736,7 +751,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     assert continueStk.peek() != null;
                     continueStk.peek().add((Instructions.BranchInst) builder.createBr(null));
                 } else {//return ';'
-                    builder.createRetVoid();
+                    Instruction brRetBB=builder.createBr(null);
+                    retBrStack.push(brRetBB);
                 }
                 break;
             case 5:
@@ -830,7 +846,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
             case 3://'return' Exp ';'
                 visit(ctx.exp());
                 castType(curF.getRetType());
-                builder.createRet(curVal);
+                builder.createStore(curVal,retAlloca);
+                Instruction brRetBB=builder.createBr(null);
+                retBrStack.push(brRetBB);
                 break;
         }
         return null;

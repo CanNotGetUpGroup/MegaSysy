@@ -8,7 +8,9 @@ import ir.instructions.Instructions.*;
 import ir.instructions.Instructions;
 import org.antlr.v4.runtime.misc.Pair;
 import pass.ModulePass;
+import util.CloneMap;
 import util.IListIterator;
+import util.MyIRBuilder;
 
 import java.util.*;
 
@@ -124,18 +126,36 @@ public class FuncInline extends ModulePass {
 
         //在caller的开头插入alloca
         IListIterator<Instruction,BasicBlock> callerHead= (IListIterator<Instruction,BasicBlock>) caller.getEntryBB().getInstList().iterator();
-        BasicBlock insertBB=callee.getEntryBB();
-        for(Instruction I:insertBB.getInstList()){
-            if(!(I instanceof AllocaInst)){
-                continue;
+        CloneMap cloneMap=new CloneMap();
+        //拷贝出一个Function，该Function用于内联，不在Module中
+        Function copy=callee.copy(cloneMap);
+        BasicBlock insertBB=copy.getEntryBB();
+        BasicBlock originBB=CI.getParent();
+        BasicBlock entry=new BasicBlock("",caller,originBB);
+        MyIRBuilder builder=MyIRBuilder.getInstance();
+        builder.setInsertPoint(entry);
+
+        //将alloca移动到caller首部
+        if(insertBB.front() instanceof AllocaInst){
+            AllocaInst AI=(AllocaInst)insertBB.front();
+            Iterator<Instruction> It=insertBB.getInstList().iterator();
+            Instruction I=It.next();
+            boolean notAlloca=false;
+            while(It.hasNext()){
+                if(I instanceof AllocaInst){
+                    if(I.getUseList().isEmpty()){
+                        I.remove();
+                    }
+                }else{
+                    if(!notAlloca)
+                        caller.getEntryBB().getInstList().splice(callerHead,AI.getInstNode(),I.getInstNode());
+                    notAlloca=true;
+                    builder.insert(I);
+                }
+                I=It.next();
             }
-            AllocaInst AI=(AllocaInst)I;
-            if(AI.getUseList().isEmpty()){
-                AI.remove();
-                continue;
-            }
-//            caller.getEntryBB().getInstList().splice(callerHead);
         }
+
 
         return true;
     }

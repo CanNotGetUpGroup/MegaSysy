@@ -102,6 +102,7 @@ public abstract class User extends Value {
      */
     public void dropUsesAsUser(){
         for(Value v:getOperandList()){
+            if(v==null) continue;
             v.removeUseByUser(this);
         }
     }
