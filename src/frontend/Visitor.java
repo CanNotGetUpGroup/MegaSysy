@@ -176,7 +176,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 }
                 ArrayList<Value> Args = new ArrayList<>();
                 Args.add(gep);
-                Args.add(Constant.getNullValue(declType));
+                Args.add(Constant.getNullValue(Type.getInt32Ty()));
                 Args.add(ConstantInt.get(arrayType.getNumElements() * arrayType.getEleSize() * 4));
                 //TODO: 浮点数组初始化
 //                builder.createBitCast(alloca,)
@@ -610,9 +610,12 @@ public class Visitor extends SysyBaseVisitor<Value> {
         BasicBlock BB = builder.createBasicBlock("entry", curF);
         curF.setEntryBB(BB);
         builder.setInsertPoint(BB);
-        retAlloca=builder.createAlloca(FT.getReturnType());
-        retAlloca.setName("ret");
-        retAlloca.setVarName("ret");
+        retAlloca=null;
+        if(!FT.getReturnType().isVoidTy()){
+            retAlloca=builder.createAlloca(FT.getReturnType());
+            retAlloca.setName("ret");
+            retAlloca.setVarName("ret");
+        }
         retBrStack=new Stack<>();
         enterBlock = true;
         if (ctx.funcFParams() != null) {
@@ -629,8 +632,12 @@ public class Visitor extends SysyBaseVisitor<Value> {
             ((Instructions.BranchInst)retBrStack.pop()).setBr(retBB);
         }
         builder.setInsertPoint(retBB);
-        var loadRet=builder.createLoad(retAlloca);
-        builder.createRet(loadRet);
+        if(retAlloca!=null) {
+            var loadRet=builder.createLoad(retAlloca);
+            builder.createRet(loadRet);
+        }else{
+            builder.createRet(null);
+        }
         return null;
     }
 
@@ -846,7 +853,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             case 3://'return' Exp ';'
                 visit(ctx.exp());
                 castType(curF.getRetType());
-                builder.createStore(curVal,retAlloca);
+                if(retAlloca!=null) builder.createStore(curVal,retAlloca);
                 Instruction brRetBB=builder.createBr(null);
                 retBrStack.push(brRetBB);
                 break;

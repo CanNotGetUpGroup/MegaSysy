@@ -1,6 +1,7 @@
 package util;
 
 import ir.Constant;
+import ir.Function;
 import ir.Value;
 
 import java.util.HashMap;
@@ -16,7 +17,7 @@ public class CloneMap {
     }
 
     public Value get(Value V){
-        if(V instanceof Constant){
+        if(V instanceof Constant||(V instanceof Function && !((Function)V).isDefined())){
             return V;
         }
         return cloneMap.get(V);

@@ -1,6 +1,7 @@
 package ir;
 
 import ir.DerivedTypes.FunctionType;
+import ir.instructions.Instructions;
 import util.CloneMap;
 import util.IList;
 import util.IListNode;
@@ -10,6 +11,8 @@ import java.util.regex.Pattern;
 
 import analysis.LoopInfo;
 import util.MyIRBuilder;
+
+import javax.print.attribute.standard.NumberUp;
 
 public class Function extends User {
     private ArrayList<Argument> Arguments;
@@ -203,12 +206,24 @@ public class Function extends User {
         MyIRBuilder builder=MyIRBuilder.getInstance();
         for(BasicBlock BB:getBbList()){
             cloneMap.put(BB,builder.createBasicBlock(ret));
+            (BB.copy(cloneMap)).setComment(this.getName()+" "+BB.getComment());
         }
         for(BasicBlock BB:getBbList()){
             for(Instruction I:BB.getInstList()){
-                ((Instruction)I.copy(cloneMap)).getInstNode().insertIntoListEnd(BB.getInstList());
+                if(I instanceof Instructions.PHIInst){
+                    continue;
+                }
+                ((Instruction)I.copy(cloneMap)).getInstNode().insertIntoListEnd(((BasicBlock)cloneMap.get(BB)).getInstList());
+                if(I.getComment()!= null) I.copy(cloneMap).setComment(I.getComment());
             }
         }
+        //添加phi
+        for(BasicBlock BB:getBbList()){
+            for(Instructions.PHIInst phi:BB.getPHIs()){
+                phi.copy(cloneMap);
+            }
+        }
+        ir.Module.getInstance().rename(ret);
         return ret;
     }
     /**

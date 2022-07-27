@@ -16,6 +16,7 @@ public class CallGraph {
 
     public CallGraph(Module m) {
         M = m;
+        CallNodes=new HashMap<>();
         for(Function F:m.getFuncList()){
             if(!F.isDefined()){
                 continue;
@@ -37,7 +38,7 @@ public class CallGraph {
                 if(I instanceof CallInst){
                     CallInst CI=(CallInst)I;
                     Function Callee=CI.getCalledFunction();
-                    if(Callee!=null){
+                    if(Callee!=null&&Callee.isDefined()){
                         CGN.addCalledFunction(CI,getNode(Callee));
                     }
                 }
@@ -49,7 +50,9 @@ public class CallGraph {
         if(CallNodes.containsKey(F)){
             return CallNodes.get(F);
         }
-        return new CallGraphNode(this,F);
+        CallGraphNode ret= new CallGraphNode(this,F);
+        CallNodes.put(F,ret);
+        return ret;
     }
 
     public Module getM() {
@@ -179,6 +182,11 @@ public class CallGraph {
 
         public void dropRef(){
             ReferTimes--;
+            if(ReferTimes==0){
+                CG.CallNodes.remove(F);
+                F.remove();
+                CG=null;
+            }
         }
 
         public void addRef(){
