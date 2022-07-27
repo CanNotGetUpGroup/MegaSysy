@@ -82,15 +82,16 @@ public abstract class MachineInstruction {
                 case LE -> GT;
             };
         }
-        static public Condition irToMCCond(CmpInst.Predicate cond){
+
+        static public Condition irToMCCond(CmpInst.Predicate cond) {
             return switch (cond) {
-                case ICMP_EQ -> MachineInstruction.Condition.EQ;
-                case ICMP_NE -> MachineInstruction.Condition.NE;
-                case ICMP_SGE -> MachineInstruction.Condition.GE;
-                case ICMP_SGT -> MachineInstruction.Condition.GT;
-                case ICMP_SLE -> MachineInstruction.Condition.LE;
-                case ICMP_SLT -> MachineInstruction.Condition.LT;
-//                            case FCMP_UEQ ->
+                // Warn: not translate correctly for float number (ordered, unordered
+                case ICMP_EQ, FCMP_OEQ, FCMP_UEQ -> MachineInstruction.Condition.EQ;
+                case ICMP_NE, FCMP_ONE, FCMP_UNE -> MachineInstruction.Condition.NE;
+                case ICMP_SGE, FCMP_OGE, FCMP_UGE -> MachineInstruction.Condition.GE;
+                case ICMP_SGT, FCMP_OGT, FCMP_UGT -> MachineInstruction.Condition.GT;
+                case ICMP_SLE, FCMP_OLE, FCMP_ULE -> MachineInstruction.Condition.LE;
+                case ICMP_SLT, FCMP_OLT, FCMP_ULT -> MachineInstruction.Condition.LT;
                 default -> null;
             };
         }

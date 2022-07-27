@@ -1,13 +1,13 @@
 import os
 
-# testcase="D:\JavaProject\MegaSysy\oldtestcases"
-abspath=os.path.abspath(os.path.join(os.getcwd(), "..")) # D:\JavaProject\MegaSysy
-testcase=abspath+"\\testcase"
-out_directory=abspath+"\MC"
-classpath=abspath+"\out\production\MegaSysy;"+abspath+"\lib\\antlr-4.8-complete.jar"
+# testcase="D:/JavaProject/MegaSysy/oldtestcases"
+abspath=os.path.abspath(os.path.join(os.getcwd(), "..")) # D:/JavaProject/MegaSysy
+testcase=abspath+"/testcase"
+out_directory=abspath+"/MC"
+classpath=abspath+"/out/production/MegaSysy::"+abspath+"/lib/antlr-4.8-complete.jar"
 
-functional_testcase=testcase+"\\functional\\"
-functional_out_pass=out_directory+"\\functional\\"
+functional_testcase=testcase+"/functional/"
+functional_out_pass=out_directory+"/functional/"
 functional_file_list=[]
 
 for file in os.listdir(functional_testcase):
@@ -18,8 +18,8 @@ for file in functional_file_list:
     print(functional_testcase+file+".sy:")
     a=os.system("java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy")
 
-performance_testcase=testcase+"\\performance\\"
-performance_out_pass=out_directory+"\\performance\\"
+performance_testcase=testcase+"/performance/"
+performance_out_pass=out_directory+"/performance/"
 performance_file_list=[]
 
 for file in os.listdir(performance_testcase):
@@ -30,8 +30,8 @@ for file in performance_file_list:
     print(performance_testcase+file+".sy:")
     a=os.system("java -classpath "+classpath+" Compiler -S -o "+performance_out_pass+file+".s "+performance_testcase+file+".sy")
 
-# thu_testcase=testcase+"\\thu_test\\"
-# thu_out=out_directory+"\\thu_test\\"
+# thu_testcase=testcase+"/thu_test/"
+# thu_out=out_directory+"/thu_test/"
 # thu_file_list=[]
 #
 # for file in os.listdir(thu_testcase):

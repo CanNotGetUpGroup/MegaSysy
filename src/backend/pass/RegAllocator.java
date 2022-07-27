@@ -1,6 +1,7 @@
 package backend.pass;
 
 import backend.machineCode.Instruction.Arithmetic;
+import backend.machineCode.Instruction.LoadImm;
 import backend.machineCode.Instruction.LoadOrStore;
 import backend.machineCode.Instruction.PushOrPop;
 import backend.machineCode.MachineBasicBlock;
@@ -66,8 +67,15 @@ public class RegAllocator {
                         newInst.setPrologue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
 
-                        new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP),
-                                new ImmediateNumber(4 * numOnStack)).getInstNode().insertBefore(inst.getInstNode());
+                        MCOperand c;
+                        if(ImmediateNumber.isLegalImm(4 * numOnStack))
+                            c = new ImmediateNumber(4 * numOnStack);
+                        else{
+                            c = new MCRegister(Register.Content.Int, 9);
+                            new LoadImm(firstBb, (Register) c, 4 * numOnStack).getInstNode().insertBefore(inst.getInstNode());;
+
+                        }
+                        new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), c).getInstNode().insertBefore(inst.getInstNode());
                         break;
                     }
                 }
@@ -76,6 +84,7 @@ public class RegAllocator {
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
                         if (inst.isEpilogue()) {
+
                             new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), new MCRegister(MCRegister.RegName.r11),
                                     new ImmediateNumber(4)).getInstNode().insertBefore(inst.getInstNode());
                             newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.r11));
