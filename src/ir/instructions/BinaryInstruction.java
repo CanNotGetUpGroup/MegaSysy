@@ -1,6 +1,7 @@
 package ir.instructions;
 
 import ir.*;
+import util.CloneMap;
 
 import static ir.Instruction.Ops;
 
@@ -80,5 +81,15 @@ public class BinaryInstruction extends Instruction {
         sb.append(getOperand(1).getName());
 
         return sb.toString();
+    }
+
+    @Override
+    public BinaryInstruction copy(CloneMap cloneMap) {
+        if (cloneMap.get(this) != null) {
+            return (BinaryInstruction) cloneMap.get(this);
+        }
+        BinaryInstruction ret = new BinaryInstruction(getType(),getOp(),getOperand(0).copy(cloneMap),getOperand(1).copy(cloneMap));
+        cloneMap.put(this, ret);
+        return ret;
     }
 }

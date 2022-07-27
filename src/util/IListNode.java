@@ -13,18 +13,12 @@ public class IListNode<T, P> {
 
     public IListNode(T val,IList<T,P> parent) {
         Val = val;
-        if(val instanceof Instruction){
-            Instruction I=((Instruction) val);
-            if(I.getInstNode()!=null){
-                I.setInstNode((IListNode<Instruction, BasicBlock>) this);
-            }
-        }else if(val instanceof BasicBlock){
-            BasicBlock BB=(BasicBlock)val;
-            if(BB.getBbNode()!=null){
-                BB.setBbNode((IListNode<BasicBlock, Function>) this);
-            }
-        }
         Parent=parent;
+        Prev=Next=null;
+    }
+
+    public IListNode(T val) {
+        Val = val;
         Prev=Next=null;
     }
 
@@ -64,6 +58,11 @@ public class IListNode<T, P> {
         Parent = parent;
     }
 
+    @Override
+    public String toString() {
+        return Val.toString();
+    }
+
     public int index(){
         int ret=0;
         for(T e:getParent()){
@@ -84,6 +83,7 @@ public class IListNode<T, P> {
         tmp.setNext(this.Next);
         this.Next.setPrev(tmp);
         this.Next=null;
+        this.Parent=null;
     }
 
     /**
@@ -92,6 +92,12 @@ public class IListNode<T, P> {
      */
     public void insertBefore(IListNode<T,P> node){
         if(node==null||this.equals(node.getPrev())) return;
+        if(this.equals(node)){
+            System.out.println(node+"can't insert before itself");
+            return;
+        }
+        if(getParent()!=null&&!isBorder()) remove();
+        if(node.getParent()!=null) setParent(node.getParent());
         IListNode<T,P> tmp=node.Prev;
         node.Prev=this;
         this.setNext(node);
@@ -107,6 +113,12 @@ public class IListNode<T, P> {
      */
     public void insertAfter(IListNode<T,P> node){
         if(node==null||this.equals(node.getNext())) return;
+        if(this.equals(node)){
+            System.out.println(node+"can't insert before itself");
+            return;
+        }
+        if(getParent()!=null&&!isBorder()) remove();
+        if(node.getParent()!=null) setParent(node.getParent());
         IListNode<T,P> tmp=node.Next;
         node.Next=this;
         this.setPrev(node);
@@ -122,6 +134,7 @@ public class IListNode<T, P> {
      */
     public void insertIntoListEnd(IList<T,P> list){
         if(list==null) return;
+        setParent(list);
         insertBefore(list.getTail());
     }
 
@@ -129,7 +142,7 @@ public class IListNode<T, P> {
         return Prev==null||Next==null;
     }
 
-    public IListIterator<T> getIterator(){
+    public IListIterator<T,P> getIterator(){
         return getParent().iterator(Val);
     }
 

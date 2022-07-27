@@ -4,7 +4,7 @@ import ir.instructions.Instructions.*;
 import ir.Type;
 import ir.Value;
 
-public class CastInst extends UnaryInstruction {
+public abstract class CastInst extends UnaryInstruction {
     public CastInst(Type type,Ops op, Value V) {
         super(type,op, V);
     }

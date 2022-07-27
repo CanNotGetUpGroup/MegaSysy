@@ -1,5 +1,6 @@
 package ir;
 
+import util.CloneMap;
 import util.IListNode;
 import util.MyIRBuilder;
 
@@ -12,14 +13,14 @@ public abstract class Instruction extends User {
 
     public enum Ops {
         //Term
-        Ret, Br, Switch, CallBr,
+        Ret, Br,
         //Unary
         //Binary
         Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem,And,Or,Xor,
         //Memory
         Alloca, Load, Store, GetElementPtr, Fence,
         //Cast
-        ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr, BitCast,
+        ZExt, SIToFP, FPToSI, BitCast,
         //Other
         ICmp, FCmp, Call, Select, PHI,
     }
@@ -103,7 +104,7 @@ public abstract class Instruction extends User {
 
     public boolean isTerminator(){
         return switch (getOp()) {
-            case Ret, Br, CallBr -> true;
+            case Ret, Br -> true;
             default -> false;
         };
     }
