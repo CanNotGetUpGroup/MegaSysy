@@ -15,4 +15,9 @@ public class Comment extends MachineInstruction {
     public String toString() {
         return "@ " + str ;
     }
+
+    @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+        return this;
+    }
 }

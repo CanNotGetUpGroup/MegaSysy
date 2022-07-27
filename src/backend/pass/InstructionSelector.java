@@ -467,19 +467,19 @@ public class InstructionSelector {
                         List.of("f32"))).pushBacktoInstList();
             }
             case FPToSI -> {
-                var ori = valueToReg(mbb, ir.getOperand(0));
+                var ori = valueToFloatReg(mbb, ir.getOperand(0));
                 var temp = new VirtualRegister(Register.Content.Float);
                 var dest = new VirtualRegister();
-                new VCVT(mbb, temp, ori).setForFloat(new ArrayList<>(Arrays.asList("s32", "f32"))).pushBacktoInstList();
-                new Move(mbb, dest, temp).setForFloat(new ArrayList<>()).pushBacktoInstList();
+                new VCVT(mbb, temp, ori, new ArrayList<>(Arrays.asList("s32", "f32"))).pushBacktoInstList();
+                new Move(mbb, dest, temp).setForFloat(true).pushBacktoInstList();
                 valueMap.put(ir, dest);
             }
             case SIToFP -> {
                 var ori = valueToReg(mbb, ir.getOperand(0));
                 var temp = new VirtualRegister(Register.Content.Float);
                 var dest = new VirtualRegister(Register.Content.Float);
-                new Move(mbb, temp, ori).setForFloat(new ArrayList<>()).pushBacktoInstList();
-                new VCVT(mbb, dest, temp).setForFloat(new ArrayList<>(Arrays.asList("f32", "s32"))).pushBacktoInstList();
+                new Move(mbb, temp, ori).setForFloat(true).pushBacktoInstList();
+                new VCVT(mbb, dest, temp, new ArrayList<>(Arrays.asList("f32", "s32"))).pushBacktoInstList();
                 valueMap.put(ir, dest);
             }
 
@@ -566,10 +566,12 @@ public class InstructionSelector {
     private Register regToFloatReg(MachineBasicBlock parent, Register reg) {
         if (reg.isFloat()) return reg;
         var rr1 = new VirtualRegister(Register.Content.Float);
-        new Move(parent, rr1, reg).setForFloat(new ArrayList<>(List.of("32"))).pushBacktoInstList();
+        new Move(parent, rr1, reg).setForFloat(true).pushBacktoInstList();
 
         return rr1;
     }
+
+
 
 
     private Register i1ToReg(MachineBasicBlock parent, Value ir) {
@@ -590,14 +592,14 @@ public class InstructionSelector {
             Register r1 = valueToReg(parent, op1);
             var r2 = valueToMCOperand(parent, op2);
             if (((CmpInst) ir).getOp() == Instruction.Ops.FCmp) {
-                if (!r1.isFloat()) {
+                if (r1.isFloat()) {
                     var rr1 = new VirtualRegister(Register.Content.Float);
-                    new Move(parent, rr1, r1).setForFloat(new ArrayList<>(List.of("32"))).pushBacktoInstList();
+                    new Move(parent, rr1, r1).setForFloat(true).pushBacktoInstList();
 
                     r1 = rr1;
-                } else if (r2 instanceof Register && !((Register) r2).isFloat()) {
+                } else if (r2 instanceof Register && ((Register) r2).isFloat()) {
                     var rr2 = new VirtualRegister(Register.Content.Float);
-                    new Move(parent, rr2, r2).setForFloat(new ArrayList<>(List.of("32"))).pushBacktoInstList();
+                    new Move(parent, rr2, r2).setForFloat(true).pushBacktoInstList();
 
                     r2 = rr2;
                 }

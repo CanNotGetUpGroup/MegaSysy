@@ -34,6 +34,8 @@ public abstract class MachineInstruction {
         return this;
     }
 
+    public abstract MachineInstruction setForFloat(boolean isForFloat);
+
     public ArrayList<String> getTypeinfo() {
         return typeinfo;
     }

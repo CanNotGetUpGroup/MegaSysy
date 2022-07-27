@@ -34,6 +34,11 @@ public class LoadImm extends MachineInstruction {
 
 
     @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+       throw  new RuntimeException("Unfinished");
+    }
+
+    @Override
     public Register getDest() {
         return dest;
     }
