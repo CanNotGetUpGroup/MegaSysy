@@ -210,17 +210,20 @@ public class Function extends User {
         }
         for(BasicBlock BB:getBbList()){
             for(Instruction I:BB.getInstList()){
-                if(I instanceof Instructions.PHIInst){
-                    continue;
-                }
                 ((Instruction)I.copy(cloneMap)).getInstNode().insertIntoListEnd(((BasicBlock)cloneMap.get(BB)).getInstList());
                 if(I.getComment()!= null) I.copy(cloneMap).setComment(I.getComment());
             }
         }
         //添加phi
         for(BasicBlock BB:getBbList()){
-            for(Instructions.PHIInst phi:BB.getPHIs()){
-                phi.copy(cloneMap);
+            for(Instruction I:BB.getInstList()){
+                if(!(I instanceof Instructions.PHIInst)){
+                    break;
+                }
+                Instructions.PHIInst phi=(Instructions.PHIInst)I;
+                for (int i = 0; i < phi.getNumOperands(); i++) {
+                    phi.copy(cloneMap).addIncoming(phi.getOperand(i).copy(cloneMap), phi.getBlocks().get(i).copy(cloneMap));
+                }
             }
         }
         ir.Module.getInstance().rename(ret);
