@@ -55,6 +55,7 @@ public class RegAllocator {
                 // reserve space for temp variable on stack
                 for (var inst : firstBb.getInstList()) {
                     if (!inst.isPrologue()) {
+                        int paraOnStack = func.getMaxParaNumOnStack();
                         // Push FP
                         newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.r11));
                         newInst.setPrologue(true);
@@ -64,14 +65,14 @@ public class RegAllocator {
                         newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
                         newInst.setPrologue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
-
+                        int offset = 4 * numOnStack + 4 * paraOnStack;
+                        if(offset % 8 != 0) offset += 4;
                         MCOperand c;
-                        if (ImmediateNumber.isLegalImm(4 * numOnStack))
-                            c = new ImmediateNumber(4 * numOnStack);
+                        if (ImmediateNumber.isLegalImm(offset))
+                            c = new ImmediateNumber(offset);
                         else {
                             c = new MCRegister(Register.Content.Int, 9);
-                            new LoadImm(firstBb, (Register) c, 4 * numOnStack).getInstNode().insertBefore(inst.getInstNode());
-                            ;
+                            new LoadImm(firstBb, (Register) c, offset).getInstNode().insertBefore(inst.getInstNode());
                         }
                         new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), c).getInstNode().insertBefore(inst.getInstNode());
                         break;
@@ -103,7 +104,7 @@ public class RegAllocator {
                         var prevNode = inst;
                         Register reg;
                         if (dest.isFloat()) {
-                            reg = new MCRegister(Register.Content.Float, 15);
+                            reg = new MCRegister(Register.Content.Float, 18);
                         } else {
                             reg = new MCRegister(Register.Content.Int, 4);
                         }
@@ -143,7 +144,7 @@ public class RegAllocator {
                         int offset = 4 * vRegHash.get((VirtualRegister) op1) + func.getStackTop();
                         Address addr;
                         if (offset < 4096)
-                            addr = new Address(new MCRegister(MCRegister.RegName.r11), - offset);
+                            addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                         else {
                             MachineInstruction temp;
                             if (ImmediateNumber.isLegalImm(offset))
@@ -173,7 +174,7 @@ public class RegAllocator {
                         int offset = 4 * vRegHash.get((VirtualRegister) op2) + func.getStackTop();
                         Address addr;
                         if (offset < 4096)
-                            addr = new Address(new MCRegister(MCRegister.RegName.r11), - offset);
+                            addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                         else {
                             MachineInstruction temp;
                             if (ImmediateNumber.isLegalImm(offset))
@@ -199,7 +200,7 @@ public class RegAllocator {
                         int offset = 4 * vRegHash.get(((Address) op2).getReg()) + func.getStackTop();
                         Address addr;
                         if (offset < 4096)
-                            addr = new Address(new MCRegister(MCRegister.RegName.r11), - offset);
+                            addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                         else {
                             MachineInstruction temp;
                             if (ImmediateNumber.isLegalImm(offset))
@@ -223,7 +224,7 @@ public class RegAllocator {
                         int offset = 4 * vRegHash.get(((Address) op2).getOffset()) + func.getStackTop();
                         Address addr;
                         if (offset < 4096)
-                            addr = new Address(new MCRegister(MCRegister.RegName.r11), - offset);
+                            addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                         else {
                             MachineInstruction temp;
                             if (ImmediateNumber.isLegalImm(offset))
