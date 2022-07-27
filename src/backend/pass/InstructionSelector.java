@@ -279,16 +279,13 @@ public class InstructionSelector {
                 int intRegId = 3, floatRegId = 15;
                 if (intParaNum < 4) intRegId = intParaNum - 1;
                 if (floatParaNum < 16) floatRegId = floatParaNum - 1;
-                System.out.println(firstStackIntPara);
                 for (int i = paraNum - 1; i > 0; i--) {
                     var op = ir.getOperand(i);
                     if (op.getType().isFloatTy() && i < firstStackFloatPara) {
-                        System.out.println("Float: " + floatRegId);
                         new Move(mbb, new MCRegister(Register.Content.Float, floatRegId), valueToFloatReg(mbb, op)).setForFloat(true).pushBacktoInstList();
                         floatRegId--;
                     }
                     if (!op.getType().isFloatTy() && i < firstStackIntPara) {
-                        System.out.println("int: " + intRegId);
                         new Move(mbb, new MCRegister(Register.Content.Int, intRegId), valueToMCOperand(mbb, op)).pushBacktoInstList();
                         intRegId--;
                     }
