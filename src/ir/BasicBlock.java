@@ -49,6 +49,16 @@ public class BasicBlock extends Value {
         bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
+    public BasicBlock(String name, Function parent,BasicBlock insertAfter) {
+        super(Type.getLabelTy(), name);
+        Parent = parent;
+        PHIs = new ArrayList<>();
+        bbNode = new IListNode<>(this, parent.getBbList());
+        instList = new IList<>(this);
+        // 插入到insertAfter之后
+        bbNode.insertAfter(insertAfter.getBbNode());
+    }
+
     @Override
     public String toString() {
         return getName() + ":";

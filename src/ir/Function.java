@@ -184,10 +184,13 @@ public class Function extends User {
         return loopInfo;
     }
 
+    /**
+     * 深拷贝该Function
+     */
     @Override
-    public Value copy(CloneMap cloneMap) {
+    public Function copy(CloneMap cloneMap) {
         if(cloneMap.get(this)!=null){
-            return cloneMap.get(this);
+            return (Function) cloneMap.get(this);
         }
         Function ret=new Function(getType(),getName()+cloneMap.hashCode());
         cloneMap.put(this,ret);

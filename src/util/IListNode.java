@@ -78,6 +78,7 @@ public class IListNode<T, P> {
         tmp.setNext(this.Next);
         this.Next.setPrev(tmp);
         this.Next=null;
+        this.Parent=null;
     }
 
     /**
@@ -86,6 +87,11 @@ public class IListNode<T, P> {
      */
     public void insertBefore(IListNode<T,P> node){
         if(node==null||this.equals(node.getPrev())) return;
+        if(this.equals(node)){
+            System.out.println(node+"can't insert before itself");
+            return;
+        }
+        if(getParent()!=null&&!isBorder()) remove();
         if(node.getParent()!=null) setParent(node.getParent());
         IListNode<T,P> tmp=node.Prev;
         node.Prev=this;
@@ -102,6 +108,11 @@ public class IListNode<T, P> {
      */
     public void insertAfter(IListNode<T,P> node){
         if(node==null||this.equals(node.getNext())) return;
+        if(this.equals(node)){
+            System.out.println(node+"can't insert before itself");
+            return;
+        }
+        if(getParent()!=null&&!isBorder()) remove();
         if(node.getParent()!=null) setParent(node.getParent());
         IListNode<T,P> tmp=node.Next;
         node.Next=this;

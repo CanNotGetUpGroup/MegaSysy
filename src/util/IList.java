@@ -101,11 +101,21 @@ public class IList<T, P> implements Iterable<T> {
     }
 
     /**
-     * 在insertHead前插入insertList
+     * 将insertList移动到insertHead前
      */
     public void splice(IListIterator<T,P> insertHead,IList<T,P> insertList){
         IListNode<T, P> First=insertList.getFirst();
         while(First!=null){
+            insertHead.add(First);
+            First=First.getNext();
+        }
+    }
+
+    /**
+     * 将First到Last移动到insertHead前
+     */
+    public void splice(IListIterator<T,P> insertHead,IListNode<T,P> First,IListNode<T,P> Last){
+        while(First!=null&&First!=Last){
             insertHead.add(First);
             First=First.getNext();
         }
