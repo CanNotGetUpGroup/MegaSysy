@@ -106,8 +106,10 @@ public class IList<T, P> implements Iterable<T> {
     public void splice(IListIterator<T,P> insertHead,IList<T,P> insertList){
         IListNode<T, P> First=insertList.getFirst();
         while(First!=null){
+            IListNode<T,P> tmp=First.getNext();
+            First.remove();
             insertHead.add(First);
-            First=First.getNext();
+            First=tmp;
         }
     }
 
@@ -116,9 +118,22 @@ public class IList<T, P> implements Iterable<T> {
      */
     public void splice(IListIterator<T,P> insertHead,IListNode<T,P> First,IListNode<T,P> Last){
         while(First!=null&&First!=Last){
+            IListNode<T,P> tmp=First.getNext();
+            First.remove();
             insertHead.add(First);
+            First=tmp;
+        }
+    }
+
+    @Override
+    public String toString(){
+        StringBuilder sb=new StringBuilder();
+        IListNode<T,P> First=getFirst();
+        while(First!=null){
+            sb.append(First).append("\n");
             First=First.getNext();
         }
+        return sb.toString();
     }
 
     public boolean isEmpty(){

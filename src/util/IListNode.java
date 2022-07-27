@@ -58,6 +58,11 @@ public class IListNode<T, P> {
         Parent = parent;
     }
 
+    @Override
+    public String toString() {
+        return Val.toString();
+    }
+
     public int index(){
         int ret=0;
         for(T e:getParent()){

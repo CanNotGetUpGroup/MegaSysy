@@ -1,4 +1,5 @@
-@n = dso_local global i32 0
+@arr1 = dso_local global [10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]] zeroinitializer
+@arr2 = dso_local global [10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]] zeroinitializer
 
 declare i32 @getint()
 declare float @getfloat()
@@ -14,56 +15,655 @@ declare void @memset(i32*,i32,i32)
 declare void @starttime()
 declare void @stoptime()
 
-define dso_local i32 @main(i32* %0){
+define dso_local void @loop1(i32 %0,i32 %1){
 entry:     
-  %1 = alloca i32     ; i32 j
-  %2 = alloca i32     ; i32 i
-  %3 = alloca i32*     ; i32* a
-  ret = alloca i32     
-  store i32* %0, i32** %3     
-  store i32 1, i32* %2     ; i=1
-  br label %4     
+  %2 = alloca i32     ; i32 g
+  %3 = alloca i32     ; i32 f
+  %4 = alloca i32     ; i32 e
+  %5 = alloca i32     ; i32 d
+  %6 = alloca i32     ; i32 c
+  %7 = alloca i32     ; i32 b
+  %8 = alloca i32     ; i32 a
+  %9 = alloca i32     ; i32 y
+  %10 = alloca i32     ; i32 x
+  store i32 %0, i32* %10     
+  store i32 %1, i32* %9     
+  store i32 0, i32* %8     ; a=0
+  br label %11     
 
-4:     ; judge i<n
-  %5 = load i32, i32* %2     
-  %6 = load i32, i32* @n     
-  %7= icmp slt i32 %5, %6     ; i<n
-  br i1 %7, label %8, label %21     
-
-8:     ; while Body
-  %9 = load i32, i32* %1     
-  %10= icmp slt i32 %9, 0     ; j<0
-  br i1 %10, label %11, label %15     ; judge j<0
-
-11:     ; if Body
-  %12 = load i32*, i32** %3     
-  %13= getelementptr i32,i32* %12 , i32 2     
-  %14 = load i32, i32* %13     
-  store i32 %14, i32* ret     
-  br label %ret     
+11:     ; judge a<x&&a<y
+  %12 = load i32, i32* %8     
+  %13 = load i32, i32* %10     
+  %14= icmp slt i32 %12, %13     ; a<x
+  br i1 %14, label %15, label %102     
 
 15:     
-  %16 = load i32, i32* %1     
-  %17= icmp sgt i32 %16, 2     ; j>2
-  br i1 %17, label %18, label %19     ; judge j>2
+  %16 = load i32, i32* %8     
+  %17 = load i32, i32* %9     
+  %18= icmp slt i32 %16, %17     ; a<x && a<y
+  br i1 %18, label %19, label %102     
 
-18:     ; if Body
-  store i32 2, i32* ret     
-  br label %ret     
-
-19:     
-  store i32 3, i32* %1     ; j=3
+19:     ; while Body
+  store i32 0, i32* %7     ; b=0
   br label %20     
 
-20:     ; jump to head
-  br label %4     
+20:     ; judge b<2
+  %21 = load i32, i32* %7     
+  %22= icmp slt i32 %21, 2     ; b<2
+  br i1 %22, label %23, label %98     
 
-21:     ; exit while
-  store i32 0, i32* ret     
+23:     ; while Body
+  store i32 0, i32* %6     ; c=0
+  br label %24     
+
+24:     ; judge c<3
+  %25 = load i32, i32* %6     
+  %26= icmp slt i32 %25, 3     ; c<3
+  br i1 %26, label %27, label %94     
+
+27:     ; while Body
+  store i32 0, i32* %5     ; d=0
+  br label %28     
+
+28:     ; judge d<4
+  %29 = load i32, i32* %5     
+  %30= icmp slt i32 %29, 4     ; d<4
+  br i1 %30, label %31, label %90     
+
+31:     ; while Body
+  store i32 0, i32* %4     ; e=0
+  br label %32     
+
+32:     ; judge e<5
+  %33 = load i32, i32* %4     
+  %34= icmp slt i32 %33, 5     ; e<5
+  br i1 %34, label %35, label %86     
+
+35:     ; while Body
+  store i32 0, i32* %3     ; f=0
+  br label %36     
+
+36:     ; judge f<6
+  %37 = load i32, i32* %3     
+  %38= icmp slt i32 %37, 6     ; f<6
+  br i1 %38, label %39, label %82     
+
+39:     ; while Body
+  store i32 0, i32* %2     ; g=0
+  br label %40     
+
+40:     ; judge g<2
+  %41 = load i32, i32* %2     
+  %42= icmp slt i32 %41, 2     ; g<2
+  br i1 %42, label %43, label %78     
+
+43:     ; while Body
+  %44 = load i32, i32* %8     
+  %45= getelementptr [10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]],[10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]]* @arr1 , i32 0, i32 %44     
+  %46 = load i32, i32* %7     
+  %47= getelementptr [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]],[2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]* %45 , i32 0, i32 %46     
+  %48 = load i32, i32* %6     
+  %49= getelementptr [3 x [4 x [5 x [6 x [2 x i32]]]]],[3 x [4 x [5 x [6 x [2 x i32]]]]]* %47 , i32 0, i32 %48     
+  %50 = load i32, i32* %5     
+  %51= getelementptr [4 x [5 x [6 x [2 x i32]]]],[4 x [5 x [6 x [2 x i32]]]]* %49 , i32 0, i32 %50     
+  %52 = load i32, i32* %4     
+  %53= getelementptr [5 x [6 x [2 x i32]]],[5 x [6 x [2 x i32]]]* %51 , i32 0, i32 %52     
+  %54 = load i32, i32* %3     
+  %55= getelementptr [6 x [2 x i32]],[6 x [2 x i32]]* %53 , i32 0, i32 %54     
+  %56 = load i32, i32* %2     
+  %57= getelementptr [2 x i32],[2 x i32]* %55 , i32 0, i32 %56     
+  %58 = load i32, i32* %8     
+  %59 = load i32, i32* %7     
+  %60 = add i32 %58, %59     ; a+b
+  %61 = load i32, i32* %6     
+  %62 = add i32 %60, %61     ; a+b+c
+  %63 = load i32, i32* %5     
+  %64 = add i32 %62, %63     ; a+b+c+d
+  %65 = load i32, i32* %4     
+  %66 = add i32 %64, %65     ; a+b+c+d+e
+  %67 = load i32, i32* %3     
+  %68 = add i32 %66, %67     ; a+b+c+d+e+f
+  %69 = load i32, i32* %2     
+  %70 = add i32 %68, %69     ; a+b+c+d+e+f+g
+  %71 = load i32, i32* %10     
+  %72 = add i32 %70, %71     ; a+b+c+d+e+f+g+x
+  %73 = load i32, i32* %9     
+  %74 = add i32 %72, %73     ; a+b+c+d+e+f+g+x+y
+  store i32 %74, i32* %57     ; arr1[a][b][c][d][e][f][g]=a+b+c+d+e+f+g+x+y
+  %75 = load i32, i32* %2     
+  %76 = add i32 %75, 1     ; g+1
+  store i32 %76, i32* %2     ; g=g+1
+  br label %77     
+
+77:     ; jump to head
+  br label %40     
+
+78:     ; exit while
+  %79 = load i32, i32* %3     
+  %80 = add i32 %79, 1     ; f+1
+  store i32 %80, i32* %3     ; f=f+1
+  br label %81     
+
+81:     ; jump to head
+  br label %36     
+
+82:     ; exit while
+  %83 = load i32, i32* %4     
+  %84 = add i32 %83, 1     ; e+1
+  store i32 %84, i32* %4     ; e=e+1
+  br label %85     
+
+85:     ; jump to head
+  br label %32     
+
+86:     ; exit while
+  %87 = load i32, i32* %5     
+  %88 = add i32 %87, 1     ; d+1
+  store i32 %88, i32* %5     ; d=d+1
+  br label %89     
+
+89:     ; jump to head
+  br label %28     
+
+90:     ; exit while
+  %91 = load i32, i32* %6     
+  %92 = add i32 %91, 1     ; c+1
+  store i32 %92, i32* %6     ; c=c+1
+  br label %93     
+
+93:     ; jump to head
+  br label %24     
+
+94:     ; exit while
+  %95 = load i32, i32* %7     
+  %96 = add i32 %95, 1     ; b+1
+  store i32 %96, i32* %7     ; b=b+1
+  br label %97     
+
+97:     ; jump to head
+  br label %20     
+
+98:     ; exit while
+  %99 = load i32, i32* %8     
+  %100 = add i32 %99, 1     ; a+1
+  store i32 %100, i32* %8     ; a=a+1
+  br label %101     
+
+101:     ; jump to head
+  br label %11     
+
+102:     ; exit while
   br label %ret     
 
 ret:     
-  %22 = load i32, i32* ret     
-  ret i32 %22     
+  ret void     
+}
+
+define dso_local void @loop2(){
+entry:     
+  %0 = alloca i32     ; i32 g
+  %1 = alloca i32     ; i32 f
+  %2 = alloca i32     ; i32 e
+  %3 = alloca i32     ; i32 d
+  %4 = alloca i32     ; i32 c
+  %5 = alloca i32     ; i32 b
+  %6 = alloca i32     ; i32 a
+  store i32 0, i32* %6     ; a=0
+  br label %7     
+
+7:     ; judge a<10
+  %8 = load i32, i32* %6     
+  %9= icmp slt i32 %8, 10     ; a<10
+  br i1 %9, label %10, label %83     
+
+10:     ; while Body
+  store i32 0, i32* %5     ; b=0
+  br label %11     
+
+11:     ; judge b<2
+  %12 = load i32, i32* %5     
+  %13= icmp slt i32 %12, 2     ; b<2
+  br i1 %13, label %14, label %79     
+
+14:     ; while Body
+  store i32 0, i32* %4     ; c=0
+  br label %15     
+
+15:     ; judge c<3
+  %16 = load i32, i32* %4     
+  %17= icmp slt i32 %16, 3     ; c<3
+  br i1 %17, label %18, label %75     
+
+18:     ; while Body
+  store i32 0, i32* %3     ; d=0
+  br label %19     
+
+19:     ; judge d<2
+  %20 = load i32, i32* %3     
+  %21= icmp slt i32 %20, 2     ; d<2
+  br i1 %21, label %22, label %71     
+
+22:     ; while Body
+  store i32 0, i32* %2     ; e=0
+  br label %23     
+
+23:     ; judge e<4
+  %24 = load i32, i32* %2     
+  %25= icmp slt i32 %24, 4     ; e<4
+  br i1 %25, label %26, label %67     
+
+26:     ; while Body
+  store i32 0, i32* %1     ; f=0
+  br label %27     
+
+27:     ; judge f<8
+  %28 = load i32, i32* %1     
+  %29= icmp slt i32 %28, 8     ; f<8
+  br i1 %29, label %30, label %63     
+
+30:     ; while Body
+  store i32 0, i32* %0     ; g=0
+  br label %31     
+
+31:     ; judge g<7
+  %32 = load i32, i32* %0     
+  %33= icmp slt i32 %32, 7     ; g<7
+  br i1 %33, label %34, label %59     
+
+34:     ; while Body
+  %35 = load i32, i32* %6     
+  %36= getelementptr [10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]],[10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]]* @arr2 , i32 0, i32 %35     
+  %37 = load i32, i32* %5     
+  %38= getelementptr [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]],[2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]* %36 , i32 0, i32 %37     
+  %39 = load i32, i32* %4     
+  %40= getelementptr [3 x [2 x [4 x [8 x [7 x i32]]]]],[3 x [2 x [4 x [8 x [7 x i32]]]]]* %38 , i32 0, i32 %39     
+  %41 = load i32, i32* %3     
+  %42= getelementptr [2 x [4 x [8 x [7 x i32]]]],[2 x [4 x [8 x [7 x i32]]]]* %40 , i32 0, i32 %41     
+  %43 = load i32, i32* %2     
+  %44= getelementptr [4 x [8 x [7 x i32]]],[4 x [8 x [7 x i32]]]* %42 , i32 0, i32 %43     
+  %45 = load i32, i32* %1     
+  %46= getelementptr [8 x [7 x i32]],[8 x [7 x i32]]* %44 , i32 0, i32 %45     
+  %47 = load i32, i32* %0     
+  %48= getelementptr [7 x i32],[7 x i32]* %46 , i32 0, i32 %47     
+  %49 = load i32, i32* %6     
+  %50 = load i32, i32* %5     
+  %51 = add i32 %49, %50     ; a+b
+  %52 = load i32, i32* %3     
+  %53 = add i32 %51, %52     ; a+b+d
+  %54 = load i32, i32* %0     
+  %55 = add i32 %53, %54     ; a+b+d+g
+  store i32 %55, i32* %48     ; arr2[a][b][c][d][e][f][g]=a+b+d+g
+  %56 = load i32, i32* %0     
+  %57 = add i32 %56, 1     ; g+1
+  store i32 %57, i32* %0     ; g=g+1
+  br label %58     
+
+58:     ; jump to head
+  br label %31     
+
+59:     ; exit while
+  %60 = load i32, i32* %1     
+  %61 = add i32 %60, 1     ; f+1
+  store i32 %61, i32* %1     ; f=f+1
+  br label %62     
+
+62:     ; jump to head
+  br label %27     
+
+63:     ; exit while
+  %64 = load i32, i32* %2     
+  %65 = add i32 %64, 1     ; e+1
+  store i32 %65, i32* %2     ; e=e+1
+  br label %66     
+
+66:     ; jump to head
+  br label %23     
+
+67:     ; exit while
+  %68 = load i32, i32* %3     
+  %69 = add i32 %68, 1     ; d+1
+  store i32 %69, i32* %3     ; d=d+1
+  br label %70     
+
+70:     ; jump to head
+  br label %19     
+
+71:     ; exit while
+  %72 = load i32, i32* %4     
+  %73 = add i32 %72, 1     ; c+1
+  store i32 %73, i32* %4     ; c=c+1
+  br label %74     
+
+74:     ; jump to head
+  br label %15     
+
+75:     ; exit while
+  %76 = load i32, i32* %5     
+  %77 = add i32 %76, 1     ; b+1
+  store i32 %77, i32* %5     ; b=b+1
+  br label %78     
+
+78:     ; jump to head
+  br label %11     
+
+79:     ; exit while
+  %80 = load i32, i32* %6     
+  %81 = add i32 %80, 1     ; a+1
+  store i32 %81, i32* %6     ; a=a+1
+  br label %82     
+
+82:     ; jump to head
+  br label %7     
+
+83:     ; exit while
+  br label %ret     
+
+ret:     
+  ret void     
+}
+
+define dso_local i32 @loop3(i32 %0,i32 %1,i32 %2,i32 %3,i32 %4,i32 %5,i32 %6){
+entry:     
+  %7 = alloca i32     ; i32 ans=0
+  %8 = alloca i32     ; i32 g
+  %9 = alloca i32     ; i32 f
+  %10 = alloca i32     ; i32 e
+  %11 = alloca i32     ; i32 d
+  %12 = alloca i32     ; i32 c
+  %13 = alloca i32     ; i32 b
+  %14 = alloca i32     ; i32 a
+  %15 = alloca i32     ; i32 n
+  %16 = alloca i32     ; i32 m
+  %17 = alloca i32     ; i32 l
+  %18 = alloca i32     ; i32 k
+  %19 = alloca i32     ; i32 j
+  %20 = alloca i32     ; i32 i
+  %21 = alloca i32     ; i32 h
+  ret = alloca i32     
+  store i32 %0, i32* %21     
+  store i32 %1, i32* %20     
+  store i32 %2, i32* %19     
+  store i32 %3, i32* %18     
+  store i32 %4, i32* %17     
+  store i32 %5, i32* %16     
+  store i32 %6, i32* %15     
+  store i32 0, i32* %7     ; ans=i32 0
+  store i32 0, i32* %14     ; a=0
+  br label %22     
+
+22:     ; judge a<10
+  %23 = load i32, i32* %14     
+  %24= icmp slt i32 %23, 10     ; a<10
+  br i1 %24, label %25, label %146     
+
+25:     ; while Body
+  store i32 0, i32* %13     ; b=0
+  br label %26     
+
+26:     ; judge b<100
+  %27 = load i32, i32* %13     
+  %28= icmp slt i32 %27, 100     ; b<100
+  br i1 %28, label %29, label %137     
+
+29:     ; while Body
+  store i32 0, i32* %12     ; c=0
+  br label %30     
+
+30:     ; judge c<1000
+  %31 = load i32, i32* %12     
+  %32= icmp slt i32 %31, 1000     ; c<1000
+  br i1 %32, label %33, label %128     
+
+33:     ; while Body
+  store i32 0, i32* %11     ; d=0
+  br label %34     
+
+34:     ; judge d<10000
+  %35 = load i32, i32* %11     
+  %36= icmp slt i32 %35, 10000     ; d<10000
+  br i1 %36, label %37, label %119     
+
+37:     ; while Body
+  store i32 0, i32* %10     ; e=0
+  br label %38     
+
+38:     ; judge e<100000
+  %39 = load i32, i32* %10     
+  %40= icmp slt i32 %39, 100000     ; e<100000
+  br i1 %40, label %41, label %110     
+
+41:     ; while Body
+  store i32 0, i32* %9     ; f=0
+  br label %42     
+
+42:     ; judge f<1000000
+  %43 = load i32, i32* %9     
+  %44= icmp slt i32 %43, 1000000     ; f<1000000
+  br i1 %44, label %45, label %101     
+
+45:     ; while Body
+  store i32 0, i32* %8     ; g=0
+  br label %46     
+
+46:     ; judge g<10000000
+  %47 = load i32, i32* %8     
+  %48= icmp slt i32 %47, 10000000     ; g<10000000
+  br i1 %48, label %49, label %92     
+
+49:     ; while Body
+  %50 = load i32, i32* %7     
+  %51 = srem i32 %50, 817     ; ans%817
+  %52 = load i32, i32* %14     
+  %53= getelementptr [10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]],[10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]]* @arr1 , i32 0, i32 %52     
+  %54 = load i32, i32* %13     
+  %55= getelementptr [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]],[2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]* %53 , i32 0, i32 %54     
+  %56 = load i32, i32* %12     
+  %57= getelementptr [3 x [4 x [5 x [6 x [2 x i32]]]]],[3 x [4 x [5 x [6 x [2 x i32]]]]]* %55 , i32 0, i32 %56     
+  %58 = load i32, i32* %11     
+  %59= getelementptr [4 x [5 x [6 x [2 x i32]]]],[4 x [5 x [6 x [2 x i32]]]]* %57 , i32 0, i32 %58     
+  %60 = load i32, i32* %10     
+  %61= getelementptr [5 x [6 x [2 x i32]]],[5 x [6 x [2 x i32]]]* %59 , i32 0, i32 %60     
+  %62 = load i32, i32* %9     
+  %63= getelementptr [6 x [2 x i32]],[6 x [2 x i32]]* %61 , i32 0, i32 %62     
+  %64 = load i32, i32* %8     
+  %65= getelementptr [2 x i32],[2 x i32]* %63 , i32 0, i32 %64     
+  %66 = load i32, i32* %65     
+  %67 = add i32 %51, %66     ; ans%817+arr1[a][b][c][d][e][f][g]
+  %68 = load i32, i32* %14     
+  %69= getelementptr [10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]],[10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]]* @arr2 , i32 0, i32 %68     
+  %70 = load i32, i32* %13     
+  %71= getelementptr [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]],[2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]* %69 , i32 0, i32 %70     
+  %72 = load i32, i32* %12     
+  %73= getelementptr [3 x [2 x [4 x [8 x [7 x i32]]]]],[3 x [2 x [4 x [8 x [7 x i32]]]]]* %71 , i32 0, i32 %72     
+  %74 = load i32, i32* %11     
+  %75= getelementptr [2 x [4 x [8 x [7 x i32]]]],[2 x [4 x [8 x [7 x i32]]]]* %73 , i32 0, i32 %74     
+  %76 = load i32, i32* %10     
+  %77= getelementptr [4 x [8 x [7 x i32]]],[4 x [8 x [7 x i32]]]* %75 , i32 0, i32 %76     
+  %78 = load i32, i32* %9     
+  %79= getelementptr [8 x [7 x i32]],[8 x [7 x i32]]* %77 , i32 0, i32 %78     
+  %80 = load i32, i32* %8     
+  %81= getelementptr [7 x i32],[7 x i32]* %79 , i32 0, i32 %80     
+  %82 = load i32, i32* %81     
+  %83 = add i32 %67, %82     ; ans%817+arr1[a][b][c][d][e][f][g]+arr2[a][b][c][d][e][f][g]
+  store i32 %83, i32* %7     ; ans=ans%817+arr1[a][b][c][d][e][f][g]+arr2[a][b][c][d][e][f][g]
+  %84 = load i32, i32* %8     
+  %85 = add i32 %84, 1     ; g+1
+  store i32 %85, i32* %8     ; g=g+1
+  %86 = load i32, i32* %8     
+  %87 = load i32, i32* %15     
+  %88= icmp sge i32 %86, %87     ; g>=n
+  br i1 %88, label %89, label %90     ; judge g>=n
+
+89:     ; if Body
+  br label %92     
+
+90:     
+  br label %91     
+
+91:     ; jump to head
+  br label %46     
+
+92:     ; exit while
+  %93 = load i32, i32* %9     
+  %94 = add i32 %93, 1     ; f+1
+  store i32 %94, i32* %9     ; f=f+1
+  %95 = load i32, i32* %9     
+  %96 = load i32, i32* %16     
+  %97= icmp sge i32 %95, %96     ; f>=m
+  br i1 %97, label %98, label %99     ; judge f>=m
+
+98:     ; if Body
+  br label %101     
+
+99:     
+  br label %100     
+
+100:     ; jump to head
+  br label %42     
+
+101:     ; exit while
+  %102 = load i32, i32* %10     
+  %103 = add i32 %102, 1     ; e+1
+  store i32 %103, i32* %10     ; e=e+1
+  %104 = load i32, i32* %10     
+  %105 = load i32, i32* %17     
+  %106= icmp sge i32 %104, %105     ; e>=l
+  br i1 %106, label %107, label %108     ; judge e>=l
+
+107:     ; if Body
+  br label %110     
+
+108:     
+  br label %109     
+
+109:     ; jump to head
+  br label %38     
+
+110:     ; exit while
+  %111 = load i32, i32* %11     
+  %112 = add i32 %111, 1     ; d+1
+  store i32 %112, i32* %11     ; d=d+1
+  %113 = load i32, i32* %11     
+  %114 = load i32, i32* %18     
+  %115= icmp sge i32 %113, %114     ; d>=k
+  br i1 %115, label %116, label %117     ; judge d>=k
+
+116:     ; if Body
+  br label %119     
+
+117:     
+  br label %118     
+
+118:     ; jump to head
+  br label %34     
+
+119:     ; exit while
+  %120 = load i32, i32* %12     
+  %121 = add i32 %120, 1     ; c+1
+  store i32 %121, i32* %12     ; c=c+1
+  %122 = load i32, i32* %12     
+  %123 = load i32, i32* %19     
+  %124= icmp sge i32 %122, %123     ; c>=j
+  br i1 %124, label %125, label %126     ; judge c>=j
+
+125:     ; if Body
+  br label %128     
+
+126:     
+  br label %127     
+
+127:     ; jump to head
+  br label %30     
+
+128:     ; exit while
+  %129 = load i32, i32* %13     
+  %130 = add i32 %129, 1     ; b+1
+  store i32 %130, i32* %13     ; b=b+1
+  %131 = load i32, i32* %13     
+  %132 = load i32, i32* %20     
+  %133= icmp sge i32 %131, %132     ; b>=i
+  br i1 %133, label %134, label %135     ; judge b>=i
+
+134:     ; if Body
+  br label %137     
+
+135:     
+  br label %136     
+
+136:     ; jump to head
+  br label %26     
+
+137:     ; exit while
+  %138 = load i32, i32* %14     
+  %139 = add i32 %138, 1     ; a+1
+  store i32 %139, i32* %14     ; a=a+1
+  %140 = load i32, i32* %14     
+  %141 = load i32, i32* %21     
+  %142= icmp sge i32 %140, %141     ; a>=h
+  br i1 %142, label %143, label %144     ; judge a>=h
+
+143:     ; if Body
+  br label %146     
+
+144:     
+  br label %145     
+
+145:     ; jump to head
+  br label %22     
+
+146:     ; exit while
+  %147 = load i32, i32* %7     
+  store i32 %147, i32* ret     
+  br label %ret     
+
+ret:     
+  %148 = load i32, i32* ret     
+  ret i32 %148     
+}
+
+define dso_local i32 @main(){
+entry:     
+  %0 = alloca i32     ; i32 n=getint()
+  %1 = alloca i32     ; i32 m=getint()
+  %2 = alloca i32     ; i32 l=getint()
+  %3 = alloca i32     ; i32 k=getint()
+  %4 = alloca i32     ; i32 j=getint()
+  %5 = alloca i32     ; i32 i=getint()
+  %6 = alloca i32     ; i32 h=getint()
+  %7 = alloca i32     ; i32 y=getint()
+  %8 = alloca i32     ; i32 x=getint()
+  ret = alloca i32     
+  %9 = call i32 @getint()     ; call getint()
+  store i32 %9, i32* %8     ; x= = call i32 @getint()
+  %10 = call i32 @getint()     ; call getint()
+  store i32 %10, i32* %7     ; y= = call i32 @getint()
+  %11 = call i32 @getint()     ; call getint()
+  store i32 %11, i32* %6     ; h= = call i32 @getint()
+  %12 = call i32 @getint()     ; call getint()
+  store i32 %12, i32* %5     ; i= = call i32 @getint()
+  %13 = call i32 @getint()     ; call getint()
+  store i32 %13, i32* %4     ; j= = call i32 @getint()
+  %14 = call i32 @getint()     ; call getint()
+  store i32 %14, i32* %3     ; k= = call i32 @getint()
+  %15 = call i32 @getint()     ; call getint()
+  store i32 %15, i32* %2     ; l= = call i32 @getint()
+  %16 = call i32 @getint()     ; call getint()
+  store i32 %16, i32* %1     ; m= = call i32 @getint()
+  %17 = call i32 @getint()     ; call getint()
+  store i32 %17, i32* %0     ; n= = call i32 @getint()
+  %18 = load i32, i32* %6     
+  %19 = load i32, i32* %5     
+  %20 = load i32, i32* %4     
+  %21 = load i32, i32* %3     
+  %22 = load i32, i32* %2     
+  %23 = load i32, i32* %1     
+  %24 = load i32, i32* %0     
+  %25 = call i32 @loop3(i32 %18,i32 %19,i32 %20,i32 %21,i32 %22,i32 %23,i32 %24)     ; call loop3(h,i,j,k,l,m,n)
+  store i32 %25, i32* ret     
+  br label %ret     
+
+ret:     
+  %26 = load i32, i32* ret     
+  ret i32 %26     
 }
 

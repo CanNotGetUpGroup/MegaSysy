@@ -22,8 +22,11 @@ public class PassManager {
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
+
+        passes.add(new FuncInline());
+//        passes.add(new InterproceduralAnalysis());
+//        passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG());
-//        passes.add(new FuncInline());
     }
 
     /**

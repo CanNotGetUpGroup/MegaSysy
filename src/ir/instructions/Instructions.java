@@ -74,7 +74,7 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (AllocaInst) cloneMap.get(this);
             }
-            AllocaInst ret = new AllocaInst(getType());
+            AllocaInst ret = new AllocaInst(getAllocatedType());
             cloneMap.put(this, ret);
             return ret;
         }
@@ -162,10 +162,10 @@ public abstract class Instructions {
         }
 
         /**
-         * e.g. %elem_ptr = getelementptr [6 x i8], [6 x i8]* @a_gv, i32 0, i32 1
+         * e.g. %elem_ptr = getelementptr [6 x i32], [6 x i32]* @a_gv, i32 0, i32 1
          *
-         * @param PointeeType [6 x i8] 指向的类型
-         * @param Ptr         [6 x i8]* @a_gv
+         * @param PointeeType [6 x i32] 指向的类型
+         * @param Ptr         [6 x i32]* @a_gv
          * @param IdxList     {i32 0, i32 1}
          * @param numOperands 3
          */
@@ -427,7 +427,7 @@ public abstract class Instructions {
         }
 
         public ArrayList<Value> getArgs() {
-            return new ArrayList<>(getOperandList().subList(1, getNumOperands() - 1));
+            return new ArrayList<>(getOperandList().subList(1, getNumOperands()));
         }
 
         @Override
@@ -737,6 +737,7 @@ public abstract class Instructions {
             }
             PHIInst ret = new PHIInst(getType(), getNumOperands());
             cloneMap.put(this, ret);
+            ret.getInstNode().insertAfter(((BasicBlock)cloneMap.get(getParent())).getInstList().getHead());
             for (int i = 0; i < getNumOperands(); i++) {
                 ret.addIncoming(getOperand(i).copy(cloneMap), blocks.get(i).copy(cloneMap));
             }

@@ -129,6 +129,6 @@ public class test {
                 BB.getInstList().pushBack(new Instructions.StoreInst(m,alloca_n).getInstNode());
             }
         }
-//        System.out.println(module.toLL());
+        System.out.println(module.toLL());
     }
 }
