@@ -80,6 +80,11 @@ public class Branch extends MachineInstruction {
     }
 
     @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+        throw  new RuntimeException("Unfinished");
+    }
+
+    @Override
     public String toString() {
         String inst = "B";
         if (storeLR) inst += "L";

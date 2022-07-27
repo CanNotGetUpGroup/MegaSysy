@@ -5,6 +5,8 @@ import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
+import java.util.ArrayList;
+
 
 /**
  * Convert between floating-point numbers and integers.
@@ -17,10 +19,11 @@ public class VCVT extends MachineInstruction {
     private Register op;
     private Register dest;
 
-    public VCVT(MachineBasicBlock parent, Register dest, Register op) {
+    public VCVT(MachineBasicBlock parent, Register dest, Register op, ArrayList<String> arrayList) {
         super(parent);
         this.op = op;
         this.dest = dest;
+        setForFloat(true, arrayList);
     }
 
     @Override
@@ -44,8 +47,13 @@ public class VCVT extends MachineInstruction {
             this.op = (Register) op;
     }
 
+    public MachineInstruction setForFloat(boolean ifForFloat) {
+       throw new RuntimeException("Should call this");
+    }
+
+
     @Override
     public String toString() {
-        return "vcvt" + typeInfoString() + "\t" + dest +", " +  op;
+        return "vcvt" + typeInfoString() + "\t" + dest + ", " + op;
     }
 }
