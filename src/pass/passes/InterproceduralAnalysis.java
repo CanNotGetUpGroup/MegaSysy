@@ -37,7 +37,7 @@ public class InterproceduralAnalysis extends ModulePass {
                         }
                         case Store -> {
                             Value addr = I.getOperand(1);
-                            if(addr instanceof AllocaInst && ((AllocaInst) addr).getAllocatedType().isInt32Ty()){
+                            if(addr instanceof AllocaInst && (((AllocaInst) addr).getAllocatedType().isInt32Ty()||((AllocaInst) addr).getAllocatedType().isFloatTy())){
                                 continue;
                             }
                             Value pointer = AliasAnalysis.getPointerValue(addr);

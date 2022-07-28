@@ -195,6 +195,7 @@ public class Function extends User {
         if(cloneMap.get(this)!=null){
             return (Function) cloneMap.get(this);
         }
+        cloneMap.setInFunctionCopy(true);
         Function ret=new Function(getType(),getName()+cloneMap.hashCode());
         cloneMap.put(this,ret);
         for(Argument argument:getArguments()){
