@@ -188,7 +188,13 @@ public class InstructionSelector {
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
                     var op1 = ir.getOperand(0);
-                    new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, op1)).pushBacktoInstList();
+                    var retType = ir.getParent().getParent().getRetType();
+                    if (retType.isVoidTy()) {
+                        ;
+                    } else if (retType.isFloatTy()) {
+                        new Move(mbb, new MCRegister(Register.Content.Float, 0), valueToFloatReg(mbb, op1)).setForFloat(true).pushBacktoInstList();
+                    } else
+                        new Move(mbb, new MCRegister(MCRegister.RegName.r0), valueToMCOperand(mbb, op1)).pushBacktoInstList();
                 }
                 MachineInstruction newInst;
                 // 不管是不是叶子节点都push了，为了解决栈上参数的问题 TODO：未来修改
@@ -227,6 +233,9 @@ public class InstructionSelector {
                         }
 
                         new Cmp(mbb, r1, r2).setForFloat(cond.getOp() == Instruction.Ops.FCmp, new ArrayList<>(List.of("f32"))).pushBacktoInstList();
+                        if (cond.getOp() == Instruction.Ops.FCmp)
+                            new VMRS(mbb, new MCRegister(MCRegister.RegName.APSR_nzcv), new MCRegister(MCRegister.RegName.FPSCR))
+                                    .pushBacktoInstList();
                         // TODO: change the ir.getOperand(2) after merge
                         // TODO: Float number
                         MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
@@ -252,13 +261,14 @@ public class InstructionSelector {
                 int firstStackFloatPara = paraNum, firstStackIntPara = paraNum;
                 for (int i = 1; i < paraNum; i++) {
                     if (ir.getOperand(i).getType().isFloatTy()) {
-                        if (floatParaNum >= 16) firstStackFloatPara = i;
+                        if (floatParaNum >= 16 && firstStackFloatPara == paraNum) firstStackFloatPara = i;
                         floatParaNum++;
                     } else {
-                        if (intParaNum >= 4) firstStackIntPara = i;
+                        if (intParaNum >= 4 && firstStackIntPara == paraNum) firstStackIntPara = i;
                         intParaNum++; // could include pointer/array...
                     }
                 }
+                // paras store on stack
                 int numOnStack = 0;
                 if (floatParaNum > 16) numOnStack += floatParaNum - 16;
                 if (intParaNum > 4) numOnStack += intParaNum - 4;
@@ -276,6 +286,8 @@ public class InstructionSelector {
                         stackPos++;
                     }
                 }
+
+                // params store on reg
                 int intRegId = 3, floatRegId = 15;
                 if (intParaNum < 4) intRegId = intParaNum - 1;
                 if (floatParaNum < 16) floatRegId = floatParaNum - 1;
@@ -289,19 +301,27 @@ public class InstructionSelector {
                         new Move(mbb, new MCRegister(Register.Content.Int, intRegId), valueToMCOperand(mbb, op)).pushBacktoInstList();
                         intRegId--;
                     }
-
                 }
 
                 new Branch(mbb, funcMap.get(ir.getOperand(0)), true, Branch.Type.Call).pushBacktoInstList();
 
-                // release stack
-                paraNum = ir.getNumOperands();
-                if (paraNum > 4) {
-                    new Arithmetic(mbb, Arithmetic.Type.ADD, new MCRegister(MCRegister.RegName.SP), new ImmediateNumber((paraNum - 5) * 4)).pushBacktoInstList();
+                // store return value
+                if (ir.getOperand(0).getType().isFunctionTy()) {
+                    var retType = ((DerivedTypes.FunctionType) ir.getOperand(0).getType()).getReturnType();
+                    if (retType.isFloatTy()) {
+                        var dest = new VirtualRegister(Register.Content.Float);
+                        new Move(mbb, dest, new MCRegister(Register.Content.Float, 0)).setForFloat(true).pushBacktoInstList();
+                        valueMap.put(ir, dest);
+
+                    } else if (retType.isVoidTy()) {
+
+                    } else {
+                        var dest = new VirtualRegister();
+                        new Move(mbb, dest, new MCRegister(MCRegister.RegName.r0)).pushBacktoInstList();
+                        valueMap.put(ir, dest);
+                    }
                 }
-                var dest = new VirtualRegister();
-                new Move(mbb, dest, new MCRegister(MCRegister.RegName.r0)).pushBacktoInstList();
-                valueMap.put(ir, dest);
+
             }
 
 
@@ -418,7 +438,9 @@ public class InstructionSelector {
                 }
 
                 new Cmp(mbb, r1, r2).setForFloat(cond.getOp() == Instruction.Ops.FCmp, new ArrayList<>(List.of("f32"))).pushBacktoInstList();
-
+                if (cond.getOp() == Instruction.Ops.FCmp)
+                    new VMRS(mbb, new MCRegister(MCRegister.RegName.APSR_nzcv), new MCRegister(MCRegister.RegName.FPSCR))
+                            .pushBacktoInstList();
                 new Move(mbb, dest, new ImmediateNumber(0)).pushBacktoInstList();
 
                 MachineInstruction inst = new Move(mbb, dest, new ImmediateNumber(1));
@@ -652,7 +674,9 @@ public class InstructionSelector {
                 }
             }
             new Cmp(parent, r1, r2).setForFloat(((CmpInst) ir).getOp() == Instruction.Ops.FCmp, new ArrayList<>(List.of("F32"))).pushBacktoInstList();
-
+            if (((CmpInst) ir).getOp() == Instruction.Ops.FCmp)
+                new VMRS(parent, new MCRegister(MCRegister.RegName.APSR_nzcv), new MCRegister(MCRegister.RegName.FPSCR))
+                        .pushBacktoInstList();
             new Move(parent, dest, new ImmediateNumber(0)).pushBacktoInstList();
 
             MachineInstruction inst = new Move(parent, dest, new ImmediateNumber(1));

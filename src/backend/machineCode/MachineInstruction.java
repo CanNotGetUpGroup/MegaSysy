@@ -41,7 +41,7 @@ public abstract class MachineInstruction {
     }
 
     public String typeInfoString() {
-        if (!isForFloat()) return "";
+        if (!isForFloat() || typeinfo == null) return "";
         StringBuilder sb = new StringBuilder();
         for (var i : typeinfo) {
             sb.append(".").append(i);
