@@ -737,10 +737,6 @@ public abstract class Instructions {
             }
             PHIInst ret = new PHIInst(getType(), getNumOperands());
             cloneMap.put(this, ret);
-            ret.getInstNode().insertAfter(((BasicBlock)cloneMap.get(getParent())).getInstList().getHead());
-            for (int i = 0; i < getNumOperands(); i++) {
-                ret.addIncoming(getOperand(i).copy(cloneMap), blocks.get(i).copy(cloneMap));
-            }
             return ret;
         }
     }

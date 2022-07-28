@@ -5,6 +5,7 @@ import ir.*;
 import ir.Module;
 import ir.instructions.Instructions.*;
 
+import org.antlr.v4.runtime.misc.Pair;
 import pass.ModulePass;
 import util.CloneMap;
 import util.IListIterator;
@@ -18,6 +19,7 @@ import java.util.*;
  */
 public class FuncInline extends ModulePass {
     int Threshold = 150;//内联的函数的行数阈值，超过该值放弃内联
+    CloneMap cloneMap;
 
     public FuncInline() {
         super();
@@ -71,17 +73,20 @@ public class FuncInline extends ModulePass {
                 Function caller = CI.getFunction();
                 Function callee = CI.getCalledFunction();
 
-                if (CG.getNode(callee).getCalledFunctions().size()>0) {
-                    continue;
-                }
+//                if (CG.getNode(callee).getCalledFunctions().size()>0) {
+//                    continue;
+//                }
                 //不能或不值得inline
-                if (!shouldInline(CI)) continue;
+                if (!shouldInline(CI,CG)) continue;
                 //内联失败
                 if (!inlineFunction(CI)) {
                     System.out.println(callee + " didn't inline into " + caller);
                     continue;
                 }else{
                     localChanged=true;
+                    CG.getNode(callee).getCalledFunctions().forEach(calleeEE->{
+                        CG.getNode(caller).addCalledFunction(calleeEE.a.copy(cloneMap),calleeEE.b);
+                    });
                     CG.getNode(caller).removeCall(CI);
                     callInsts.remove(i--);
                 }
@@ -109,7 +114,7 @@ public class FuncInline extends ModulePass {
         Function callee = CI.getCalledFunction();
         HashMap<Value, Value> ArgToVal = new HashMap<>();
         //拷贝出一个Function，该Function用于内联，不在Module中
-        CloneMap cloneMap = new CloneMap();
+        cloneMap = new CloneMap();
         Function copy = callee.copy(cloneMap);
         BasicBlock insertBB = copy.getEntryBB();
         insertBB.setComment("inline "+CI);
@@ -205,15 +210,21 @@ public class FuncInline extends ModulePass {
      * 判断是否可以，是否值得inline
      * 递归函数不选择内联
      */
-    public boolean shouldInline(CallInst CI) {
+    public boolean shouldInline(CallInst CI,CallGraph CG) {
         Function caller = CI.getFunction();
         Function F = CI.getCalledFunction();
         int cost = 0;
 
-        //检查是否递归调用
-        for (User U : caller.getUsers()) {
+        //检查F是否自递归
+        for (User U : F.getUsers()) {
             CallInst call = (CallInst) U;
-            if (call.getFunction() == caller) {
+            if (call.getFunction() == F) {
+                return false;
+            }
+        }
+        //检查F调用的函数是否有caller
+        for(Pair<CallInst, CallGraph.CallGraphNode> pair:CG.getNode(F).getCalledFunctions()){
+            if(pair.b.getF()==caller){
                 return false;
             }
         }

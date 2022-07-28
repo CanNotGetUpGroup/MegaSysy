@@ -1,125 +1,24 @@
-@arr1 = dso_local global [10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]] zeroinitializer
-@arr2 = dso_local global [10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]] zeroinitializer
+@a = dso_local global i32 10
 
-declare i32 @getint()
 
 define dso_local i32 @main(){
-entry:     
-  %0 = call i32 @getint()     ; call getint()
-  %1 = call i32 @getint()     ; call getint()
-  %2 = call i32 @getint()     ; call getint()
-  %3 = call i32 @getint()     ; call getint()
-  %4 = call i32 @getint()     ; call getint()
-  %5 = call i32 @getint()     ; call getint()
-  %6 = call i32 @getint()     ; call getint()
-  %7 = call i32 @getint()     ; call getint()
-  %8 = call i32 @getint()     ; call getint()
-  br label %9     
+0:     ; inline call void @foo()
+  %1 = load i32, i32* @a     
+  %2 = add i32 %1, 1     ; ; a+1
+  store i32 %2, i32* @a     ; ; a=a+1
+  %3 = load i32, i32* @a     
+  %4 = add i32 %3, 1     ; ; a+1
+  store i32 %4, i32* @a     ; ; a=a+1
+  %5 = load i32, i32* @a     
+  %6= icmp eq i32 2, 1     ; ; c==1
+  br i1 %6, label %8, label %7     ; ; judge c==1
 
-9:     ; loop3 ; judge a<10
-  %10 = phi i32 [ 0, %entry ] , [ %80, %79 ]      
-  %11 = phi i32 [ 0, %entry ] , [ %81, %79 ]      
-  %12= icmp slt i32 %11, 10     ; ; a<10
-  br i1 %12, label %13, label %ret     
+7:     ; bar ; else Body
+  br label %8     
 
-13:     ; loop3 ; judge b<100
-  %14 = phi i32 [ %10, %9 ] , [ %76, %75 ]      
-  %15 = phi i32 [ 0, %9 ] , [ %77, %75 ]      
-  %16= icmp slt i32 %15, 100     ; ; b<100
-  br i1 %16, label %17, label %79     
-
-17:     ; loop3 ; judge c<1000
-  %18 = phi i32 [ %14, %13 ] , [ %72, %71 ]      
-  %19 = phi i32 [ 0, %13 ] , [ %73, %71 ]      
-  %20= icmp slt i32 %19, 1000     ; ; c<1000
-  br i1 %20, label %21, label %75     
-
-21:     ; loop3 ; judge d<10000
-  %22 = phi i32 [ %18, %17 ] , [ %68, %67 ]      
-  %23 = phi i32 [ 0, %17 ] , [ %69, %67 ]      
-  %24= icmp slt i32 %23, 10000     ; ; d<10000
-  br i1 %24, label %25, label %71     
-
-25:     ; loop3 ; judge e<100000
-  %26 = phi i32 [ %22, %21 ] , [ %64, %63 ]      
-  %27 = phi i32 [ 0, %21 ] , [ %65, %63 ]      
-  %28= icmp slt i32 %27, 100000     ; ; e<100000
-  br i1 %28, label %29, label %67     
-
-29:     ; loop3 ; judge f<1000000
-  %30 = phi i32 [ %26, %25 ] , [ %60, %59 ]      
-  %31 = phi i32 [ 0, %25 ] , [ %61, %59 ]      
-  %32= icmp slt i32 %31, 1000000     ; ; f<1000000
-  br i1 %32, label %33, label %63     
-
-33:     ; loop3 ; judge g<10000000
-  %34 = phi i32 [ %30, %29 ] , [ %56, %37 ]      
-  %35 = phi i32 [ 0, %29 ] , [ %57, %37 ]      
-  %36= icmp slt i32 %35, 10000000     ; ; g<10000000
-  br i1 %36, label %37, label %59     
-
-37:     ; loop3 ; while Body
-  %38 = srem i32 %34, 817     ; ; ans%817
-  %39= getelementptr [10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]],[10 x [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]]* @arr1 , i32 0, i32 %11     
-  %40= getelementptr [2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]],[2 x [3 x [4 x [5 x [6 x [2 x i32]]]]]]* %39 , i32 0, i32 %15     
-  %41= getelementptr [3 x [4 x [5 x [6 x [2 x i32]]]]],[3 x [4 x [5 x [6 x [2 x i32]]]]]* %40 , i32 0, i32 %19     
-  %42= getelementptr [4 x [5 x [6 x [2 x i32]]]],[4 x [5 x [6 x [2 x i32]]]]* %41 , i32 0, i32 %23     
-  %43= getelementptr [5 x [6 x [2 x i32]]],[5 x [6 x [2 x i32]]]* %42 , i32 0, i32 %27     
-  %44= getelementptr [6 x [2 x i32]],[6 x [2 x i32]]* %43 , i32 0, i32 %31     
-  %45= getelementptr [2 x i32],[2 x i32]* %44 , i32 0, i32 %35     
-  %46 = load i32, i32* %45     
-  %47 = add i32 , %46     ; ; ans%817+arr1[a][b][c][d][e][f][g]
-  %48= getelementptr [10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]],[10 x [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]]* @arr2 , i32 0, i32 %11     
-  %49= getelementptr [2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]],[2 x [3 x [2 x [4 x [8 x [7 x i32]]]]]]* %48 , i32 0, i32 %15     
-  %50= getelementptr [3 x [2 x [4 x [8 x [7 x i32]]]]],[3 x [2 x [4 x [8 x [7 x i32]]]]]* %49 , i32 0, i32 %19     
-  %51= getelementptr [2 x [4 x [8 x [7 x i32]]]],[2 x [4 x [8 x [7 x i32]]]]* %50 , i32 0, i32 %23     
-  %52= getelementptr [4 x [8 x [7 x i32]]],[4 x [8 x [7 x i32]]]* %51 , i32 0, i32 %27     
-  %53= getelementptr [8 x [7 x i32]],[8 x [7 x i32]]* %52 , i32 0, i32 %31     
-  %54= getelementptr [7 x i32],[7 x i32]* %53 , i32 0, i32 %35     
-  %55 = load i32, i32* %54     
-  %56 = add i32 %47, %55     ; ; ans%817+arr1[a][b][c][d][e][f][g]+arr2[a][b][c][d][e][f][g]
-  %57 = add i32 %35, 1     ; ; g+1
-  %58= icmp sge i32 %57, %8     ; ; g>=n
-  br i1 %58, label %59, label %33     ; ; judge g>=n
-
-59:     ; loop3 ; exit while
-  %60 = phi i32 [ %34, %33 ] , [ %56, %37 ]      
-  %61 = add i32 %31, 1     ; ; f+1
-  %62= icmp sge i32 %61, %7     ; ; f>=m
-  br i1 %62, label %63, label %29     ; ; judge f>=m
-
-63:     ; loop3 ; exit while
-  %64 = phi i32 [ %30, %29 ] , [ %60, %59 ]      
-  %65 = add i32 %27, 1     ; ; e+1
-  %66= icmp sge i32 %65, %6     ; ; e>=l
-  br i1 %66, label %67, label %25     ; ; judge e>=l
-
-67:     ; loop3 ; exit while
-  %68 = phi i32 [ %26, %25 ] , [ %64, %63 ]      
-  %69 = add i32 %23, 1     ; ; d+1
-  %70= icmp sge i32 %69, %5     ; ; d>=k
-  br i1 %70, label %71, label %21     ; ; judge d>=k
-
-71:     ; loop3 ; exit while
-  %72 = phi i32 [ %22, %21 ] , [ %68, %67 ]      
-  %73 = add i32 %19, 1     ; ; c+1
-  %74= icmp sge i32 %73, %4     ; ; c>=j
-  br i1 %74, label %75, label %17     ; ; judge c>=j
-
-75:     ; loop3 ; exit while
-  %76 = phi i32 [ %18, %17 ] , [ %72, %71 ]      
-  %77 = add i32 %15, 1     ; ; b+1
-  %78= icmp sge i32 %77, %3     ; ; b>=i
-  br i1 %78, label %79, label %13     ; ; judge b>=i
-
-79:     ; loop3 ; exit while
-  %80 = phi i32 [ %14, %13 ] , [ %76, %75 ]      
-  %81 = add i32 %11, 1     ; ; a+1
-  %82= icmp sge i32 %81, %2     ; ; a>=h
-  br i1 %82, label %ret, label %9     ; ; judge a>=h
-
-ret:     
-  %83 = phi i32 [ %10, %9 ] , [ %80, %79 ]      
-  ret i32 %83     
+8:     ; leave inline %1 = call i32 @bar(i32 2)
+  %9 = phi i32 [ 5, %7 ] , [ 10, %0 ]      
+  %10 = add i32 %5, %9     ; a+bar(2)
+  ret i32 %10     
 }
 
