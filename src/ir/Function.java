@@ -195,6 +195,7 @@ public class Function extends User {
         if(cloneMap.get(this)!=null){
             return (Function) cloneMap.get(this);
         }
+        cloneMap.setInFunctionCopy(true);
         Function ret=new Function(getType(),getName()+cloneMap.hashCode());
         cloneMap.put(this,ret);
         for(Argument argument:getArguments()){
@@ -210,17 +211,20 @@ public class Function extends User {
         }
         for(BasicBlock BB:getBbList()){
             for(Instruction I:BB.getInstList()){
-                if(I instanceof Instructions.PHIInst){
-                    continue;
-                }
                 ((Instruction)I.copy(cloneMap)).getInstNode().insertIntoListEnd(((BasicBlock)cloneMap.get(BB)).getInstList());
                 if(I.getComment()!= null) I.copy(cloneMap).setComment(I.getComment());
             }
         }
         //添加phi
         for(BasicBlock BB:getBbList()){
-            for(Instructions.PHIInst phi:BB.getPHIs()){
-                phi.copy(cloneMap);
+            for(Instruction I:BB.getInstList()){
+                if(!(I instanceof Instructions.PHIInst)){
+                    break;
+                }
+                Instructions.PHIInst phi=(Instructions.PHIInst)I;
+                for (int i = 0; i < phi.getNumOperands(); i++) {
+                    phi.copy(cloneMap).addIncoming(phi.getOperand(i).copy(cloneMap), phi.getBlocks().get(i).copy(cloneMap));
+                }
             }
         }
         ir.Module.getInstance().rename(ret);
