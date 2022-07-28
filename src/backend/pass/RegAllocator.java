@@ -65,8 +65,8 @@ public class RegAllocator {
                         newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
                         newInst.setPrologue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
-                        int offset = 4 * numOnStack + 4 * paraOnStack;
-                        if(offset % 8 != 0) offset += 4;
+                        int offset = 4 * numOnStack + 4 * paraOnStack ;
+                        if((offset + func.getStackTop()) % 8 != 0) offset += 4;
                         MCOperand c;
                         if (ImmediateNumber.isLegalImm(offset))
                             c = new ImmediateNumber(offset);

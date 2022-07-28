@@ -25,7 +25,9 @@ public class MCRegister extends Register {
         SP(13),
         LR(14),
         PC(15),
-        CPSR(16);
+        CPSR(16),
+        FPSCR(17),
+        APSR_nzcv(18);
         private final int value;
 
         private RegName(int value) {
@@ -63,7 +65,6 @@ public class MCRegister extends Register {
         super(Register.Type.MACHINE);
         this.name = reg;
         this.id = reg.getValue();
-
     }
 
     public MCRegister(Content type, int id) {
@@ -84,6 +85,8 @@ public class MCRegister extends Register {
                 case 14 -> RegName.LR;
                 case 15 -> RegName.PC;
                 case 16 -> RegName.CPSR;
+                case 17 -> RegName.FPSCR;
+                case 18 -> RegName.APSR_nzcv;
                 default -> null;
             };
             if (reg != null) return reg.name();
