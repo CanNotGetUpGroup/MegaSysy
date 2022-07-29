@@ -41,6 +41,11 @@ public class Shift extends MachineInstruction {
         this.op1 = op;
     }
 
+    @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+        throw  new RuntimeException("Unfinished");
+    }
+
     public MCOperand getSh() {
         return sh;
     }

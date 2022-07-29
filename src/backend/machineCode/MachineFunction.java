@@ -15,6 +15,18 @@ public class MachineFunction implements Addressable{
     private boolean isDefined = false;
     private boolean isLeaf = true;
 
+    public int getMaxParaNumOnStack() {
+        return maxParaNumOnStack;
+    }
+
+    public void setMaxParaNumOnStack(int maxParaNumOnStack) {
+        this.maxParaNumOnStack = maxParaNumOnStack;
+    }
+
+    private int maxParaNumOnStack = 0;
+
+
+
     public int getStackTop() {
         return stackTop;
     }

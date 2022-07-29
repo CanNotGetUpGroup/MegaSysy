@@ -22,6 +22,12 @@ public class Cmp extends MachineInstruction {
     }
 
     @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+        setForFloat(isForFloat, new ArrayList<>(List.of("f32")));
+        return this;
+    }
+
+    @Override
     public MCOperand getOp1() {
         return op1;
     }
