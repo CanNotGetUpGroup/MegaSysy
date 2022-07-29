@@ -70,7 +70,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         symbolTable.addValue("putarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_array), "putarray", module, false));
         symbolTable.addValue("putfarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_farray), "putfarray", module, false));
         symbolTable.addValue("memset", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_memset), "memset", module, false));
-        symbolTable.addValue("starttime", builder.createFunction(FunctionType.get(Type.getVoidTy()), "_sysy_startttime", module, false));
+        symbolTable.addValue("starttime", builder.createFunction(FunctionType.get(Type.getVoidTy()), "_sysy_starttime", module, false));
         symbolTable.addValue("stoptime", builder.createFunction(FunctionType.get(Type.getVoidTy()), "_sysy_stoptime", module, false));
 
         return super.visitProgram(ctx);
