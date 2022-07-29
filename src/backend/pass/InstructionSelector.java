@@ -198,12 +198,12 @@ public class InstructionSelector {
                 }
                 MachineInstruction newInst;
                 // 不管是不是叶子节点都push了，为了解决栈上参数的问题 TODO：未来修改
-                if (mf.isLeaf()) {
-                    newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
+//                if (mf.isLeaf()) {
+//                    newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
 
-                } else {
+//                } else {
                     newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
-                }
+//                }
                 newInst.setEpilogue(true);
                 newInst.pushBacktoInstList();
             }
