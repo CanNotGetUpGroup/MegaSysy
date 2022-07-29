@@ -417,7 +417,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     }
                     ArrayList<Value> Args = new ArrayList<>();
                     Args.add(gep);
-                    Args.add(Constant.getNullValue(declType));
+                    Args.add(Constant.getNullValue(Type.getInt32Ty()));
                     Args.add(ConstantInt.get(arrayType.getNumElements() * arrayType.getEleSize() * 4));
                     Value v=builder.createCall(symbolTable.getFunction("memset"), Args);
                     v.setComment(name);
