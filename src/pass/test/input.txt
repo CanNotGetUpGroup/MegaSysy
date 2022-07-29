@@ -1,20 +1,7 @@
 int a = 10;
 
-void foo() {
-    a = a + 1;
-}
-
-int bar(int c) {
-    if (c == 1)
-        return 10;
-    else
-        return 5;
-}
-
 int main(){
-    int b = 5;
-    foo();
-    foo();
-    b = a + bar(2);
+    int b = 5,c=10;
+    int d[50];
     return b;
 }
