@@ -6,6 +6,9 @@ import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LoadOrStore extends MachineInstruction {
     public enum Type {
         LOAD,
@@ -21,6 +24,13 @@ public class LoadOrStore extends MachineInstruction {
         this.type = type;
         this.dest = dest;
         this.addr = addr;
+        setForFloat(dest.isFloat());
+    }
+
+    @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+       setForFloat(isForFloat, new ArrayList<>(List.of("32")));
+       return this;
     }
 
     @Override

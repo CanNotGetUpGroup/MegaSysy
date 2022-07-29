@@ -34,12 +34,14 @@ public abstract class MachineInstruction {
         return this;
     }
 
+    public abstract MachineInstruction setForFloat(boolean isForFloat);
+
     public ArrayList<String> getTypeinfo() {
         return typeinfo;
     }
 
     public String typeInfoString() {
-        if (!isForFloat()) return "";
+        if (!isForFloat() || typeinfo == null) return "";
         StringBuilder sb = new StringBuilder();
         for (var i : typeinfo) {
             sb.append(".").append(i);
