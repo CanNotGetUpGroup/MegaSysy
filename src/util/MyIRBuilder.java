@@ -286,15 +286,15 @@ public class MyIRBuilder {
         //取模的常量折叠只处理了两个都为常量或x%1==0的情况
         Value V = foldConstant(Instruction.Ops.SRem, LHS, RHS);
         if (V != null) {
-            return V;
+            return insert(V);
         }
         //其它情况做取模优化，变为x - x / y * y（y为常量且绝对值是2的次幂的情况交给后端处理）
         if(RHS instanceof Constants.ConstantInt){
             Constants.ConstantInt CI2=(Constants.ConstantInt)RHS;
             int abs_num=Math.abs(CI2.getVal());
-//            if((abs_num&(abs_num-1))==0){//对二的次幂取模，交给后端处理
-//                return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
-//            }
+            if((abs_num&(abs_num-1))==0){//对二的次幂取模，交给后端处理
+                return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
+            }
         }
         var div=createSDiv(LHS,RHS);
         var mul=createMul(div,RHS);
@@ -305,7 +305,7 @@ public class MyIRBuilder {
     public Value createFAdd(Value LHS, Value RHS) {
         Value V = foldConstant(Instruction.Ops.FAdd, LHS, RHS);
         if (V != null) {
-            return V;
+            return insert(V);
         }
         return insert(BinaryInstruction.create(Instruction.Ops.FAdd,LHS,RHS));
     }
@@ -313,7 +313,7 @@ public class MyIRBuilder {
     public Value createFSub(Value LHS, Value RHS) {
         Value V = foldConstant(Instruction.Ops.FSub, LHS, RHS);
         if (V != null) {
-            return V;
+            return insert(V);
         }
         return insert(BinaryInstruction.create(Instruction.Ops.FSub,LHS,RHS));
     }
@@ -321,7 +321,7 @@ public class MyIRBuilder {
     public Value createFMul(Value LHS, Value RHS) {
         Value V = foldConstant(Instruction.Ops.FMul, LHS, RHS);
         if (V != null) {
-            return V;
+            return insert(V);
         }
         return insert(BinaryInstruction.create(Instruction.Ops.FMul,LHS,RHS));
     }
@@ -329,7 +329,7 @@ public class MyIRBuilder {
     public Value createFDiv(Value LHS, Value RHS) {
         Value V = foldConstant(Instruction.Ops.FDiv, LHS, RHS);
         if (V != null) {
-            return V;
+            return insert(V);
         }
         return insert(BinaryInstruction.create(Instruction.Ops.FDiv,LHS,RHS));
     }
@@ -337,7 +337,7 @@ public class MyIRBuilder {
     public Value createFRem(Value LHS, Value RHS) {
         Value V = foldConstant(Instruction.Ops.FRem, LHS, RHS);
         if (V != null) {
-            return V;
+            return insert(V);
         }
         return insert(BinaryInstruction.create(Instruction.Ops.FRem,LHS,RHS));
     }
