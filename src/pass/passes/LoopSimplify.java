@@ -6,7 +6,7 @@ import ir.Loop;
 import pass.FunctionPass;
 
 /**
- * LoopSimplify 循环简化
+ * [Deprecated]LoopSimplify 循环简化
  * 
  * @content 循环简化形式是一种规范的形式，它使多项分析和转换更简单，更有效。该Pass执行后循环将具有：
  *          --: 一个Preheader

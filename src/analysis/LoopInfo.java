@@ -6,8 +6,12 @@ import ir.Loop;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Stack;
+import java.util.prefs.BackingStoreException;
+
+import org.antlr.v4.tool.GrammarParserInterpreter.BailButConsumeErrorStrategy;
 
 import analysis.DominatorTree.TreeNode;
 
@@ -143,6 +147,11 @@ public class LoopInfo {
         HashMap<BasicBlock, Boolean> travelMap = new HashMap<>();
         InitTravelMap(travelMap, function.getEntryBB());
         PopulateLoopsDFS(travelMap, function.getEntryBB());
+        computeAllLoops();
+        computeExitingBlocks();
+        computeExitBlocks();
+        computeLoopPreheader();
+        computeLatchBlocks();
     }
 
     /**
@@ -193,7 +202,7 @@ public class LoopInfo {
             subLoop.getBbList().add(0, bb);
             subLoop.getBbList().remove(subLoop.getBbList().size() - 1);
             Collections.reverse(subLoop.getSubLoops());
-            subLoop = subLoop.getParentLoop(); // 实现：如果是headBlock，则不需要放到parent loop中，直接从parent-parentloop开始放置
+            subLoop = subLoop.getParentLoop(); // 实现：如果是headBlock，已经在初始化时放到parent loop中了，直接从parent-parentloop开始放置
         }
 
         // 在每个祖先循环中加入当前basicblock
@@ -201,4 +210,241 @@ public class LoopInfo {
             subLoop.getBbList().add(bb); // 维护loopp.bblist
     }
 
+    /**
+     * 维护loopInfo.allloop集合
+     */
+    private void computeAllLoops() {
+        Stack<Loop> loopStack = new Stack<>();
+        allLoops.addAll(topLevelLoops);
+        loopStack.addAll(topLevelLoops);
+        while (!loopStack.isEmpty()) {
+            var loop = loopStack.pop();
+            if (!loop.getSubLoops().isEmpty()) {
+                allLoops.addAll(loop.getSubLoops());
+                loopStack.addAll(loop.getSubLoops());
+            }
+        }
+    }
+
+    /**
+     * 维护loop.exitingBlocks集合
+     * algorithm: 如果有后继不再循环内，则它就是exiting block
+     * 此算法计算的exitingBlock并不是规范化的
+     */
+    private void computeExitingBlocks() {
+        for (var loop : allLoops) {
+            for (var bb : loop.getBbList()) {
+                for (var succ : bb.getSuccessors()) {
+                    if (!loop.getBbList().contains(succ)) {
+                        loop.getExitingBlocks().add(bb);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 维护loop.exitBlocks集合
+     * algorithm: 如果有后继不在循环内，后继就是exit block
+     * 此算法计算的exitBlock并不是规范化的
+     */
+    private void computeExitBlocks() {
+        for (var loop : allLoops) {
+            for (var bb : loop.getBbList()) {
+                for (var succ : bb.getSuccessors()) {
+                    if (!loop.getBbList().contains(succ)) {
+                        loop.getExitBlocks().add(succ);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 获取循环头的唯一前继
+     */
+    private BasicBlock getLoopPredecessor(Loop loop) {
+        BasicBlock loopHeader = loop.getLoopHeader();
+        BasicBlock ret = null;
+        for (var pred : loopHeader.getPredecessors()) {
+            if (!loop.getBbList().contains(pred)) {
+                if (ret != null && ret != pred) {
+                    System.out.println("Error: loop header has multiple predecessors");
+                    return null;
+                }
+                ret = pred;
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * 判断循环头的唯一前继是否以循环头为唯一后继，
+     * 同时判断该前继是否以循环头为唯一后继。
+     * 还需要确定能否将代码提升到这个前继中。
+     * 
+     * @param loop
+     * @return
+     */
+    private BasicBlock getLoopPreheader(Loop loop) {
+        // 获取唯一循环外前继
+        BasicBlock loopPreheader = getLoopPredecessor(loop);
+        if (loopPreheader == null) {
+            return null;
+        }
+        // 判断循环头是否也是该前继的唯一后继
+        int size = 0;
+        for (var succ : loopPreheader.getSuccessors()) {
+            if (loop.getLoopHeader() == succ) {
+                size++;
+            }
+        }
+        if (size != loopPreheader.getSuccessors().size()) { // size不等说明循环头不是preheader的唯一后继
+            return null;
+        }
+        // 判断能否将代码提升到这个前继
+        if (!loopPreheader.isLegalToHoistInto()) {
+            return null;
+        }
+        return loopPreheader;
+    }
+
+    /**
+     * 维护所有循环的looppreheader
+     */
+    private void computeLoopPreheader() {
+        for (var loop : allLoops) {
+            loop.setLoopPrehead(getLoopPreheader(loop));
+        }
+    }
+
+    /**
+     * 计算循环loop的唯一latchblock
+     * 
+     * @param loop
+     * @return 如果不存在latchblock或者存在多个latchblock，则返回null
+     */
+    private BasicBlock getLoopLatchBlock(Loop loop) {
+        BasicBlock loopHeader = loop.getLoopHeader();
+        BasicBlock ret = null;
+        for (var pred : loopHeader.getPredecessors()) {
+            if (!loop.getBbList().contains(pred)) {
+                if (ret != null) {
+                    System.out.println("Error: loop header has multiple predecessors");
+                    return null;
+                }
+                ret = pred;
+            }
+        }
+        return ret;
+    }
+
+    /**
+     * 维护所有循环的latchblock
+     * 注意，这里纳入计算的latchblock是规范化的，也就是说一个循环只有一个latchBlock 否则认为他的latchBlock为null
+     */
+    private void computeLatchBlocks() {
+        for (Loop loop : allLoops) {
+            BasicBlock latchBlock = getLoopLatchBlock(loop);
+            if (latchBlock != null) {
+                loop.getLatchBlocks().add(latchBlock);
+            }
+        }
+    }
+
+    /**
+     * getter
+     * 
+     * @return bbloopMap
+     */
+    public HashMap<BasicBlock, Loop> getBbLoopMap() {
+        return bbLoopMap;
+    }
+
+    /**
+     * 向loop中加入一个基本块，并且更新loop及其亲代loop的bbList
+     * 
+     * @param bb
+     * @param loop
+     */
+    public void addBBToLoop(BasicBlock bb, Loop loop) {
+        if (loop == null) {
+            return;
+        }
+
+        this.bbLoopMap.put(bb, loop);
+        loop.addBlock(bb);
+    }
+
+    /**
+     * 删除一个基本块，并且更新loop及其亲代loop的bbList
+     * 
+     * @param bb
+     */
+    public void removeBBFromAllLoops(BasicBlock bb) {
+        var loop = getLoopForBB(bb);
+        while (loop != null) {
+            loop.removeBlock(bb);
+            loop = loop.getParentLoop();
+        }
+        this.bbLoopMap.remove(bb);
+    }
+
+    /**
+     * 删除一个顶层循环 util for removeLoop
+     * 
+     * @param loop
+     */
+    public void removeTopLevelLoop(Loop loop) {
+        this.topLevelLoops.remove(loop);
+    }
+
+    /**
+     * 添加一个顶层循环，util for removeLoop
+     * 
+     * @param loop
+     */
+    public void addTopLevelLoop(Loop loop) {
+        this.topLevelLoops.add(loop);
+    }
+
+    /**
+     * 从循环嵌套结构中删除一个循环
+     * 
+     * @param loop
+     */
+    public void removeLoop(Loop loop) {
+        ArrayList<BasicBlock> loopBlocks = new ArrayList<>();
+        loopBlocks.addAll(loop.getBbList());
+        if (loop.getParentLoop() != null) {
+            var parentLoop = loop.getParentLoop();
+            for (var bb : loopBlocks) {
+                if (this.getLoopForBB(bb) == loop) {
+                    this.getBbLoopMap().put(bb, parentLoop); // todo ？？？？
+                }
+            }
+            // 从parentLoop中删除loop
+            parentLoop.removeSubLoop(loop);
+            // 将loop的子loop设置为parentLoop的子loop
+            while (loop.getSubLoops().size() != 0) {
+                var subLoop = loop.getSubLoops().get(0);
+                loop.removeSubLoop(subLoop);
+                parentLoop.addSubLoop(subLoop);
+            }
+        } else {
+            for (var bb : loopBlocks) {
+                if (this.getLoopForBB(bb) == loop) {
+                    // bb 在最外层循环里了
+                    this.removeBBFromAllLoops(bb);
+                }
+            }
+
+            this.removeTopLevelLoop(loop);
+            while (loop.getSubLoops().size() != 0) {
+                var subLoop = loop.getSubLoops().get(0);
+                loop.removeSubLoop(subLoop);
+                this.addTopLevelLoop(subLoop);
+            }
+        }
+    }
 }
