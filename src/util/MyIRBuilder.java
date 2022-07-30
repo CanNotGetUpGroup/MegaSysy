@@ -292,9 +292,9 @@ public class MyIRBuilder {
         if(RHS instanceof Constants.ConstantInt){
             Constants.ConstantInt CI2=(Constants.ConstantInt)RHS;
             int abs_num=Math.abs(CI2.getVal());
-            if((abs_num&(abs_num-1))==0){//对二的次幂取模，交给后端处理
-                return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
-            }
+//            if((abs_num&(abs_num-1))==0){//对二的次幂取模，交给后端处理
+//                return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
+//            }
         }
         var div=createSDiv(LHS,RHS);
         var mul=createMul(div,RHS);
