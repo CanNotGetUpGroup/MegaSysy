@@ -251,4 +251,21 @@ public class BasicBlock extends Value {
         }
         PHIs.clear();
     }
+
+    /**
+     * 判断是否可以将代码提升到该bb
+     * 
+     * @return Return true if it is legal to hoist instructions into this block.
+     */
+    public boolean isLegalToHoistInto() {
+        var term = getTerminator();
+        // No terminator means the block is under construction.
+        if (term == null) {
+            return true;
+        }
+        // If the block has no successors, there can be no instructions to hoist.
+        assert (term.getSuccessors().size() > 0);
+        // Instructions should not be hoisted across exception handling boundaries.
+        return true;
+    }
 }
