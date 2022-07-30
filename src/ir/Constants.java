@@ -1,13 +1,14 @@
 package ir;
 
 import ir.DerivedTypes.*;
+import util.CloneMap;
 
 import java.util.ArrayList;
 
 public class Constants {
     public static MyContext context = MyContext.getInstance();
 
-    public static class ConstantData extends Constant {
+    public static abstract class ConstantData extends Constant {
         public ConstantData(Type ty) {
             super(ty, 0);
         }
@@ -91,6 +92,11 @@ public class Constants {
         public void destroy() {
             context.IntConstants.remove(this.val);
         }
+
+        @Override
+        public Value copy(CloneMap cloneMap) {
+            return this;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -142,6 +148,11 @@ public class Constants {
 
         public void destroy() {
             context.FPConstants.remove(this.val);
+        }
+
+        @Override
+        public Value copy(CloneMap cloneMap) {
+            return this;
         }
     }
 
@@ -263,6 +274,11 @@ public class Constants {
             }
             return result;
         }
+
+        @Override
+        public Value copy(CloneMap cloneMap) {
+            return this;
+        }
     }
 
     public static class UndefValue extends Constant {
@@ -286,6 +302,11 @@ public class Constants {
 
         public static boolean isUndefValue(Value V){
             return V instanceof UndefValue;
+        }
+
+        @Override
+        public Value copy(CloneMap cloneMap) {
+            return this;
         }
     }
 }

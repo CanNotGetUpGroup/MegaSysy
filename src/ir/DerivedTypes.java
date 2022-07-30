@@ -25,7 +25,7 @@ public abstract class DerivedTypes {
     /// Class to represent array types.
     ///
     /**
-     * e.g a[4][2]:NumElements=4,dim=2,eleSize=2
+     * e.g a[4][2]:NumElements=4,dim=2,eleSize=2,getKidType()=[2]
      */
     public static class ArrayType extends Type {
         private int NumElements;    //元素数量
@@ -77,6 +77,22 @@ public abstract class DerivedTypes {
 
         public Type getKidType() {
             return getContainedTys().get(0);
+        }
+
+        public boolean isIntArray(){
+            if(getKidType().isArrayTy()){
+                return ((ArrayType)getKidType()).isIntArray();
+            }else{
+                return getKidType().isInt32Ty();
+            }
+        }
+
+        public boolean isFloatArray(){
+            if(getKidType().isArrayTy()){
+                return ((ArrayType)getKidType()).isFloatArray();
+            }else{
+                return getKidType().isFloatTy();
+            }
         }
 
         /**

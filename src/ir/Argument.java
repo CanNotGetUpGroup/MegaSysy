@@ -1,5 +1,7 @@
 package ir;
 
+import util.CloneMap;
+
 public class Argument extends Value {
     private Function parent;
     private int argNo;
@@ -35,5 +37,15 @@ public class Argument extends Value {
     @Override
     public String toString() {
         return getType() + " " + getName();
+    }
+
+    @Override
+    public Argument copy(CloneMap cloneMap) {
+        if(cloneMap.get(this)!=null){
+            return (Argument) cloneMap.get(this);
+        }
+        Argument ret=new Argument(getType(),null,0);
+        cloneMap.put(this,ret);
+        return ret;
     }
 }

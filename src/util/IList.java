@@ -16,7 +16,7 @@ public class IList<T, P> implements Iterable<T> {
     private IListNode<T, P> tail = new IListNode<>();
     private P Val;
     private int list_size;
-    private IListIterator<T> end = new ListItr(null);
+    private IListIterator<T,P> end = new ListItr(null);
 
     public IList(P val) {
         Val = val;
@@ -67,16 +67,16 @@ public class IList<T, P> implements Iterable<T> {
         return tail.getPrev();
     }
 
-    public void insertAtHead(T e) {
-        new IListNode<T, P>(e, this).insertAfter(head);
+    public void insertAtHead(IListNode<T, P> e) {
+        e.insertAfter(head);
     }
 
-    public void insertBefore(T e, IListNode<T, P> succ) {
-        new IListNode<T, P>(e, this).insertBefore(succ);
+    public void insertBefore(IListNode<T, P> e, IListNode<T, P> succ) {
+        e.insertBefore(succ);
     }
 
-    public void pushBack(T e) {
-        new IListNode<T, P>(e, this).insertBefore(tail);
+    public void pushBack(IListNode<T, P> e) {
+        e.insertBefore(tail);
     }
 
     public void mergeList(IList<T, P> follow) {
@@ -101,14 +101,39 @@ public class IList<T, P> implements Iterable<T> {
     }
 
     /**
-     * 在insertHead前插入insertList
+     * 将insertList移动到insertHead前
      */
-    public void splice(IListIterator<T> insertHead,IList<T,P> insertList){
+    public void splice(IListIterator<T,P> insertHead,IList<T,P> insertList){
         IListNode<T, P> First=insertList.getFirst();
         while(First!=null){
-            insertHead.add(First.getVal());
+            IListNode<T,P> tmp=First.getNext();
+            First.remove();
+            insertHead.add(First);
+            First=tmp;
+        }
+    }
+
+    /**
+     * 将First到Last移动到insertHead前
+     */
+    public void splice(IListIterator<T,P> insertHead,IListNode<T,P> First,IListNode<T,P> Last){
+        while(First!=null&&First!=Last){
+            IListNode<T,P> tmp=First.getNext();
+            First.remove();
+            insertHead.add(First);
+            First=tmp;
+        }
+    }
+
+    @Override
+    public String toString(){
+        StringBuilder sb=new StringBuilder();
+        IListNode<T,P> First=getFirst();
+        while(First!=null){
+            sb.append(First).append("\n");
             First=First.getNext();
         }
+        return sb.toString();
     }
 
     public boolean isEmpty(){
@@ -147,7 +172,7 @@ public class IList<T, P> implements Iterable<T> {
         return new ListItr(head.getNext());
     }
 
-    public IListIterator<T> iterator(T t) {
+    public IListIterator<T,P> iterator(T t) {
         IListNode<T, P> H = head.getNext(), T = tail.getPrev();
         while ((H != T)) {
             if (H.getVal() == t) {
@@ -167,7 +192,7 @@ public class IList<T, P> implements Iterable<T> {
         return end;
     }
 
-    private class ListItr implements IListIterator<T> {
+    private class ListItr implements IListIterator<T,P> {
         private IListNode<T, P> lastReturned;
         private IListNode<T, P> nodePtr;
 
@@ -224,7 +249,7 @@ public class IList<T, P> implements Iterable<T> {
             lastReturned.setVal(e);
         }
 
-        public void add(T e) {
+        public void add(IListNode<T, P> e) {
             lastReturned = null;
             if (nodePtr == null)
                 pushBack(e);

@@ -12,7 +12,7 @@ import ir.Module;
 ///  2. Optimizing a function does not cause the addition or removal of any
 ///     functions in the module
 ///
-public class FunctionPass extends Pass{
+public abstract class FunctionPass extends Pass{
     public FunctionPass() {
         super(PassKind.Function);
     }
@@ -20,9 +20,7 @@ public class FunctionPass extends Pass{
     /**
      * 将该FunctionPass在Function上运行的接口，需要重写
      */
-    public void runOnFunction(Function F){
-
-    }
+    public abstract void runOnFunction(Function F);
 
     /**
      * 在M上的所有函数上运行该FunctionPass

@@ -4,6 +4,7 @@ import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
 import org.antlr.v4.runtime.misc.Pair;
+import util.CloneMap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,6 +68,16 @@ public abstract class Instructions {
         public void setAllocatedType(Type allocatedType) {
             AllocatedType = allocatedType;
         }
+
+        @Override
+        public AllocaInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (AllocaInst) cloneMap.get(this);
+            }
+            AllocaInst ret = new AllocaInst(getAllocatedType());
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -90,6 +101,16 @@ public abstract class Instructions {
         public String toString() {
             return getName() + " = load " + getType() + ", " +
                     getOperand(0).getType() + " " + getOperand(0).getName();
+        }
+
+        @Override
+        public LoadInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (LoadInst) cloneMap.get(this);
+            }
+            LoadInst ret = new LoadInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -116,20 +137,15 @@ public abstract class Instructions {
             return "store " + getOperand(0).getType().toString() + " " + getOperand(0).getName() + ", " +
                     getOperand(1).getType().toString() + " " + getOperand(1).getName();
         }
-    }
 
-    //===----------------------------------------------------------------------===//
-    //                                FenceInst Class
-    //===----------------------------------------------------------------------===//
-
-    /// An instruction for ordering other memory operations.
-    public static class FenceInst extends Instruction {
-        public FenceInst(Type type, String name, int numOperands) {
-            super(type, Ops.Fence, name, numOperands);
-        }
-
-        public FenceInst(Type type, int numOperands) {
-            super(type, Ops.Fence, numOperands);
+        @Override
+        public StoreInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (StoreInst) cloneMap.get(this);
+            }
+            StoreInst ret = new StoreInst(getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -146,10 +162,10 @@ public abstract class Instructions {
         }
 
         /**
-         * e.g. %elem_ptr = getelementptr [6 x i8], [6 x i8]* @a_gv, i32 0, i32 1
+         * e.g. %elem_ptr = getelementptr [6 x i32], [6 x i32]* @a_gv, i32 0, i32 1
          *
-         * @param PointeeType [6 x i8] 指向的类型
-         * @param Ptr         [6 x i8]* @a_gv
+         * @param PointeeType [6 x i32] 指向的类型
+         * @param Ptr         [6 x i32]* @a_gv
          * @param IdxList     {i32 0, i32 1}
          * @param numOperands 3
          */
@@ -238,6 +254,20 @@ public abstract class Instructions {
             }
             return true;
         }
+
+        @Override
+        public GetElementPtrInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (GetElementPtrInst) cloneMap.get(this);
+            }
+            ArrayList<Value> Idx = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                Idx.add(getOperand(i).copy(cloneMap));
+            }
+            GetElementPtrInst ret = new GetElementPtrInst(getSourceElementType(), getOperand(0).copy(cloneMap), Idx, getNumOperands());
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -274,6 +304,16 @@ public abstract class Instructions {
             sb.append(getOperand(1).getName());
             return sb.toString();
         }
+
+        @Override
+        public ICmpInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (ICmpInst) cloneMap.get(this);
+            }
+            ICmpInst ret = new ICmpInst(getPredicate(), getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -309,6 +349,16 @@ public abstract class Instructions {
             sb.append(getOperand(1).getName());
             return sb.toString();
         }
+
+        @Override
+        public FCmpInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (FCmpInst) cloneMap.get(this);
+            }
+            FCmpInst ret = new FCmpInst(getPredicate(), getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -341,11 +391,17 @@ public abstract class Instructions {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
+            String funcName = getOperand(0).getName();
+            if (funcName.equals("_sysy_stoptime")) {
+                funcName = "stoptime";
+            } else if (funcName.equals("_sysy_startttime")) {
+                funcName = "starttime";
+            }
             if (((FunctionType) getOperand(0).getType()).getReturnType().isVoidTy()) {
-                sb.append("call ").append(this.getType()).append(" @").append(getOperand(0).getName());
+                sb.append("call ").append(this.getType()).append(" @").append(funcName);
             } else {
                 sb.append(this.getName()).append(" = call ").append(this.getType()).append(" @")
-                        .append(getOperand(0).getName());
+                        .append(funcName);
             }
 
             sb.append("(");
@@ -371,24 +427,21 @@ public abstract class Instructions {
         }
 
         public ArrayList<Value> getArgs() {
-            return new ArrayList<>(getOperandList().subList(1, getNumOperands() - 1));
-        }
-    }
-
-    //===----------------------------------------------------------------------===//
-    //                              CallBrInst Class
-    //===----------------------------------------------------------------------===//
-    /// CallBr instruction, tracking function calls that may not return control but
-    /// instead transfer it to a third location. The SubclassData field is used to
-    /// hold the calling convention of the call.
-    ///
-    public static class CallBrInst extends Instruction {
-        public CallBrInst(Type type, String name, int numOperands) {
-            super(type, Ops.CallBr, name, numOperands);
+            return new ArrayList<>(getOperandList().subList(1, getNumOperands()));
         }
 
-        public CallBrInst(Type type, int numOperands) {
-            super(type, Ops.CallBr, numOperands);
+        @Override
+        public CallInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (CallInst) cloneMap.get(this);
+            }
+            ArrayList<Value> args = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                args.add(getOperand(i).copy(cloneMap));
+            }
+            CallInst ret = new CallInst(FTy, getOperand(0).copy(cloneMap), args);
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -410,6 +463,16 @@ public abstract class Instructions {
             return getName() + " = zext " + getOperand(0).getType() + " "
                     + getOperand(0).getName() + " to " + getType();
         }
+
+        @Override
+        public ZExtInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (ZExtInst) cloneMap.get(this);
+            }
+            ZExtInst ret = new ZExtInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -430,6 +493,16 @@ public abstract class Instructions {
             return getName() + " = sitofp " + getOperand(0).getType() + " "
                     + getOperand(0).getName() + " to " + getType();
         }
+
+        @Override
+        public SIToFPInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (SIToFPInst) cloneMap.get(this);
+            }
+            SIToFPInst ret = new SIToFPInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -449,6 +522,16 @@ public abstract class Instructions {
         public String toString() {
             return getName() + " = fptosi " + getOperand(0).getType() + " "
                     + getOperand(0).getName() + " to " + getType();
+        }
+
+        @Override
+        public FPToSIInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (FPToSIInst) cloneMap.get(this);
+            }
+            FPToSIInst ret = new FPToSIInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -518,16 +601,16 @@ public abstract class Instructions {
             BB.getPHIs().add(this);
         }
 
-        public void setIncomingBlock(int i,BasicBlock BB) {
-            if (i > getNumOperands()||i<0) return ;
-            blocks.set(i,BB);
+        public void setIncomingBlock(int i, BasicBlock BB) {
+            if (i > getNumOperands() || i < 0) return;
+            blocks.set(i, BB);
             BB.getPHIs().add(this);
         }
 
-        public void replaceIncomingBlock(BasicBlock OLD,BasicBlock BB) {
-            int i=blocks.indexOf(OLD);
-            if (i > getNumOperands()||i<0) return ;
-            blocks.set(i,BB);
+        public void replaceIncomingBlock(BasicBlock OLD, BasicBlock BB) {
+            int i = blocks.indexOf(OLD);
+            if (i > getNumOperands() || i < 0) return;
+            blocks.set(i, BB);
             BB.getPHIs().add(this);
         }
 
@@ -555,12 +638,12 @@ public abstract class Instructions {
         /**
          * 设置来自BB的Value为V，若不存在BB，则添加
          */
-        public void setOrAddIncomingValueByBlock(Value V,BasicBlock BB) {
+        public void setOrAddIncomingValueByBlock(Value V, BasicBlock BB) {
             int i = blocks.indexOf(BB);
             if (i < 0) {
-                addIncoming(V,BB);
-            }else{
-                setOperand(i,V);
+                addIncoming(V, BB);
+            } else {
+                setOperand(i, V);
             }
         }
 
@@ -572,7 +655,7 @@ public abstract class Instructions {
          */
         public void removeIncomingValue(BasicBlock BB, boolean removeThis) {
             removeOperand(blocks.indexOf(BB));
-            BB.getPHIs().remove(new Pair<>(this,blocks.indexOf(BB)));
+            BB.getPHIs().remove(new Pair<>(this, blocks.indexOf(BB)));
             blocks.remove(BB);
             if (removeThis && getNumOperands() == 0) {
                 replaceAllUsesWith(Constants.UndefValue.get(getType()));
@@ -629,7 +712,7 @@ public abstract class Instructions {
                         }
                     } else {
                         incomingValues.put(PredBB, Selected);
-                        setOrAddIncomingValueByBlock(Selected,PredBB);
+                        setOrAddIncomingValueByBlock(Selected, PredBB);
                     }
                 }
             } else {
@@ -641,10 +724,20 @@ public abstract class Instructions {
                         }
                     } else {
                         incomingValues.put(PredBB, oldVal);
-                        setOrAddIncomingValueByBlock(oldVal,PredBB);
+                        setOrAddIncomingValueByBlock(oldVal, PredBB);
                     }
                 }
             }
+        }
+
+        @Override
+        public PHIInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (PHIInst) cloneMap.get(this);
+            }
+            PHIInst ret = new PHIInst(getType(), getNumOperands());
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -704,6 +797,17 @@ public abstract class Instructions {
                 return "ret void";
             }
             return "ret " + getOperand(0).getType() + " " + getOperand(0).getName();
+        }
+
+        @Override
+        public ReturnInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (ReturnInst) cloneMap.get(this);
+            }
+            Value retVal = getNumOperands() == 1 ? getOperand(0).copy(cloneMap) : null;
+            ReturnInst ret = new ReturnInst(retVal);
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -815,6 +919,10 @@ public abstract class Instructions {
             setOperand(idx, BB);
         }
 
+        public boolean isConditional() {
+            return getNumOperands() == 3;
+        }
+
         @Override
         public String toString() {
             if (getOperandList().size() == 1) {
@@ -835,6 +943,22 @@ public abstract class Instructions {
 
         public static BranchInst create(BasicBlock IfTrue, BasicBlock IfFalse, Value Cond) {
             return new BranchInst(IfTrue, IfFalse, Cond);
+        }
+
+        @Override
+        public BranchInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (BranchInst) cloneMap.get(this);
+            }
+            BranchInst ret = null;
+            if (getNumOperands() == 1) {
+                ret = new BranchInst((BasicBlock) getOperand(0).copy(cloneMap));
+                cloneMap.put(this, ret);
+            } else {
+                ret = new BranchInst(getTrueBlock().copy(cloneMap), getFalseBlock().copy(cloneMap), getCond().copy(cloneMap));
+                cloneMap.put(this, ret);
+            }
+            return ret;
         }
     }
 
@@ -885,6 +1009,16 @@ public abstract class Instructions {
         public void setFalseValue(Value C) {
             setOperand(2, C);
         }
+
+        @Override
+        public SelectInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (SelectInst) cloneMap.get(this);
+            }
+            SelectInst ret = new SelectInst(getCondition().copy(cloneMap),getTrueValue().copy(cloneMap),getFalseValue().copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     public static class BitCastInst extends Instruction {
@@ -911,6 +1045,16 @@ public abstract class Instructions {
 
         public void setTargetType(Type targetType) {
             this.targetType = targetType;
+        }
+
+        @Override
+        public BitCastInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (BitCastInst) cloneMap.get(this);
+            }
+            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap),targetType);
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 }

@@ -10,6 +10,13 @@ import analysis.DominatorTree.TreeNode;
 
 import java.util.*;
 
+/**
+ * 对于指向非数组元素的alloca指令：
+ * 删除未被使用的alloca
+ * 直接处理掉只store过一次，或所有store和load在一个基本块的alloca指令
+ * 计算插入phi指令的位置
+ * 分析CFG，为phi指令设置incomingValue以及对应基本块
+ */
 public class Mem2Reg extends FunctionPass {
     private final HashMap<BasicBlock,Integer> BBNumbers= new HashMap<>();
     private final HashMap<Pair<Integer,Integer>,PHIInst> PhiNodes=new HashMap<>();
@@ -247,7 +254,7 @@ public class Mem2Reg extends FunctionPass {
 
         // Otherwise, if the instruction is in the entry block and is not an invoke,
         // then it obviously dominates all phi nodes.
-        return I.getParent().isEntryBlock() && !(I instanceof CallBrInst);
+        return I.getParent().isEntryBlock();
     }
 
     /**

@@ -12,9 +12,11 @@ import java.util.HashMap;
 public class CallGraph {
     private Module M;
     private HashMap<Function,CallGraphNode> CallNodes;
+    private CallGraphNode Main;
 
     public CallGraph(Module m) {
         M = m;
+        CallNodes=new HashMap<>();
         for(Function F:m.getFuncList()){
             if(!F.isDefined()){
                 continue;
@@ -28,12 +30,15 @@ public class CallGraph {
             return;
         }
         CallGraphNode CGN=getNode(F);
+        if(F.getName().equals("main")){
+            Main=CGN;
+        }
         for(BasicBlock BB:F.getBbList()){
             for(Instruction I:BB.getInstList()){
                 if(I instanceof CallInst){
                     CallInst CI=(CallInst)I;
                     Function Callee=CI.getCalledFunction();
-                    if(Callee!=null){
+                    if(Callee!=null&&Callee.isDefined()){
                         CGN.addCalledFunction(CI,getNode(Callee));
                     }
                 }
@@ -45,7 +50,9 @@ public class CallGraph {
         if(CallNodes.containsKey(F)){
             return CallNodes.get(F);
         }
-        return new CallGraphNode(this,F);
+        CallGraphNode ret= new CallGraphNode(this,F);
+        CallNodes.put(F,ret);
+        return ret;
     }
 
     public Module getM() {
@@ -62,6 +69,14 @@ public class CallGraph {
 
     public void setCallNodes(HashMap<Function, CallGraphNode> callNodes) {
         CallNodes = callNodes;
+    }
+
+    public CallGraphNode getMain() {
+        return Main;
+    }
+
+    public void setMain(CallGraphNode main) {
+        Main = main;
     }
 
     public static void main(String[] args) {
@@ -167,6 +182,11 @@ public class CallGraph {
 
         public void dropRef(){
             ReferTimes--;
+            if(ReferTimes==0){
+                CG.CallNodes.remove(F);
+                F.remove();
+                CG=null;
+            }
         }
 
         public void addRef(){
