@@ -77,7 +77,7 @@ public class FuncInline extends ModulePass {
 //                    continue;
 //                }
                 //不能或不值得inline
-                if (!shouldInline(CI,CG)) continue;
+                if (!shouldInline(CI,CG,false)) continue;
                 //内联失败
                 if (!inlineFunction(CI)) {
                     System.out.println(callee + " didn't inline into " + caller);
@@ -209,8 +209,9 @@ public class FuncInline extends ModulePass {
     /**
      * 判断是否可以，是否值得inline
      * 递归函数不选择内联
+     * (为了给比赛用例创造更多优化机会，此处添加checkLineNum，用来关闭对代码行数的判断)
      */
-    public boolean shouldInline(CallInst CI,CallGraph CG) {
+    public boolean shouldInline(CallInst CI,CallGraph CG,boolean checkLineNum) {
         Function caller = CI.getFunction();
         Function F = CI.getCalledFunction();
         int cost = 0;
@@ -228,14 +229,16 @@ public class FuncInline extends ModulePass {
                 return false;
             }
         }
-        for (BasicBlock BB:F.getBbList()) {
-            if (BB.front() == null) {
-                continue;
-            }
-            for (Instruction I : BB.getInstList()) {
-                cost++;
-                if (cost >= Threshold) {
-                    return false;
+        if(checkLineNum){
+            for (BasicBlock BB : F.getBbList()) {
+                if (BB.front() == null) {
+                    continue;
+                }
+                for (Instruction I : BB.getInstList()) {
+                    cost++;
+                    if (cost >= Threshold) {
+                        return false;
+                    }
                 }
             }
         }

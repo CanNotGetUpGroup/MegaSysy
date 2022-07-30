@@ -231,46 +231,75 @@ public class MyIRBuilder {
     }
 
     public Value foldConstant(Instruction.Ops Opc, Value L, Value R) {
-        if (!(L instanceof Constant && R instanceof Constant)) {
+        //L和R都不是Constant
+        if (!(L instanceof Constant || R instanceof Constant)) {
             return null;
         }
-        return insert(Folder.createBinOp(Opc, (Constant) L, (Constant) R));
+        return insert(Folder.createBinOp(Opc, L, R));
     }
 
     public Value createAdd(Value LHS, Value RHS) {
-        if (LHS instanceof Constant && RHS instanceof Constant) {
-            return insert(Folder.createAdd((Constant) LHS, (Constant) RHS));
+        Value ret;
+        if (LHS instanceof Constant || RHS instanceof Constant) {
+            ret = Folder.createAdd( LHS, RHS);
+            if(ret!=null){
+                return insert(ret);
+            }
         }
         return insert(BinaryInstruction.create(Instruction.Ops.Add,LHS,RHS));
     }
 
     public Value createSub(Value LHS, Value RHS) {
-        if (LHS instanceof Constant && RHS instanceof Constant) {
-            return insert(Folder.createSub((Constant) LHS, (Constant) RHS));
+        Value ret;
+        if (LHS instanceof Constant || RHS instanceof Constant) {
+            ret = insert(Folder.createSub( LHS,  RHS));
+            if(ret!=null){
+                return insert(ret);
+            }
         }
         return insert(BinaryInstruction.create(Instruction.Ops.Sub,LHS,RHS));
     }
 
     public Value createMul(Value LHS, Value RHS) {
-        if (LHS instanceof Constant && RHS instanceof Constant) {
-            return insert(Folder.createMul((Constant) LHS, (Constant) RHS));
+        Value ret;
+        if (LHS instanceof Constant || RHS instanceof Constant) {
+            ret = insert(Folder.createMul( LHS,  RHS));
+            if(ret!=null){
+                return insert(ret);
+            }
         }
         return insert(BinaryInstruction.create(Instruction.Ops.Mul,LHS,RHS));
     }
 
     public Value createSDiv(Value LHS, Value RHS) {
-        if (LHS instanceof Constant && RHS instanceof Constant) {
-            return insert(Folder.createSDiv((Constant) LHS, (Constant) RHS));
+        Value ret;
+        if (LHS instanceof Constant || RHS instanceof Constant) {
+            ret = insert(Folder.createSDiv( LHS,  RHS));
+            if(ret!=null){
+                return insert(ret);
+            }
         }
         return insert(BinaryInstruction.create(Instruction.Ops.SDiv,LHS,RHS));
     }
 
     public Value createSRem(Value LHS, Value RHS) {
+        //取模的常量折叠只处理了两个都为常量或x%1==0的情况
         Value V = foldConstant(Instruction.Ops.SRem, LHS, RHS);
         if (V != null) {
             return V;
         }
-        return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
+        //其它情况做取模优化，变为x - x / y * y（y为常量且绝对值是2的次幂的情况交给后端处理）
+        if(RHS instanceof Constants.ConstantInt){
+            Constants.ConstantInt CI2=(Constants.ConstantInt)RHS;
+            int abs_num=Math.abs(CI2.getVal());
+            if((abs_num&(abs_num-1))==0){//对二的次幂取模，交给后端处理
+                return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
+            }
+        }
+        var div=createSDiv(LHS,RHS);
+        var mul=createMul(div,RHS);
+        return createSub(LHS,mul);
+//        return insert(BinaryInstruction.create(Instruction.Ops.SRem,LHS,RHS));
     }
 
     public Value createFAdd(Value LHS, Value RHS) {
