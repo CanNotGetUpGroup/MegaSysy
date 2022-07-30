@@ -32,6 +32,7 @@ public abstract class FunctionPass extends Pass{
                 continue;
             }
             runOnFunction(F);
+            Module.getInstance().rename(F);
         }
     }
 }
