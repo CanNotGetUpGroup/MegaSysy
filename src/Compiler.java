@@ -23,21 +23,21 @@ public class Compiler {
         FileWriter fw=new FileWriter(args[2]);
         PrintWriter pw=new PrintWriter(fw);
 
-        String[] str={"fp_params.sy","many_dimensions.sy","sort.sy"};
-        for(String s:str){
-            if(args[3].endsWith(s)){
-                InputStream in=new FileInputStream(args[3]);
-                int n;
-                StringBuilder sb=new StringBuilder();
-                byte[] buffer=new byte[1024];
-                while((n=in.read(buffer))!=-1){
-                    sb.append(new String(buffer));
-                }
-                pw.println(sb.toString());
-                pw.flush();
-                return;
-            }
-        }
+//        String[] str={"fp_params.sy","many_dimensions.sy","sort.sy"};
+//        for(String s:str){
+//            if(args[3].endsWith(s)){
+//                InputStream in=new FileInputStream(args[3]);
+//                int n;
+//                StringBuilder sb=new StringBuilder();
+//                byte[] buffer=new byte[1024];
+//                while((n=in.read(buffer))!=-1){
+//                    sb.append(new String(buffer));
+//                }
+//                pw.println(sb.toString());
+//                pw.flush();
+//                return;
+//            }
+//        }
 
         boolean O2=false;
         if(args.length==5&&args[4].equals("-O2"))

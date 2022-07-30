@@ -1085,6 +1085,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 L = builder.createBinary(Ops.SDiv, L, R);
             } else if (ctx.mulOp(i - 1).MOD() != null) {
                 L = builder.createBinary(Ops.SRem, L, R);
+
             }
             L.setComment(comment);
             curVal = L;
