@@ -37,7 +37,6 @@ public class SimplifyCFG extends FunctionPass {
         do {
             changed = iterativelySimplify(F);
         } while (changed);
-        Module.getInstance().rename(F);
     }
 
     /**

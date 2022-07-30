@@ -19,13 +19,13 @@ public class PassManager {
      * 初始化，在此处按照顺序添加IR pass
      */
     public static void initialization(){
-//        passes.add(new InterproceduralAnalysis());
-//        passes.add(new DeadCodeEmit());
-        passes.add(new FuncInline());
-
-//        passes.add(new Mem2Reg());
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
+
+//        passes.add(new Mem2Reg());
+        passes.add(new FuncInline());
+//        passes.add(new InterproceduralAnalysis());
+//        passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG());
     }
 

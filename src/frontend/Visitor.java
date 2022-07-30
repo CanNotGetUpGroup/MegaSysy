@@ -613,7 +613,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         retAlloca=null;
         if(!FT.getReturnType().isVoidTy()){
             retAlloca=builder.createAlloca(FT.getReturnType());
-            retAlloca.setName("ret");
+            retAlloca.setName("%ret");
             retAlloca.setVarName("ret");
         }
         retBrStack=new Stack<>();
@@ -627,7 +627,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (endInst == null || !(endInst.getVal() instanceof Instructions.ReturnInst)) {
             retBrStack.push(builder.createBr(null));
         }
-        BasicBlock retBB=builder.createBasicBlock("ret",curF);
+        BasicBlock retBB=builder.createBasicBlock("retBB",curF);
         while(!retBrStack.isEmpty()){
             ((Instructions.BranchInst)retBrStack.pop()).setBr(retBB);
         }
