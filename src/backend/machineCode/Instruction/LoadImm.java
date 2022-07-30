@@ -28,10 +28,15 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, float src) {
         super(parent);
-        this.src = new ImmediateNumber(src);
+        this.src = new ImmediateNumber(Float.floatToIntBits(src));
         this.dest = dest;
     }
 
+
+    @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+       throw  new RuntimeException("Unfinished");
+    }
 
     @Override
     public Register getDest() {
@@ -51,13 +56,17 @@ public class LoadImm extends MachineInstruction {
                     .append(", #:lower16:").append(((Addressable) src).getLabel()).append("\n")
                     .append("\tmovt\t").append(dest)
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
-        } else if (src instanceof ImmediateNumber){
+        } else if (src instanceof ImmediateNumber) {
             int value = ((ImmediateNumber) src).getValue();
-            if(ImmediateNumber.isLegalImm(value)){
-                sb.append("mov\t").append(dest).append(", ").append(value);
-            }else
-            sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
-                    .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000)>>>16).append("\n");
+            if (ImmediateNumber.isLegalImm(value)) {
+                if (dest.isFloat())
+                    sb.append("v");
+                sb.append("mov");
+                if (dest.isFloat()) sb.append(typeInfoString());
+                sb.append("\t").append(dest).append(", ").append(value);
+            } else
+                sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
+                        .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16);
         } else {
             throw new RuntimeException("Unknown type");
         }

@@ -55,6 +55,11 @@ public class PushOrPop extends MachineInstruction {
     }
 
     @Override
+    public MachineInstruction setForFloat(boolean isForFloat) {
+        throw new RuntimeException("Unfinished");
+    }
+
+    @Override
     public Register getDest() {
         if (type == Type.Pop)
             return this.op;

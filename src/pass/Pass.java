@@ -26,7 +26,5 @@ public abstract class Pass {
         return "Pass";
     }
 
-    public void runOnModule(Module M){
-
-    }
+    public abstract void runOnModule(Module M);
 }
