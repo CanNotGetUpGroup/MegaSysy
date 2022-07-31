@@ -1,5 +1,0 @@
-const int a[10][5][4]={};
-int main(){
-    int b=4;
-    return a[5][5][2];
-}

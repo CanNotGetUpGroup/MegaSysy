@@ -38,7 +38,7 @@ public class GlobalVariableOpt extends ModulePass {
     }
 
     /**
-     *
+     * 全局变量本地化
      */
     private boolean globalToLocal(GlobalVariable GV){
         //获取GlobalVariable的基本信息
