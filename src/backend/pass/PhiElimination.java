@@ -40,6 +40,8 @@ public class PhiElimination {
                             var bb = ir.getIncomingBlock(i);
                             var val = ir.getIncomingValue(i);
                             MCOperand op;
+                            if(val instanceof Constants.UndefValue) continue;
+
                             // find end for the origin block
                             IListNode<MachineInstruction, MachineBasicBlock> node = mbb.getInstList().getTail();
                             for (var inst1 : f.getBBMap().get(bb).getInstList()) {
@@ -54,7 +56,6 @@ public class PhiElimination {
                                 op = InstructionSelector.valueToMCOperandInsertBefore(mbb, val, node);
                             }
                             var a = new Move(f.getBBMap().get(bb), tempReg, op).setForFloat(inst.isForFloat());
-                            System.out.println(a);
                             a.insertBefore(node);
                         }
                         new Move(mbb, dest, tempReg).setForFloat(inst.isForFloat()).pushtofront();
