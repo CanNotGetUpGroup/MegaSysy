@@ -171,9 +171,9 @@ public class FuncInline extends ModulePass {
         if (insertBB.front() instanceof AllocaInst) {
             AllocaInst AI = (AllocaInst) insertBB.front();
             while (I instanceof AllocaInst) {
-                if (I.getUseList().isEmpty()) {
-                    I.remove();
-                }
+//                if (I.getUseList().isEmpty()) {
+//                    I.remove();
+//                }
                 I = It.next();
             }
             caller.getEntryBB().getInstList().splice(callerHead, AI.getInstNode(), I.getInstNode());

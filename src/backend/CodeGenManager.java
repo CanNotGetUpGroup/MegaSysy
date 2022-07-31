@@ -3,6 +3,7 @@ package backend;
 import backend.machineCode.MachineDataBlock;
 import backend.machineCode.MachineFunction;
 import backend.pass.InstructionSelector;
+import backend.pass.PhiElimination;
 import backend.pass.RegAllocator;
 import frontend.SysyLexer;
 import frontend.SysyParser;
@@ -15,6 +16,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import pass.PassManager;
 import util.IList;
 
 import java.io.FileWriter;
@@ -52,6 +54,9 @@ public class CodeGenManager {
         this.funcList = selector.getFuncList();
         this.dataBlockArrayList = selector.getGlobalDataList();
 
+        var phiEliminate = new PhiElimination(funcList);
+        phiEliminate.run();
+
         var allocator = new RegAllocator(funcList);
         allocator.run();
     }
@@ -87,6 +92,13 @@ public class CodeGenManager {
         visitor.visit(tree);
         Module module = Module.getInstance();
         module.rename();
+
+
+        if(true){ // if initialization
+            PassManager.initialization();
+            PassManager.initializationMC();
+        }
+        PassManager.run(module);
 
         pw1.println(module.toLL());
         pw1.flush();
