@@ -1,8 +1,1 @@
-@a = dso_local constant [10 x [5 x [4 x i32]]] zeroinitializer
-
-
-define dso_local i32 @main(){
-retBB:     
-  ret i32 0     
-}
 

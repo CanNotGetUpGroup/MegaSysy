@@ -4,3 +4,8 @@
 /.idea/
 /src/backend/test/*
 /MC/
+/src/testcase.s
+/src/testcase.sy
+/src/windows_run.py
+/src/run.py
+/src/pass/test/*.txt
