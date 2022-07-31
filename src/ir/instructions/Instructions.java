@@ -10,17 +10,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public abstract class Instructions {
-    //===----------------------------------------------------------------------===//
-    //                                AllocaInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // AllocaInst Class
+    // ===----------------------------------------------------------------------===//
 
     /// 在堆栈上分配局部变量的指令
     public static class AllocaInst extends UnaryInstruction {
         private Type AllocatedType;
         private boolean undef = true;
 
-        public ArrayList<BasicBlock> definingBlocks = new ArrayList<>(); //store的基本块
-        public ArrayList<BasicBlock> usingBlocks = new ArrayList<>(); //load的基本块
+        public ArrayList<BasicBlock> definingBlocks = new ArrayList<>(); // store的基本块
+        public ArrayList<BasicBlock> usingBlocks = new ArrayList<>(); // load的基本块
         public StoreInst onlyStore;
         public boolean onlyUsedInOne;
         public BasicBlock onlyBlock;
@@ -80,9 +80,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                                LoadInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // LoadInst Class
+    // ===----------------------------------------------------------------------===//
 
     /// 用于访问分配在栈帧的变量的指令
     public static class LoadInst extends UnaryInstruction {
@@ -114,9 +114,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                                StoreInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // StoreInst Class
+    // ===----------------------------------------------------------------------===//
 
     /// 用于存储的指令
     public static class StoreInst extends Instruction {
@@ -149,9 +149,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                             GetElementPtrInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // GetElementPtrInst Class
+    // ===----------------------------------------------------------------------===//
 
     public static class GetElementPtrInst extends Instruction {
         private Type SourceElementType;
@@ -264,15 +264,16 @@ public abstract class Instructions {
             for (int i = 1; i < getNumOperands(); i++) {
                 Idx.add(getOperand(i).copy(cloneMap));
             }
-            GetElementPtrInst ret = new GetElementPtrInst(getSourceElementType(), getOperand(0).copy(cloneMap), Idx, getNumOperands());
+            GetElementPtrInst ret = new GetElementPtrInst(getSourceElementType(), getOperand(0).copy(cloneMap), Idx,
+                    getNumOperands());
             cloneMap.put(this, ret);
             return ret;
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               ICmpInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // ICmpInst Class
+    // ===----------------------------------------------------------------------===//
 
     /// This instruction compares its operands according to the predicate given
     /// to the constructor. It only operates on integers or pointers. The operands
@@ -316,9 +317,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               FCmpInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // FCmpInst Class
+    // ===----------------------------------------------------------------------===//
     /// This instruction compares its operands according to the predicate given
     /// to the constructor. It only operates on floating point values or packed
     /// vectors of floating point values. The operands must be identical types.
@@ -361,13 +362,13 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               CallInst Class
-    //===----------------------------------------------------------------------===//
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // CallInst Class
+    // ===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
     /// This class represents a function call, abstracting a target
-    /// machine's calling convention.  This class uses low bit of the SubClassData
-    /// field to indicate whether or not this is a tail call.  The rest of the bits
+    /// machine's calling convention. This class uses low bit of the SubClassData
+    /// field to indicate whether or not this is a tail call. The rest of the bits
     /// hold the calling convention of the call.
     ///
     public static class CallInst extends Instruction {
@@ -445,9 +446,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                                 ZExtInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // ZExtInst Class
+    // ===----------------------------------------------------------------------===//
     /// This class represents zero extension of integer types.
     public static class ZExtInst extends CastInst {
         /**
@@ -475,9 +476,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                                 SIToFPInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // SIToFPInst Class
+    // ===----------------------------------------------------------------------===//
     /// This class represents a cast from signed integer to floating point.
     public static class SIToFPInst extends CastInst {
         /**
@@ -505,9 +506,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                                 FPToSIInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // FPToSIInst Class
+    // ===----------------------------------------------------------------------===//
     /// This class represents a cast from floating point to signed integer.
     public static class FPToSIInst extends CastInst {
         /**
@@ -535,9 +536,9 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               PHINode Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // PHINode Class
+    // ===----------------------------------------------------------------------===//
 
     // Value存在OperandList中，BasicBlock存在blocks对应位置
     //
@@ -563,7 +564,8 @@ public abstract class Instructions {
             StringBuilder sb = new StringBuilder();
             sb.append(getName()).append(" = phi ").append(getType()).append(" ");
             for (int i = 0; i < getNumOperands(); i++) {
-                sb.append("[ ").append(getOperand(i).getName()).append(", %").append(getBlocks().get(i).getName()).append(" ] ");
+                sb.append("[ ").append(getOperand(i).getName()).append(", %").append(getBlocks().get(i).getName())
+                        .append(" ] ");
                 if (i != getNumOperands() - 1) {
                     sb.append(", ");
                 }
@@ -602,36 +604,46 @@ public abstract class Instructions {
         }
 
         public void setIncomingBlock(int i, BasicBlock BB) {
-            if (i > getNumOperands() || i < 0) return;
+            if (i > getNumOperands() || i < 0)
+                return;
             blocks.set(i, BB);
             BB.getPHIs().add(this);
         }
 
         public void replaceIncomingBlock(BasicBlock OLD, BasicBlock BB) {
             int i = blocks.indexOf(OLD);
-            if (i > getNumOperands() || i < 0) return;
+            if (i > getNumOperands() || i < 0)
+                return;
             blocks.set(i, BB);
             BB.getPHIs().add(this);
         }
 
         public BasicBlock getIncomingBlock(int i) {
-            if (i > getNumOperands()) return null;
+            if (i > getNumOperands())
+                return null;
             return blocks.get(i);
         }
 
         public BasicBlock getIncomingBlock(Use U) {
-            if (this != U.getU()) return null;
+            if (this != U.getU())
+                return null;
             return blocks.get(getOperandList().indexOf(U.getVal()));
         }
 
         public Value getIncomingValue(int i) {
-            if (i > getNumOperands()) return null;
+            if (i > getNumOperands())
+                return null;
             return getOperand(i);
+        }
+
+        public ArrayList<Value> getIncomingValues() {
+            return getOperandList();
         }
 
         public Value getIncomingValueByBlock(BasicBlock BB) {
             int i = blocks.indexOf(BB);
-            if (i > getNumOperands() || i < 0) return null;
+            if (i > getNumOperands() || i < 0)
+                return null;
             return getOperand(i);
         }
 
@@ -691,7 +703,7 @@ public abstract class Instructions {
             removeIncomingValue(BB, false);
             HashMap<BasicBlock, Value> incomingValues = new HashMap<>();
             for (int i = 0; i < getNumOperands(); i++) {
-                //加入不是undef的value
+                // 加入不是undef的value
                 if (!Constants.UndefValue.isUndefValue(getIncomingValue(i))) {
                     incomingValues.put(getIncomingBlock(i), getIncomingValue(i));
                 }
@@ -699,14 +711,14 @@ public abstract class Instructions {
             if (oldVal instanceof PHIInst && ((PHIInst) oldVal).getParent() == BB) {
                 PHIInst oldValPI = (PHIInst) (oldVal);
                 for (int i = 0; i < oldValPI.getNumOperands(); i++) {
-                    //当前phi指令和oldValPI指令可能有相同的前驱，若来自oldValPI
-                    //指令所在基本块的Value是undef，则考虑二者是否有共同前驱，有则
-                    //用来自共同前驱的值替换；若不是undef，则没有共同前驱，或共同前驱
-                    //的Value与OldValuePI的相同
+                    // 当前phi指令和oldValPI指令可能有相同的前驱，若来自oldValPI
+                    // 指令所在基本块的Value是undef，则考虑二者是否有共同前驱，有则
+                    // 用来自共同前驱的值替换；若不是undef，则没有共同前驱，或共同前驱
+                    // 的Value与OldValuePI的相同
                     BasicBlock PredBB = oldValPI.getIncomingBlock(i);
                     Value Selected = oldValPI.getIncomingValue(i);
                     if (Constants.UndefValue.isUndefValue(Selected)) {
-                        //没有共同前驱
+                        // 没有共同前驱
                         if (!incomingValues.containsKey(PredBB)) {
                             addIncoming(Selected, PredBB);
                         }
@@ -718,7 +730,7 @@ public abstract class Instructions {
             } else {
                 for (BasicBlock PredBB : Preds) {
                     if (Constants.UndefValue.isUndefValue(oldVal)) {
-                        //没有共同前驱
+                        // 没有共同前驱
                         if (!incomingValues.containsKey(PredBB)) {
                             addIncoming(oldVal, PredBB);
                         }
@@ -741,11 +753,11 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               ReturnInst Class
-    //===----------------------------------------------------------------------===//
-    //===---------------------------------------------------------------------------
-    /// Return a value (possibly void), from a function.  Execution
+    // ===----------------------------------------------------------------------===//
+    // ReturnInst Class
+    // ===----------------------------------------------------------------------===//
+    // ===---------------------------------------------------------------------------
+    /// Return a value (possibly void), from a function. Execution
     /// does not continue in this function any longer.
     ///
     public static class ReturnInst extends Instruction {
@@ -811,15 +823,15 @@ public abstract class Instructions {
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               BranchInst Class
-    //===----------------------------------------------------------------------===//
-    //===---------------------------------------------------------------------------
+    // ===----------------------------------------------------------------------===//
+    // BranchInst Class
+    // ===----------------------------------------------------------------------===//
+    // ===---------------------------------------------------------------------------
     /// Conditional or Unconditional Branch instruction.
     ///
     public static class BranchInst extends Instruction {
-        /// Ops list - Branches are strange.  The operands are ordered:
-        ///  [Cond, FalseDest,] TrueDest.
+        /// Ops list - Branches are strange. The operands are ordered:
+        /// [Cond, FalseDest,] TrueDest.
         public BranchInst(BasicBlock IfTrue, String name) {
             super(Type.getVoidTy(), Ops.Br, name, 1);
         }
@@ -902,12 +914,17 @@ public abstract class Instructions {
 
         public BasicBlock getSuccessor(int idx) {
             if (getNumOperands() == 3) {
-                if (idx == 0) return getTrueBlock();
-                else if (idx == 1) return getFalseBlock();
-                else return null;
+                if (idx == 0)
+                    return getTrueBlock();
+                else if (idx == 1)
+                    return getFalseBlock();
+                else
+                    return null;
             } else {
-                if (idx == 0) return getTrueBlock();
-                else return null;
+                if (idx == 0)
+                    return getTrueBlock();
+                else
+                    return null;
             }
         }
 
@@ -955,16 +972,17 @@ public abstract class Instructions {
                 ret = new BranchInst((BasicBlock) getOperand(0).copy(cloneMap));
                 cloneMap.put(this, ret);
             } else {
-                ret = new BranchInst(getTrueBlock().copy(cloneMap), getFalseBlock().copy(cloneMap), getCond().copy(cloneMap));
+                ret = new BranchInst(getTrueBlock().copy(cloneMap), getFalseBlock().copy(cloneMap),
+                        getCond().copy(cloneMap));
                 cloneMap.put(this, ret);
             }
             return ret;
         }
     }
 
-    //===----------------------------------------------------------------------===//
-    //                               SelectInst Class
-    //===----------------------------------------------------------------------===//
+    // ===----------------------------------------------------------------------===//
+    // SelectInst Class
+    // ===----------------------------------------------------------------------===//
     /// This class represents the LLVM 'select' instruction.
     ///
     public static class SelectInst extends Instruction {
@@ -1015,7 +1033,8 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (SelectInst) cloneMap.get(this);
             }
-            SelectInst ret = new SelectInst(getCondition().copy(cloneMap),getTrueValue().copy(cloneMap),getFalseValue().copy(cloneMap));
+            SelectInst ret = new SelectInst(getCondition().copy(cloneMap), getTrueValue().copy(cloneMap),
+                    getFalseValue().copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
         }
@@ -1032,7 +1051,8 @@ public abstract class Instructions {
 
         @Override
         public String toString() {
-            return getName() + " = bitcast " + getOperand(0).getType() + " " + getOperand(0).getName() + " to " + targetType;
+            return getName() + " = bitcast " + getOperand(0).getType() + " " + getOperand(0).getName() + " to "
+                    + targetType;
         }
 
         public static BitCastInst create(Value C, Type target) {
@@ -1052,7 +1072,7 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (BitCastInst) cloneMap.get(this);
             }
-            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap),targetType);
+            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap), targetType);
             cloneMap.put(this, ret);
             return ret;
         }
