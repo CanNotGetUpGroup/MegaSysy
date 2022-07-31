@@ -79,13 +79,11 @@ public class MachineFunction implements Addressable{
         if (!isDefined) return "";
         StringBuilder sb = new StringBuilder();
 
-        sb.append("""
-                        \t.align\t2
-                        \t.arch armv7ve
-                        \t.syntax unified
-                        \t.arm
-                        \t.fpu vfpv4
-                        """)
+        sb.append("\t.align\t2\n")
+                .append("\t.arch armv7ve\n")
+                .append("\t.syntax unified\n")
+                .append("\t.arm\n")
+                .append("\t.fpu vfpv4\n")
                 .append("\t.global\t").append(this.name).append("\n")
                 .append("\t.type\t").append(this.name).append(", %function\n")
                 .append(this.name).append(":").append("\n");
