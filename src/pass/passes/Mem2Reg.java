@@ -442,8 +442,10 @@ public class Mem2Reg extends FunctionPass {
     public void computeLiveBB(AllocaInst AI,Set<BasicBlock> LiveBB){
         ArrayList<BasicBlock> copyUsing = new ArrayList<>(AI.usingBlocks);
 
+        //检查load前是否store过
         for(int i=0,e=copyUsing.size();i!=e;i++){
             BasicBlock basicBlock=copyUsing.get(i);
+            //若当前基本块无定义，说明alloca能在此处存活
             if(!AI.definingBlocks.contains(basicBlock)){
                 continue;
             }
