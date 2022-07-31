@@ -84,7 +84,10 @@ public class Folder {
         return null;
     }
 
-    public static Constant createBinOp(Instruction.Ops Opc, Constant LHS, Constant RHS) {
+    /**
+     * 需要保证LHS和RHS至少有一个为Constant，返回null表示无法折叠
+     */
+    public static Value createBinOp(Instruction.Ops Opc, Value LHS, Value RHS) {
         if (RHS instanceof ConstantInt) {
             ConstantInt CI2 = (ConstantInt) RHS;
             switch (Opc) {
@@ -114,7 +117,7 @@ public class Folder {
                     break;
                 case SRem:
                     // X % 1 == 0
-                    if (CI2.getVal() == 1) {
+                    if (Math.abs(CI2.getVal()) == 1) {
                         return ConstantInt.const_0();
                     }
                     break;
@@ -139,6 +142,39 @@ public class Folder {
             }
         } else if (LHS instanceof ConstantInt) {
             // If C1 is a ConstantInt and C2 is not, swap the operands.
+            if (Instruction.isCommutative(Opc)) {
+                return createBinOp(Opc, RHS, LHS);
+            }
+        }else if (RHS instanceof ConstantFP) {
+            ConstantFP CI2 = (ConstantFP) RHS;
+            switch (Opc) {
+                case FSub:
+                case FAdd:
+                    // X - 0 == X
+                    // X + 0 == X
+                    if (CI2.getVal() == 0) {
+                        return LHS;
+                    }
+                    break;
+                case FMul:
+                    // X * 0 == 0
+                    // X * 1 == X
+                    if (CI2.getVal() == 0) {
+                        return RHS;
+                    }
+                    if (CI2.getVal() == 1) {
+                        return LHS;
+                    }
+                    break;
+                case FDiv:
+                    // X / 1 == X
+                    if (CI2.getVal() == 1) {
+                        return LHS;
+                    }
+                    break;
+            }
+        } else if (LHS instanceof ConstantFP) {
+            // If C1 is a ConstantFP and C2 is not, swap the operands.
             if (Instruction.isCommutative(Opc)) {
                 return createBinOp(Opc, RHS, LHS);
             }
@@ -208,47 +244,47 @@ public class Folder {
         return null;
     }
 
-    public static Constant createAdd(Constant LHS, Constant RHS) {
+    public static Value createAdd(Value LHS, Value RHS) {
         return createBinOp(Ops.Add, LHS, RHS);
     }
 
-    public static Constant createFAdd(Constant LHS, Constant RHS) {
+    public static Value createFAdd(Value LHS, Value RHS) {
         return createBinOp(Ops.FAdd, LHS, RHS);
     }
 
-    public static Constant createSub(Constant LHS, Constant RHS) {
+    public static Value createSub(Value LHS, Value RHS) {
         return createBinOp(Ops.Sub, LHS, RHS);
     }
 
-    public static Constant createFSub(Constant LHS, Constant RHS) {
+    public static Value createFSub(Value LHS, Value RHS) {
         return createBinOp(Ops.FSub, LHS, RHS);
     }
 
-    public static Constant createMul(Constant LHS, Constant RHS) {
+    public static Value createMul(Value LHS, Value RHS) {
         return createBinOp(Ops.Mul, LHS, RHS);
     }
 
-    public static Constant createFMul(Constant LHS, Constant RHS) {
+    public static Value createFMul(Value LHS, Value RHS) {
         return createBinOp(Ops.FMul, LHS, RHS);
     }
 
-    public static Constant createSDiv(Constant LHS, Constant RHS) {
+    public static Value createSDiv(Value LHS, Value RHS) {
         return createBinOp(Ops.SDiv, LHS, RHS);
     }
 
-    public static Constant createFDiv(Constant LHS, Constant RHS) {
+    public static Value createFDiv(Value LHS, Value RHS) {
         return createBinOp(Ops.FDiv, LHS, RHS);
     }
 
-    public static Constant createAnd(Constant LHS, Constant RHS) {
+    public static Value createAnd(Value LHS, Value RHS) {
         return createBinOp(Ops.And, LHS, RHS);
     }
 
-    public static Constant createOr(Constant LHS, Constant RHS) {
+    public static Value createOr(Value LHS, Value RHS) {
         return createBinOp(Ops.Or, LHS, RHS);
     }
 
-    public static Constant createNot(Constant C) {
+    public static Value createNot(Value C) {
         return createBinOp(Ops.Xor, C, ConstantInt.const1_1());
     }
 
