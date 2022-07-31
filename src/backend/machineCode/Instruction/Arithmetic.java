@@ -70,6 +70,7 @@ public class Arithmetic extends MachineInstruction {
     }
 
     public Arithmetic(MachineBasicBlock parent, Type type, Register dest, Register op1, int op2) {
+        // TODO: can only insert at end now
         super(parent);
         if (op1 == null) {
             throw new RuntimeException("null operators");

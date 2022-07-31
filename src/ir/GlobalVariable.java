@@ -1,10 +1,22 @@
 package ir;
 
+import ir.instructions.Instructions;
 import util.CloneMap;
+
+import java.util.HashSet;
+import java.util.Set;
 
 public class GlobalVariable extends User {
     private Module parent;
     private boolean isConstantGlobal; // Is this a global constant?
+    private boolean HasMultipleAccessingFunctions;
+    private Function AccessingFunction;
+    public boolean isLoaded;
+    public boolean isStored;
+
+    public Type getElementType(){
+        return ((DerivedTypes.PointerType)getType()).getElementType();
+    }
 
     public Module getParent() {
         return parent;
@@ -20,6 +32,22 @@ public class GlobalVariable extends User {
 
     public void setConstantGlobal(boolean constantGlobal) {
         isConstantGlobal = constantGlobal;
+    }
+
+    public Function getAccessingFunction() {
+        return AccessingFunction;
+    }
+
+    public void setAccessingFunction(Function accessingFunction) {
+        AccessingFunction = accessingFunction;
+    }
+
+    public boolean isHasMultipleAccessingFunctions() {
+        return HasMultipleAccessingFunctions;
+    }
+
+    public void setHasMultipleAccessingFunctions(boolean hasMultipleAccessingFunctions) {
+        HasMultipleAccessingFunctions = hasMultipleAccessingFunctions;
     }
 
     /**
@@ -92,5 +120,31 @@ public class GlobalVariable extends User {
     @Override
     public Value copy(CloneMap cloneMap) {
         return this;
+    }
+
+    public void remove(){
+        parent.getGlobalVariables().remove(this);
+        dropUsesAsValue();
+        dropUsesAsUser();
+    }
+
+    public void calculateInfo(){
+        for(Use use:getUseList()){
+            User U=use.getU();
+            if(U instanceof Instruction){
+                Instruction I=(Instruction)U;
+                Function F=I.getFunction();
+                if(!isHasMultipleAccessingFunctions()){
+                    if(getAccessingFunction()==null){
+                        setAccessingFunction(F);
+                    }else if(getAccessingFunction()!=F){
+                        setHasMultipleAccessingFunctions(true);
+                    }
+                }
+                if(I instanceof Instructions.LoadInst){
+                    isLoaded=true;
+                }
+            }
+        }
     }
 }
