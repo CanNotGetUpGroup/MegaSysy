@@ -17,6 +17,15 @@ public abstract class MachineInstruction {
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
 
+    public boolean isforBr() {
+        return forBr;
+    }
+
+    public void setforBr(boolean isforBr) {
+        this.forBr = isforBr;
+    }
+
+    private boolean forBr;
     public boolean isForFloat() {
         return forFloat;
     }
@@ -175,6 +184,11 @@ public abstract class MachineInstruction {
         this.getInstNode().insertBefore(this.getParent().getInstList().getFirst());
     }
 
+    public void insertBefore(IListNode<MachineInstruction, MachineBasicBlock> node) {
+        this.getInstNode().insertBefore(node);
+    }
+
+    public void delete(){this.getInstNode().remove();}
 
     public MachineInstruction(MachineBasicBlock parent) {
         this.parent = parent;
