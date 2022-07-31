@@ -10,7 +10,10 @@ import ir.*;
 import ir.Module;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
+import util.IList;
+import util.IListNode;
 
+import java.awt.image.renderable.RenderableImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -94,7 +97,7 @@ public class InstructionSelector {
     }
 
     private HashMap<Function, MachineFunction> funcMap = new HashMap<>();
-    private HashMap<GlobalVariable, MachineDataBlock> globalDataHash = new HashMap<>();
+    private static HashMap<GlobalVariable, MachineDataBlock> globalDataHash = new HashMap<>();
 
     private void translateFunction(Function irFunction) {
         MachineFunction mf = funcMap.get(irFunction);
@@ -185,6 +188,11 @@ public class InstructionSelector {
         new Comment(mbb, ir.toString()).pushBacktoInstList();
 
         switch (ir.getOp()) {
+            case PHI -> {
+                Register dest = new VirtualRegister(ir.getType().isFloatTy() ? Register.Content.Float : Register.Content.Int);
+                new Phi(mbb, dest, (Instructions.PHIInst) ir).setForFloat(ir.getType().isFloatTy()).pushBacktoInstList();
+                valueMap.put(ir, dest);
+            }
             case Ret -> {
                 if (ir.getNumOperands() == 1) {
                     var op1 = ir.getOperand(0);
@@ -202,12 +210,13 @@ public class InstructionSelector {
 //                    newInst = new Branch(mbb, new MCRegister(MCRegister.RegName.LR), false, Branch.Type.Ret);
 
 //                } else {
-                    newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
+                newInst = new PushOrPop(mbb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.PC));
 //                }
                 newInst.setEpilogue(true);
                 newInst.pushBacktoInstList();
             }
             case Br -> {
+                var node = mbb.getInstList().getLast();
                 // TODO: float num cmp
                 if (ir.getNumOperands() == 1) { // unconditional branch
                     var dest = ir.getOperand(0);
@@ -245,6 +254,8 @@ public class InstructionSelector {
                         new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
                     }
                 }
+                node = node.getNext();
+                node.getVal().setforBr(true);
             }
             case Call -> {
 
@@ -470,6 +481,11 @@ public class InstructionSelector {
                         op1 = n;
                     }
                 }
+                if (op1 instanceof ImmediateNumber) {
+                    Register opp1 = new VirtualRegister();
+                    new Move(mbb, opp1, op1).pushBacktoInstList();
+                    op1 = opp1;
+                }
 
                 Arithmetic.Type mcType = switch (ir.getOp()) {
                     case Sub -> Arithmetic.Type.SUB;
@@ -562,7 +578,11 @@ public class InstructionSelector {
         }
     }
 
-    private MCOperand valueToMCOperand(MachineBasicBlock parent, Value val) {
+    public static MCOperand valueToMCOperand(MachineBasicBlock parent, Value val) {
+        return valueToMCOperandInsertBefore(parent, val, parent.getInstList().getTail());
+    }
+
+    public static MCOperand valueToMCOperandInsertBefore(MachineBasicBlock parent, Value val, IListNode<MachineInstruction, MachineBasicBlock> node) {
         var func = parent.getParent();
         var valueMap = func.getValueMap();
         var type = val.getType();
@@ -570,7 +590,7 @@ public class InstructionSelector {
         if (val instanceof GlobalVariable) {
             var dataBlock = globalDataHash.get(val);
             Register dest = new VirtualRegister();
-            new LoadImm(parent, dest, dataBlock).pushBacktoInstList();
+            new LoadImm(parent, dest, dataBlock).insertBefore(node);
             return dest;
         } else if (val instanceof Constant) {
             if (type.isInt1Ty() || type.isInt32Ty()) {
@@ -582,13 +602,13 @@ public class InstructionSelector {
                 else {
                     // not a legal immediate number, has to load a literal value
                     Register dest = new VirtualRegister();
-                    new LoadImm(parent, dest, value).pushBacktoInstList();
+                    new LoadImm(parent, dest, value).insertBefore(node);
                     return dest;
                 }
             } else if (type.isFloatTy()) {
                 float value = ((Constants.ConstantFP) val).getVal();
                 Register dest = new VirtualRegister();
-                new LoadImm(parent, dest, value).pushBacktoInstList();
+                new LoadImm(parent, dest, value).insertBefore(node);
                 return dest;
             } else if (type.isPointerTy()) {
                 // TODO: ???
@@ -610,13 +630,17 @@ public class InstructionSelector {
         throw new RuntimeException("Unreachable point: " + val);
     }
 
-    private Register valueToReg(MachineBasicBlock parent, Value val) {
+    public static Register valueToReg(MachineBasicBlock parent, Value val) {
+        return valueToRegInsertBefore(parent, val, parent.getInstList().getTail());
+    }
+
+    public static Register valueToRegInsertBefore(MachineBasicBlock parent, Value val, IListNode<MachineInstruction, MachineBasicBlock> node) {
         MCOperand res = valueToMCOperand(parent, val);
         if (res instanceof Register)
             return (Register) res;
         if (res instanceof ImmediateNumber) {
             var dest = new VirtualRegister();
-            ImmediateNumber.loadNum(parent, dest, ((ImmediateNumber) res).getValue());
+            ImmediateNumber.loadNumInsertBefore(parent, dest, ((ImmediateNumber) res).getValue(), node);
             return dest;
         }
         if (res instanceof Address) {
@@ -626,24 +650,43 @@ public class InstructionSelector {
         throw new RuntimeException("can't convert to Register, or maybe haven't finished this part");
     }
 
-    private Register valueToFloatReg(MachineBasicBlock parent, Value val) {
-        Register reg = valueToReg(parent, val);
+    public static Register valueToFloatReg(MachineBasicBlock parent, Value val) {
+        return valueToFloatRegInsertBefore(parent, val, parent.getInstList().getTail());
+    }
+
+    public static Register valueToFloatRegInsertBefore(MachineBasicBlock parent, Value val, IListNode<MachineInstruction, MachineBasicBlock> node) {
+        Register reg = valueToRegInsertBefore(parent, val, node);
         if (!reg.isFloat()) {
-            return regToFloatReg(parent, reg);
+            return regToFloatRegInsertBefore(parent, reg, node);
         } else
             return reg;
     }
 
-    private Register regToFloatReg(MachineBasicBlock parent, Register reg) {
+    public static Register regToFloatReg(MachineBasicBlock parent, Register reg) {
+        return regToFloatRegInsertBefore(parent, reg, parent.getInstList().getTail());
+    }
+
+    public static Register regToFloatRegInsertBefore(MachineBasicBlock parent, Register reg, IListNode<MachineInstruction, MachineBasicBlock> node) {
         if (reg.isFloat()) return reg;
         var rr1 = new VirtualRegister(Register.Content.Float);
-        new Move(parent, rr1, reg).setForFloat(true).pushBacktoInstList();
+        new Move(parent, rr1, reg).setForFloat(true).insertBefore(node);
 
         return rr1;
     }
 
+    public static MCOperand valueToFloatOp(MachineBasicBlock parent, Value val) {
+        var ans = valueToMCOperand(parent, val);
+        if (ans instanceof ImmediateNumber) {
+            return ans;
+        } else if (ans instanceof Register) {
+            return regToFloatReg(parent, (Register) ans);
+        } else {
+            throw new RuntimeException("Don't know");
+        }
+    }
 
-    private Register i1ToReg(MachineBasicBlock parent, Value ir) {
+
+    public static Register i1ToReg(MachineBasicBlock parent, Value ir) {
         var func = parent.getParent();
         var valueMap = func.getValueMap();
         var dest = new VirtualRegister();
@@ -687,8 +730,6 @@ public class InstructionSelector {
             valueMap.put(ir, dest);
             return dest;
         }
-
-
     }
 
 
