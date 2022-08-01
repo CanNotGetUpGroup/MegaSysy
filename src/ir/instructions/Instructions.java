@@ -750,6 +750,7 @@ public abstract class Instructions {
                 return (PHIInst) cloneMap.get(this);
             }
             PHIInst ret = new PHIInst(getType(), getNumOperands());
+            ret.setName(getName()+cloneMap.hashCode());
             cloneMap.put(this, ret);
             return ret;
         }
