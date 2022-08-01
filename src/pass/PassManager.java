@@ -3,12 +3,7 @@ package pass;
 import backend.CodeGenManager;
 import ir.Function;
 import ir.Module;
-import pass.passes.FuncInline;
-import pass.passes.GVNGCM;
-import pass.passes.Mem2Reg;
-import pass.passes.SimplifyCFG;
-import pass.passes.InterproceduralAnalysis;
-import pass.passes.DeadCodeEmit;
+import pass.passes.*;
 
 import java.util.ArrayList;
 
@@ -23,8 +18,12 @@ public class PassManager {
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
-        passes.add(new DeadCodeEmit());
+
         passes.add(new FuncInline());
+//        passes.add(new GlobalVariableOpt());//FuncInline为其创造更多机会
+        passes.add(new Mem2Reg());//处理掉新产生的alloca
+//        passes.add(new InterproceduralAnalysis());
+//        passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG());
         passes.add(new DeadCodeEmit());
 //        passes.add(new GVNGCM());

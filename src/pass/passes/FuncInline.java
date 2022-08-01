@@ -30,9 +30,14 @@ public class FuncInline extends ModulePass {
         CallGraph CG = new CallGraph(M);
         Set<Function> functions = CG.getCallNodes().keySet();
         ArrayList<CallInst> callInsts = new ArrayList<>();
+        ArrayList<Function> deadFunctions=new ArrayList<>();
 
         for (Function F : M.getFuncList()) {
             if (!functions.contains(F)) {
+                continue;
+            }
+            if(CG.getNode(F).getCallerFunctions().isEmpty()&&!F.getName().equals("main")){
+                deadFunctions.add(F);
                 continue;
             }
             for (BasicBlock BB : F.getBbList()) {
@@ -48,6 +53,10 @@ public class FuncInline extends ModulePass {
                     callInsts.add((CI));
                 }
             }
+        }
+        for(Function F:deadFunctions){
+            F.remove();
+            CG.getCallNodes().remove(F);
         }
         if (callInsts.isEmpty()) {
             return;
@@ -128,25 +137,25 @@ public class FuncInline extends ModulePass {
 
         //1. 参数处理: 处理Caller传递给Callee的调用参数
         for (Argument arg : copy.getArguments()) {
-//            if(!(arg.getType() instanceof DerivedTypes.PointerType))
+            if(!(arg.getType() instanceof DerivedTypes.PointerType))
                 arg.replaceAllUsesWith(ArgToVal.get(arg));
-//            else{
-//                ArrayList<Use> copyUseList=new ArrayList<>(arg.getUseList());
-//                for(Use use:copyUseList){
-//                    use.getU().setOperand(use.getOperandNo(),ArgToVal.get(arg));
-//                    if(use.getU() instanceof StoreInst){
-//                        AllocaInst alloca=(AllocaInst)use.getU().getOperand(1);
-//                        ArrayList<Use> copyUseList1=new ArrayList<>(alloca.getUseList());
-//                        for(Use ause:copyUseList1){
-//                            if(ause.getU() instanceof LoadInst){
-//                                ause.getU().replaceAllUsesWith(ArgToVal.get(arg));
-//                            }
-//                            (ause.getU()).remove();
-//                        }
-//                        alloca.remove();
-//                    }
-//                }
-//            }
+            else{//数组指针参数，会先alloca申请一块空间，然后用store将参数储存进去，然后用load读取
+                ArrayList<Use> copyUseList=new ArrayList<>(arg.getUseList());
+                for(Use use:copyUseList){
+                    use.getU().setOperand(use.getOperandNo(),ArgToVal.get(arg));
+                    if(use.getU() instanceof StoreInst){
+                        AllocaInst alloca=(AllocaInst)use.getU().getOperand(1);
+                        ArrayList<Use> copyUseList1=new ArrayList<>(alloca.getUseList());
+                        for(Use ause:copyUseList1){
+                            if(ause.getU() instanceof LoadInst){
+                                ause.getU().replaceAllUsesWith(ArgToVal.get(arg));
+                            }
+                            (ause.getU()).remove();
+                        }
+                        alloca.remove();
+                    }
+                }
+            }
         }
 
         //2. 函数体拷贝
