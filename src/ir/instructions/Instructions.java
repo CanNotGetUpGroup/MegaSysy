@@ -443,6 +443,20 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        public boolean withoutGEP() { 
+            Function F = (Function) this.getOperand(0);
+            if(F.hasSideEffect()) {
+                return false;
+            }
+            for(Value val : this.getOperandList()) {
+                if(val instanceof GetElementPtrInst || 
+                    (val instanceof LoadInst && !val.getType().isInt32Ty() && !val.getType().isFloatTy())) {
+                        return false;
+                }
+            }
+            return true;
+        }
     }
 
     //===----------------------------------------------------------------------===//
