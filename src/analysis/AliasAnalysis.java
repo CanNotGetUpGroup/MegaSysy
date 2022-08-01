@@ -15,6 +15,8 @@ import java.util.HashMap;
  */
 public class AliasAnalysis {
 
+    private static Module M;
+
     public static Value getPointerValue(Value pointer) {
         while(pointer instanceof GetElementPtrInst || pointer instanceof LoadInst) {
             pointer = ((Instruction) pointer).getOperand(0);
@@ -45,5 +47,26 @@ public class AliasAnalysis {
 
     public static boolean isLocal(Value addr) {
         return !isGlobal(addr) && !isParam(addr);
+    }
+
+    /**
+     * Memory SSA
+     * @param F
+     */
+    public static void run(Function F) {
+        M = F.getParent();
+        F.getDominatorTree();
+
+        // loadUserFuncs();
+    }
+
+    public static void clear(Function F) {
+        for(BasicBlock BB : F.getBbList()) {
+            for(Instruction I:BB.getInstList()) {
+                switch(I.getOp()) {
+                    
+                }
+            }
+        }
     }
 }
