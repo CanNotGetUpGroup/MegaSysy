@@ -4,6 +4,7 @@ import backend.CodeGenManager;
 import ir.Function;
 import ir.Module;
 import pass.passes.FuncInline;
+import pass.passes.GVNGCM;
 import pass.passes.Mem2Reg;
 import pass.passes.SimplifyCFG;
 import pass.passes.InterproceduralAnalysis;
@@ -21,12 +22,17 @@ public class PassManager {
     public static void initialization(){
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
-        passes.add(new FuncInline());
-
         passes.add(new Mem2Reg());
-        passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
+        passes.add(new FuncInline());
         passes.add(new SimplifyCFG());
+        passes.add(new DeadCodeEmit());
+//        passes.add(new GVNGCM());
+
+
+//        passes.add(new InterproceduralAnalysis());
+
+
     }
 
     /**
@@ -42,7 +48,7 @@ public class PassManager {
      */
     public static void run(Module M){
         for(Pass p:passes){
-            System.out.println("IR Pass:"+p.getName());
+//            System.out.println("IR Pass:"+p.getName());
             p.runOnModule(M);
         }
     }

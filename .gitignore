@@ -9,3 +9,5 @@
 /src/windows_run.py
 /src/run.py
 /src/pass/test/*.txt
+testcase.*
+.DS_Store
