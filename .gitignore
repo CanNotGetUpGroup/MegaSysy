@@ -8,6 +8,6 @@
 /src/testcase.sy
 /src/windows_run.py
 /src/run.py
-/src/pass/test/*.txt
 testcase.*
 .DS_Store
+/src/pass/test
