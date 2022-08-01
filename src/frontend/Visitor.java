@@ -119,8 +119,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (!curVal.getType().equals(ty)) {
             if(curVal.getType().equals(Type.getInt32Ty())){
                 curVal=builder.createSIToFP(curVal,Type.getFloatTy());
-            }else{
+            }else if(curVal.getType().equals(Type.getFloatTy())){
                 curVal=builder.createFPToSI(curVal,Type.getInt32Ty());
+            }else{
+                LogError("arr can't be factor");
             }
         }
     }
@@ -900,6 +902,25 @@ public class Visitor extends SysyBaseVisitor<Value> {
 
     public Value getLVal(Value V, SysyParser.LValContext ctx) {
         Type ty = V.getType();
+        if(V instanceof GlobalVariable){
+            GlobalVariable gv=(GlobalVariable)V;
+            if(gv.isConstantGlobal()&&gv.getOperand(0).getType().isArrayTy()){
+                ConstantArray CA=(ConstantArray)gv.getOperand(0);
+                Value tmp=CA;
+                int i=0;
+                for (i = 0; i < ctx.exp().size(); i++) {
+                    visit(ctx.exp(i));
+                    if(curVal instanceof ConstantInt){
+                        tmp = ((ConstantArray)tmp).getElement(((ConstantInt)curVal).getVal());
+                    }else{
+                        break;
+                    }
+                }
+                if(i==ctx.exp().size()){
+                    return tmp;
+                }
+            }
+        }
         if (ty.isPointerTy()) {
             PointerType pty = (PointerType) ty;
             if (pty.getElementType().isPointerTy() && ctx.exp().size() != 0) {
@@ -918,6 +939,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             } else if (pty.getElementType().isArrayTy()) {
                 for (int i = 0; i < ctx.exp().size(); i++) {
                     visit(ctx.exp(i));
+
                     V = builder.createGEP(V, new ArrayList<>() {{
                         add(ConstantInt.const_0());
                         add(curVal);
