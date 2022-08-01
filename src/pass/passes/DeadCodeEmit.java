@@ -7,8 +7,8 @@ import ir.instructions.Instructions.*;
 import analysis.DominatorTree.TreeNode;
 import java.util.ArrayList;
 import java.util.HashSet;
-
-import java.util.*;
+import java.util.Stack;
+import java.util.Set;
 
 /**
  * 求与Br Ret Store和有附加影响的Call的指令相关的闭包，删除闭包外指令
@@ -17,6 +17,7 @@ import java.util.*;
 public class DeadCodeEmit extends ModulePass {
 
     Set<Instruction> usefulInstSet = new HashSet<>();
+    Stack<Instruction> stk = new Stack<>();
 
     public DeadCodeEmit() {
         super();
@@ -39,8 +40,6 @@ public class DeadCodeEmit extends ModulePass {
             F.remove();
         }
 
-        // TODO: DEBUG for .ll test
-        M.rename();
     }
 
     public void functionDCE(Function F) {
@@ -86,9 +85,18 @@ public class DeadCodeEmit extends ModulePass {
             return;
         }
         usefulInstSet.add(I);
-        for(Value op : I.getOperandList()) {
-            if(op instanceof Instruction) {
-                findClosure((Instruction) op);
+        stk.add(I);
+        findClosureDFS();
+    }
+
+    public void findClosureDFS() {
+        while(!stk.isEmpty()) {
+            Instruction I = stk.pop();
+            for(Value op : I.getOperandList()) {
+                if(op instanceof Instruction && !usefulInstSet.contains((Instruction) op)) {
+                    usefulInstSet.add((Instruction) op);
+                    stk.add((Instruction) op);
+                }
             }
         }
     }
