@@ -109,6 +109,11 @@ public abstract class Instruction extends User {
         };
     }
 
+    public boolean isBinary(){
+        return this.op.ordinal() >= Ops.Add.ordinal()
+            && this.op.ordinal() <= Ops.Xor.ordinal();
+    }
+
     /**
      * 从基本块中删除
      */
