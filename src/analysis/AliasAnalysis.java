@@ -179,14 +179,13 @@ public class AliasAnalysis {
 
         visitedFunc = new HashSet<>();
         for(Function func : M.getFuncList()) {
-            ArrayList<GlobalVariable> gvs = new ArrayList<>();
+            func2gv.put(func, new ArrayList<>());
             for(GlobalVariable gv : M.getGlobalVariables()) {
                 visitedFunc.clear();
                 if(isUsingGV(func, gv)) {
-                    gvs.add(gv);
+                    func2gv.get(func).add(gv);
                 }
             }
-            func2gv.put(func, gvs);
         }
         // TODO: LOADSTORE Analysis
     }
@@ -196,7 +195,7 @@ public class AliasAnalysis {
             return false;
         }
         visitedFunc.add(F);
-        if(gv2func.get(F).contains(gv)) {
+        if(func2gv.get(F).contains(gv)) {
             return true;
         }
         for(Function calleeFunc : F.getCalleeList()) {
