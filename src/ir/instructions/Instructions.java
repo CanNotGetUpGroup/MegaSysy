@@ -1,5 +1,6 @@
 package ir.instructions;
 
+import analysis.PointerInfo;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
@@ -154,8 +155,9 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
 
     public static class GetElementPtrInst extends Instruction {
-        private Type SourceElementType;
-        private Type ResultElementType;
+        private Type SourceElementType;//来源指针指向的类型
+        private Type ResultElementType;//取址后得到的类型
+        private Constant Init,ConstantValue;
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
@@ -255,6 +257,50 @@ public abstract class Instructions {
             return true;
         }
 
+        /**
+         * 根据gep的IdxList，计算gep的值
+         * 返回值为null时，表示当前不可求出Constant
+         */
+        public Constant getConstantValue(){
+            if(ConstantValue!=null) return ConstantValue;
+            Value source=getOperand(0);
+            Constants.ConstantArray CA=null;
+            if(getOperand(1) instanceof Constants.ConstantInt){
+                Constants.ConstantInt CI=(Constants.ConstantInt)getOperand(1);
+                if(CI.getVal()!=0){//%this = gep %prev 5
+                    if(source instanceof GlobalVariable){ //%this = gep @gv 0, 0
+                        CA= (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+                    }else if(source instanceof GetElementPtrInst){ //%this = gep %prev 0, 1
+                        CA= (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                    }
+                    assert CA != null;
+                    ConstantValue = (Constant) CA.getElement(CI.getVal());
+                    return ConstantValue;
+                }
+            }else{
+                return null;
+            }
+            if(source instanceof GlobalVariable){ //%this = gep @gv 0, 0
+                CA= (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+            }else if(source instanceof GetElementPtrInst){ //%this = gep %prev 0, 1
+                CA= (Constants.ConstantArray) ((GetElementPtrInst) source).getConstantValue();
+            }
+            Init=CA;
+            if(CA==null) return null;
+            ConstantValue=CA;
+            for(int i=2;i<getNumOperands();i++){
+                Value V=getOperand(i);
+                if(V instanceof Constants.ConstantInt){
+                    Constants.ConstantInt CI=(Constants.ConstantInt)V;
+                    int idx=CI.getVal();
+                    ConstantValue = (Constant) ((Constants.ConstantArray) ConstantValue).getElement(idx);
+                }else {
+                    return null;
+                }
+            }
+            return ConstantValue;
+        }
+
         @Override
         public GetElementPtrInst copy(CloneMap cloneMap) {
             if (cloneMap.get(this) != null) {
@@ -274,10 +320,6 @@ public abstract class Instructions {
     //                               ICmpInst Class
     //===----------------------------------------------------------------------===//
 
-    /// This instruction compares its operands according to the predicate given
-    /// to the constructor. It only operates on integers or pointers. The operands
-    /// must be identical types.
-    /// Represent an integer comparison operator.
     public static class ICmpInst extends CmpInst {
         public ICmpInst(String name, Predicate pred, Value LHS, Value RHS) {
             super(Type.getInt1Ty(), Ops.ICmp, name, pred, LHS, RHS);
@@ -319,10 +361,7 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
     //                               FCmpInst Class
     //===----------------------------------------------------------------------===//
-    /// This instruction compares its operands according to the predicate given
-    /// to the constructor. It only operates on floating point values or packed
-    /// vectors of floating point values. The operands must be identical types.
-    /// Represents a floating point comparison operator.
+
     public static class FCmpInst extends CmpInst {
         public FCmpInst(String name, Predicate pred, Value LHS, Value RHS) {
             super(Type.getInt1Ty(), Ops.FCmp, name, pred, LHS, RHS);
@@ -364,12 +403,7 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
     //                               CallInst Class
     //===----------------------------------------------------------------------===//
-    //===----------------------------------------------------------------------===//
-    /// This class represents a function call, abstracting a target
-    /// machine's calling convention.  This class uses low bit of the SubClassData
-    /// field to indicate whether or not this is a tail call.  The rest of the bits
-    /// hold the calling convention of the call.
-    ///
+
     public static class CallInst extends Instruction {
         private FunctionType FTy;
         private ArrayList<Value> Attrs;
@@ -394,7 +428,7 @@ public abstract class Instructions {
             String funcName = getOperand(0).getName();
             if (funcName.equals("_sysy_stoptime")) {
                 funcName = "stoptime";
-            } else if (funcName.equals("_sysy_startttime")) {
+            } else if (funcName.equals("_sysy_starttime")) {
                 funcName = "starttime";
             }
             if (((FunctionType) getOperand(0).getType()).getReturnType().isVoidTy()) {
@@ -462,7 +496,7 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
     //                                 ZExtInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents zero extension of integer types.
+
     public static class ZExtInst extends CastInst {
         /**
          * @param type 指令类型
@@ -492,7 +526,7 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
     //                                 SIToFPInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents a cast from signed integer to floating point.
+
     public static class SIToFPInst extends CastInst {
         /**
          * @param type 指令类型
@@ -522,7 +556,7 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
     //                                 FPToSIInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents a cast from floating point to signed integer.
+
     public static class FPToSIInst extends CastInst {
         /**
          * @param type 指令类型
@@ -744,6 +778,9 @@ public abstract class Instructions {
             }
         }
 
+        /**
+         * phi的复制比较复杂，可能造成循环，因此此处不进行incomingValues的copy
+         */
         @Override
         public PHIInst copy(CloneMap cloneMap) {
             if (cloneMap.get(this) != null) {
@@ -760,9 +797,7 @@ public abstract class Instructions {
     //                               ReturnInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
-    /// Return a value (possibly void), from a function.  Execution
-    /// does not continue in this function any longer.
-    ///
+
     public static class ReturnInst extends Instruction {
         public ReturnInst(String name, Value retVal) {
             super(Type.getVoidTy(), Ops.Ret, name, retVal == null ? 0 : 1);
@@ -830,8 +865,7 @@ public abstract class Instructions {
     //                               BranchInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
-    /// Conditional or Unconditional Branch instruction.
-    ///
+
     public static class BranchInst extends Instruction {
         /// Ops list - Branches are strange.  The operands are ordered:
         ///  [Cond, FalseDest,] TrueDest.
@@ -980,8 +1014,7 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
     //                               SelectInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents the LLVM 'select' instruction.
-    ///
+
     public static class SelectInst extends Instruction {
         public SelectInst(Value C, Value S1, Value S2) {
             super(S1.getType(), Ops.Select, 3);
@@ -1036,6 +1069,9 @@ public abstract class Instructions {
         }
     }
 
+    /**
+     * 考虑在float的memset使用，现已废弃
+     */
     public static class BitCastInst extends Instruction {
         private Type targetType;
 
