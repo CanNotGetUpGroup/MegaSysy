@@ -146,12 +146,12 @@ public class GVNGCM extends ModulePass {
                         for(Value val : userInst.getOperandList()) { // PHI incoming vals
                             if(val instanceof Instruction && val.getUseList().contains(use)) {
                                 userBB = userInst.getParent().getPredecessor(index);
-                                curBB = (curBB == null) ? userBB : lca(curBB, userBB);
+                                curBB = (curBB == null) ? userBB : DT.findSharedParent(DT.getNode(curBB), DT.getNode(userBB)).BB;
                             }
                             index++;
                         }
                     } else {
-                        curBB = (curBB == null) ? userBB : lca(curBB, userBB);
+                        curBB = (curBB == null) ? userBB : DT.findSharedParent(DT.getNode(curBB), DT.getNode(userBB)).BB;
                     }
                 }
             }
@@ -184,24 +184,6 @@ public class GVNGCM extends ModulePass {
     public boolean scheduleAble(Instruction I) {
         return I.isBinary() || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)
             || (I.getOp().equals(Ops.Call) && ((CallInst) I).withoutGEP());
-    }
-
-    public BasicBlock lca(BasicBlock A, BasicBlock B) {
-        //TODO : emmmm...这个性能吧
-        Function F = A.getParent();
-        DominatorTree DT = F.getDominatorTree();
-
-        while(DT.getNode(A).level < DT.getNode(B).level) {
-            B = DT.getNode(B).IDom.BB;
-        }
-        while(DT.getNode(B).level < DT.getNode(A).level) {
-            A = DT.getNode(A).IDom.BB;
-        }
-        while(!A.equals(B)) {
-            A = DT.getNode(A).IDom.BB;
-            B = DT.getNode(B).IDom.BB;
-        }
-        return A;
     }
 
     @Override
