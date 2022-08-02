@@ -19,14 +19,14 @@ public class tmpTest {
     }
 
     public static void initModule() throws IOException {
-        CharStream inputStream = CharStreams.fromFileName("src/frontend/input.txt"); // 获取输入流
-        FileWriter fw=new FileWriter("src/frontend/output.txt");
-        PrintWriter pw=new PrintWriter(fw);
+        CharStream inputStream = CharStreams.fromFileName("src/frontend/loopCFGTest.txt"); // 获取输入流
+        FileWriter fw = new FileWriter("src/frontend/loopCFGTest_out.txt");
+        PrintWriter pw = new PrintWriter(fw);
 
         SysyLexer lexer = new SysyLexer(inputStream);
 
         CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
-        Visitor visitor=new Visitor();
+        Visitor visitor = new Visitor();
         SysyParser parser = new SysyParser(tokenStream);
         ParseTree tree = parser.program(); // 获取语法树的根节点
         visitor.visit(tree);

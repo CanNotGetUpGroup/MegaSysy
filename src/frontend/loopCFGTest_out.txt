@@ -1,0 +1,109 @@
+declare i32 @getint()
+declare float @getfloat()
+declare i32 @getarray(i32*)
+declare i32 @getfarray(float*)
+declare i32 @getch()
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putfloat(float)
+declare void @putarray(i32,i32*)
+declare void @putfarray(i32,float*)
+declare void @memset(i32*,i32,i32)
+declare void @_sysy_stoptime()
+declare void @_sysy_stoptime()
+
+define dso_local i32 @doWhile(){
+entry:     
+  %0 = alloca i32     ; i32 b
+  %1 = alloca i32     ; i32 a=20
+  store i32 20, i32* %1     ; a=i32 20
+  %2 = load i32, i32* %1     
+  %3 = add i32 %2, 1     ; a+1
+  store i32 %3, i32* %1     ; a=a+1
+  store i32 -10, i32* %0     ; b=-10
+  br label %4     
+
+4:     ; judge b>1
+  %5 = load i32, i32* %0     
+  %6= icmp sgt i32 %5, 1     ; b>1
+  br i1 %6, label %7, label %40     
+
+7:     ; while Stmt
+  br label %8     
+
+8:     ; judge a>0
+  %9 = load i32, i32* %1     
+  %10= icmp sgt i32 %9, 0     ; a>0
+  br i1 %10, label %11, label %37     
+
+11:     ; while Stmt
+  %12 = load i32, i32* %1     
+  %13 = sub i32 %12, 1     ; a-1
+  store i32 %13, i32* %1     ; a=a-1
+  %14 = load i32, i32* %1     
+  %15= icmp eq i32 %14, 1     ; a==1
+  br i1 %15, label %16, label %17     ; judge a==1
+
+16:     ; if Stmt
+  br label %37     
+
+17:     ; else Stmt
+  %18 = load i32, i32* %1     
+  %19= icmp eq i32 %18, 18     ; a==18
+  br i1 %19, label %20, label %23     ; judge a==18
+
+20:     ; if Stmt
+  %21 = load i32, i32* %1     
+  %22 = sub i32 %21, 2     ; a-2
+  store i32 %22, i32* %1     ; a=a-2
+  br label %8     
+
+23:     ; else Stmt
+  %24 = load i32, i32* %1     
+  %25= icmp eq i32 %24, 3     ; a==3
+  br i1 %25, label %26, label %27     ; judge a==3
+
+26:     ; if Stmt
+  br label %8     
+
+27:     ; else Stmt
+  %28 = load i32, i32* %1     
+  %29= icmp eq i32 %28, 7     ; a==7
+  br i1 %29, label %30, label %33     ; judge a==7
+
+30:     ; if Stmt
+  %31 = load i32, i32* %1     
+  %32 = sub i32 %31, 1     ; a-1
+  store i32 %32, i32* %1     ; a=a-1
+  br label %37     
+
+33:     
+  br label %34     
+
+34:     
+  br label %35     
+
+35:     
+  br label %36     
+
+36:     
+  br label %8     
+
+37:     ; exit while
+  %38 = load i32, i32* %0     
+  %39 = add i32 %38, 1     ; b+1
+  store i32 %39, i32* %0     ; b=b+1
+  br label %4     
+
+40:     ; exit while
+  %41 = load i32, i32* %1     
+  ret i32 %41     
+}
+
+define dso_local i32 @main(){
+entry:     
+  %0 = call i32 @doWhile()     ; call doWhile()
+  call void @putint(i32 %0)     ; call putint(doWhile())
+  ret i32 0     
+}
+
