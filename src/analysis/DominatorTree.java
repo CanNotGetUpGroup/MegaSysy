@@ -73,7 +73,7 @@ public class DominatorTree {
         initTreeNode(root);
         removeUnreachableBB();
         calculateDomTree();
-//        calculateDomFrontier();
+        calculateDomFrontier();
     }
 
     public void update(Function F) {
