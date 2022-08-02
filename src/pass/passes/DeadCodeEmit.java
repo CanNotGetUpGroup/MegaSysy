@@ -2,8 +2,10 @@ package pass.passes;
 
 import ir.*;
 import ir.Module;
+import ir.Instruction.Ops;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
+import analysis.AliasAnalysis;
 import analysis.DominatorTree.TreeNode;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,6 +45,37 @@ public class DeadCodeEmit extends ModulePass {
     }
 
     public void functionDCE(Function F) {
+        for(BasicBlock BB : F.getBbList()) {
+            for(Instruction I : BB.getInstList()) {
+                if(I instanceof StoreInst) {
+                    Value pointer = AliasAnalysis.getArrayValue(I.getOperand(1));
+                    for(var nInstNode = I.getInstNode().getNext(); nInstNode != null;) {
+                        Instruction nInst = nInstNode.getVal();
+                        if(nInst.getOp().equals(Ops.Store)){
+                            if(I.getOperand(1) == nInst.getOperand(1)) {
+                                I.remove();
+                                break;
+                            }
+                        } else if(nInst.getOp().equals(Ops.Load)) { 
+                            break;
+                            // TODO: Alias有点问题 先短路掉
+                            // Value npointer = AliasAnalysis.getArrayValue(nInst.getOperand(0));
+                            // if(AliasAnalysis.alias(npointer, pointer)) {
+                            //     break;
+                            // }
+                        } else if(nInst.getOp().equals(Ops.Call)) { 
+                            break;
+                            // TODO: callAlias也有点问题
+                            // if(AliasAnalysis.callAlias(pointer, (CallInst)nInst)) {
+                            //     break;
+                            // }
+                        }
+                        nInstNode = nInstNode.getNext();
+                    }
+                }
+            }
+        }
+
         usefulInstSet.clear();
         for(BasicBlock BB : F.getBbList()){
             for(Instruction I:BB.getInstList()) {

@@ -289,6 +289,19 @@ public class Constants {
         public Value copy(CloneMap cloneMap) {
             return this;
         }
+
+        public ArrayList<Integer> getDims() { 
+            ArrayList<Integer> ret = new ArrayList<>();
+            ConstantArray cur = this;
+            while(true) { 
+                ret.add(cur.getArr().size());
+                if(!(cur.getArr().get(0) instanceof ConstantArray)) {
+                    break;
+                }
+                cur = (ConstantArray) cur.getArr().get(0);
+            }
+            return ret;
+        }
     }
 
     public static class UndefValue extends Constant {
