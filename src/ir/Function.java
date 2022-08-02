@@ -93,7 +93,7 @@ public class Function extends User {
             String funcName=this.getName();
             if(funcName.equals("_sysy_stoptime")){
                 funcName="stoptime";
-            }else if(funcName.equals("_sysy_startttime")){
+            }else if(funcName.equals("_sysy_starttime")){
                 funcName="starttime";
             }
             sb.append("declare ")
