@@ -60,12 +60,14 @@ public abstract class User extends Value {
     }
 
     public Value opBegin() {
-        if (OperandList.isEmpty()) return null;
+        if (OperandList.isEmpty())
+            return null;
         return OperandList.get(0);
     }
 
     public Value opEnd() {
-        if (OperandList.isEmpty()) return null;
+        if (OperandList.isEmpty())
+            return null;
         return OperandList.get(numOperands - 1);
     }
 
@@ -100,10 +102,52 @@ public abstract class User extends Value {
     /**
      * 作为User被删除时，将其使用的value对应的use删除
      */
-    public void dropUsesAsUser(){
-        for(Value v:getOperandList()){
-            if(v==null) continue;
+    public void dropUsesAsUser() {
+        for (Value v : getOperandList()) {
+            if (v == null)
+                continue;
             v.removeUseByUser(this);
+        }
+    }
+
+    /**
+     * 设置某index的operand为V
+     * 
+     * @param index:位置，operand视作从0开始
+     * @param v:想要设置的operand
+     **/
+    public void CoSetOperand(int index, Value v) {
+        assert this.numOperands > index;
+        this.OperandList.set(index, v);
+        if (v != null) {
+            v.addUse(new Use(this, v, index));
+        }
+    }
+
+    /**
+     * 替换某一index的operand为V，维护 operand 的 usesList
+     * 
+     * @param index: 位置，operand视作从0开始
+     * @param v:     想要设置的operand
+     * 
+     */
+    public void CoReplaceOperandByIndex(int index, Value v) {
+        var op = OperandList.get(index);
+        this.CoSetOperand(index, v);
+        if (op != null && !this.OperandList.contains(op)) {
+            op.removeUseByUser(this);
+        }
+    }
+
+    /**
+     * 将operandlist中所有lhs换为rhs，并更新Use
+     */
+    public void COReplaceOperand(Value lhs, Value rhs) {
+        lhs.removeUseByUser(this);
+        for (int i = 0; i < OperandList.size(); i++) {
+            if (OperandList.get(i) == lhs) {
+                CoSetOperand(i, rhs);
+            }
         }
     }
 }

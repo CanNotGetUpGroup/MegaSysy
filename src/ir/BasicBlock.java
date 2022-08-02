@@ -49,7 +49,7 @@ public class BasicBlock extends Value {
         bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
-    public BasicBlock(String name, Function parent,BasicBlock insertAfter) {
+    public BasicBlock(String name, Function parent, BasicBlock insertAfter) {
         super(Type.getLabelTy(), name);
         Parent = parent;
         PHIs = new ArrayList<>();
@@ -217,7 +217,8 @@ public class BasicBlock extends Value {
      * @return 首条指令
      */
     public Instruction front() {
-        if(getInstList().getFirst()==null) return null;
+        if (getInstList().getFirst() == null)
+            return null;
         return getInstList().getFirst().getVal();
     }
 
@@ -266,9 +267,26 @@ public class BasicBlock extends Value {
 
     @Override
     public BasicBlock copy(CloneMap cloneMap) {
-        if(cloneMap.get(this)!=null){
+        if (cloneMap.get(this) != null) {
             return (BasicBlock) cloneMap.get(this);
         }
         return null;
+    }
+
+    /**
+     * 判断是否可以将代码提升到该bb
+     * 
+     * @return Return true if it is legal to hoist instructions into this block.
+     */
+    public boolean isLegalToHoistInto() {
+        var term = getTerminator();
+        // No terminator means the block is under construction.
+        if (term == null) {
+            return true;
+        }
+        // If the block has no successors, there can be no instructions to hoist.
+        assert (term.getSuccessors().size() > 0);
+        // Instructions should not be hoisted across exception handling boundaries.
+        return true;
     }
 }
