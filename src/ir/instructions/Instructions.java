@@ -157,7 +157,7 @@ public abstract class Instructions {
     public static class GetElementPtrInst extends Instruction {
         private Type SourceElementType;//来源指针指向的类型
         private Type ResultElementType;//取址后得到的类型
-        private Constant Init,ConstantValue;
+        private Constant Init, ConstantValue;
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
@@ -261,40 +261,40 @@ public abstract class Instructions {
          * 根据gep的IdxList，计算gep的值
          * 返回值为null时，表示当前不可求出Constant
          */
-        public Constant getConstantValue(){
-            if(ConstantValue!=null) return ConstantValue;
-            Value source=getOperand(0);
-            Constants.ConstantArray CA=null;
-            if(getOperand(1) instanceof Constants.ConstantInt){
-                Constants.ConstantInt CI=(Constants.ConstantInt)getOperand(1);
-                if(CI.getVal()!=0){//%this = gep %prev 5
-                    if(source instanceof GlobalVariable){ //%this = gep @gv 0, 0
-                        CA= (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
-                    }else if(source instanceof GetElementPtrInst){ //%this = gep %prev 0, 1
-                        CA= (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+        public Constant getConstantValue() {
+            if (ConstantValue != null) return ConstantValue;
+            Value source = getOperand(0);
+            Constants.ConstantArray CA = null;
+            if (getOperand(1) instanceof Constants.ConstantInt) {
+                Constants.ConstantInt CI = (Constants.ConstantInt) getOperand(1);
+                if (CI.getVal() != 0) {//%this = gep %prev 5
+                    if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
+                        CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+                    } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
+                        CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
                     }
                     assert CA != null;
                     ConstantValue = (Constant) CA.getElement(CI.getVal());
                     return ConstantValue;
                 }
-            }else{
+            } else {
                 return null;
             }
-            if(source instanceof GlobalVariable){ //%this = gep @gv 0, 0
-                CA= (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
-            }else if(source instanceof GetElementPtrInst){ //%this = gep %prev 0, 1
-                CA= (Constants.ConstantArray) ((GetElementPtrInst) source).getConstantValue();
+            if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
+                CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+            } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
+                CA = (Constants.ConstantArray) ((GetElementPtrInst) source).getConstantValue();
             }
-            Init=CA;
-            if(CA==null) return null;
-            ConstantValue=CA;
-            for(int i=2;i<getNumOperands();i++){
-                Value V=getOperand(i);
-                if(V instanceof Constants.ConstantInt){
-                    Constants.ConstantInt CI=(Constants.ConstantInt)V;
-                    int idx=CI.getVal();
+            Init = CA;
+            if (CA == null) return null;
+            ConstantValue = CA;
+            for (int i = 2; i < getNumOperands(); i++) {
+                Value V = getOperand(i);
+                if (V instanceof Constants.ConstantInt) {
+                    Constants.ConstantInt CI = (Constants.ConstantInt) V;
+                    int idx = CI.getVal();
                     ConstantValue = (Constant) ((Constants.ConstantArray) ConstantValue).getElement(idx);
-                }else {
+                } else {
                     return null;
                 }
             }
@@ -478,15 +478,15 @@ public abstract class Instructions {
             return ret;
         }
 
-        public boolean withoutGEP() { 
+        public boolean withoutGEP() {
             Function F = (Function) this.getOperand(0);
-            if(F.hasSideEffect()) {
+            if (F.hasSideEffect()) {
                 return false;
             }
-            for(Value val : this.getOperandList()) {
-                if(val instanceof GetElementPtrInst || 
-                    (val instanceof LoadInst && !val.getType().isInt32Ty() && !val.getType().isFloatTy())) {
-                        return false;
+            for (Value val : this.getOperandList()) {
+                if (val instanceof GetElementPtrInst ||
+                        (val instanceof LoadInst && !val.getType().isInt32Ty() && !val.getType().isFloatTy())) {
+                    return false;
                 }
             }
             return true;
@@ -677,6 +677,10 @@ public abstract class Instructions {
             return getOperand(i);
         }
 
+        public ArrayList<Value> getIncomingValues() {
+            return getOperandList();
+        }
+
         public Value getIncomingValueByBlock(BasicBlock BB) {
             int i = blocks.indexOf(BB);
             if (i > getNumOperands() || i < 0) return null;
@@ -787,7 +791,7 @@ public abstract class Instructions {
                 return (PHIInst) cloneMap.get(this);
             }
             PHIInst ret = new PHIInst(getType(), getNumOperands());
-            ret.setName(getName()+cloneMap.hashCode());
+            ret.setName(getName() + cloneMap.hashCode());
             cloneMap.put(this, ret);
             return ret;
         }
@@ -1063,7 +1067,7 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (SelectInst) cloneMap.get(this);
             }
-            SelectInst ret = new SelectInst(getCondition().copy(cloneMap),getTrueValue().copy(cloneMap),getFalseValue().copy(cloneMap));
+            SelectInst ret = new SelectInst(getCondition().copy(cloneMap), getTrueValue().copy(cloneMap), getFalseValue().copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
         }
@@ -1103,7 +1107,7 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (BitCastInst) cloneMap.get(this);
             }
-            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap),targetType);
+            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap), targetType);
             cloneMap.put(this, ret);
             return ret;
         }
