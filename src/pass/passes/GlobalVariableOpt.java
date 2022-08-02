@@ -46,6 +46,7 @@ public class GlobalVariableOpt extends ModulePass {
             if(GS.getAccessingFunction().getName().equals("main")){
                 Type ty = GV.getElementType();
                 if(!ty.isArrayTy()){//不对数组进行本地化
+//                    System.out.println("localize");
                     builder.setInsertPoint(GS.getAccessingFunction().getEntryBB());
                     Instructions.AllocaInst AI= (Instructions.AllocaInst) builder.createAlloca(ty);
                     Iterator<Instruction> It=GS.getAccessingFunction().getEntryBB().getInstList().iterator();
@@ -68,6 +69,7 @@ public class GlobalVariableOpt extends ModulePass {
         if(!PI.isLoaded()){
             boolean changed=cleanupConstantGlobalUsers(GV,(Constant) GV.getOperand(0));
             if(GV.getUseList().isEmpty()){
+//                System.out.println("isn't loaded");
                 GV.remove();
                 return true;
             }
@@ -76,6 +78,7 @@ public class GlobalVariableOpt extends ModulePass {
         if(!PI.isStored()){
             cleanupConstantGlobalUsers(GV, (Constant) GV.getOperand(0));
             if(GV.getUseList().isEmpty()){
+//                System.out.println("isn't stored");
                 GV.remove();
                 return true;
             }
