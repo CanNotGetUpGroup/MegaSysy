@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
+ * 全局变量本地化，以及全局变量常数化
  * 该Pass在Function Inline后执行
  */
 public class GlobalVariableOpt extends ModulePass {
@@ -44,7 +45,7 @@ public class GlobalVariableOpt extends ModulePass {
             //经过函数内联后，除main外都是强连通分量，对于自递归函数，不做Global本地化
             if(GS.getAccessingFunction().getName().equals("main")){
                 Type ty = GV.getElementType();
-                if(!ty.isArrayTy()){
+                if(!ty.isArrayTy()){//不对数组进行本地化
                     builder.setInsertPoint(GS.getAccessingFunction().getEntryBB());
                     Instructions.AllocaInst AI= (Instructions.AllocaInst) builder.createAlloca(ty);
                     Iterator<Instruction> It=GS.getAccessingFunction().getEntryBB().getInstList().iterator();
@@ -86,6 +87,7 @@ public class GlobalVariableOpt extends ModulePass {
      * 确定了当前global初始化后可以看作一个常量
      */
     public static boolean cleanupConstantGlobalUsers(Value V, Constant Init) {
+        if(Init==null) return false;
         boolean Changed = false;
         ArrayList<User> WorkList=V.getUsers();
         while (!WorkList.isEmpty()) {
@@ -94,21 +96,17 @@ public class GlobalVariableOpt extends ModulePass {
                 continue;
             if (UV instanceof Instructions.LoadInst) {
                 Instructions.LoadInst LI=(Instructions.LoadInst)UV;
-                if (Init!=null) {
-                    LI.replaceAllUsesWith(Init);
-                    LI.remove();
-                    Changed = true;
-                }
+                LI.replaceAllUsesWith(Init);
+                LI.remove();
+                Changed = true;
             }else if (UV instanceof Instructions.StoreInst) {
                 // Store must be unreachable or storing Init into the global.
                 UV.remove();
                 Changed = true;
             }else if (UV instanceof Instructions.GetElementPtrInst) {
                 Instructions.GetElementPtrInst gep=(Instructions.GetElementPtrInst)UV;
-                if(gep.getNumOperands()==2){
-                    Init=(Constant) ((Constants.ConstantArray)Init).getElement(((Constants.ConstantInt)UV.getOperand(2)).getVal());
-                }
-                Changed |= cleanupConstantGlobalUsers(UV, Init );
+                Constant Init_tmp=gep.getConstantValue();
+                Changed |= cleanupConstantGlobalUsers(gep, Init_tmp );
 
                 if (UV.getUseList().isEmpty()) {
                     UV.remove();

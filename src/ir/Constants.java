@@ -228,7 +228,7 @@ public class Constants {
          * 获取a[i]
          */
         public Value getElement(int i){
-            if(i>getNumOperands()){
+            if(i>=getNumOperands()){
                 return Constant.getNullValue(getType().getKidType());
             }
             return getOperand(i);
