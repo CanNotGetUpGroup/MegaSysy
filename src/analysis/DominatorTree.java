@@ -73,24 +73,12 @@ public class DominatorTree {
         initTreeNode(root);
         removeUnreachableBB();
         calculateDomTree();
-        calculateDomFrontier();
+//        calculateDomFrontier();
     }
 
     public void update(Function F) {
         clear();
         computeOnFunction(F);
-    }
-
-    public void computeOnCFG(ArrayList<BasicBlock> BBs) {
-        if (BBs.isEmpty())
-            return;
-        Parent = BBs.get(0).getParent();
-        TreeNode root = new TreeNode(BBs.get(0));
-        Root = root;
-        DomTreeNodes.put(BBs.get(0), Root);
-        initTreeNode(root);
-        calculateDomTree();
-        calculateDomFrontier();
     }
 
     public void clear() {
