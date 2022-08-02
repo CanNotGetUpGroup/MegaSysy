@@ -295,7 +295,8 @@ public class Constants {
             ConstantArray cur = this;
             while(true) { 
                 ret.add(cur.getArr().size());
-                if(!(cur.getArr().get(0) instanceof ConstantArray)) {
+                // 添加短路条件 zeroinit？
+                if(cur.getArr().size()==0 || !(cur.getArr().get(0) instanceof ConstantArray)) {
                     break;
                 }
                 cur = (ConstantArray) cur.getArr().get(0);

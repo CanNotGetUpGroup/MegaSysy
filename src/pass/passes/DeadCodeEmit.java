@@ -31,6 +31,8 @@ public class DeadCodeEmit extends ModulePass {
         for(Function F:M.getFuncList()){
             // 非Builtin函数
             if(F.isDefined()) {
+                // TODO: 暂时先在这里初始化func-gv映射 StoreDel要用
+                AliasAnalysis.runMemorySSA(F);
                 functionDCE(F);
             }
 
@@ -56,19 +58,15 @@ public class DeadCodeEmit extends ModulePass {
                                 I.remove();
                                 break;
                             }
-                        } else if(nInst.getOp().equals(Ops.Load)) { 
-                            break;
-                            // TODO: Alias有点问题 先短路掉
-                            // Value npointer = AliasAnalysis.getArrayValue(nInst.getOperand(0));
-                            // if(AliasAnalysis.alias(npointer, pointer)) {
-                            //     break;
-                            // }
-                        } else if(nInst.getOp().equals(Ops.Call)) { 
-                            break;
-                            // TODO: callAlias也有点问题
-                            // if(AliasAnalysis.callAlias(pointer, (CallInst)nInst)) {
-                            //     break;
-                            // }
+                        } else if(nInst.getOp().equals(Ops.Load)) {
+                             Value npointer = AliasAnalysis.getArrayValue(nInst.getOperand(0));
+                             if(AliasAnalysis.alias(npointer, pointer)) {
+                                 break;
+                             }
+                        } else if(nInst.getOp().equals(Ops.Call)) {
+                            if(AliasAnalysis.callAlias(pointer, (CallInst)nInst)) {
+                                break;
+                            }
                         }
                         nInstNode = nInstNode.getNext();
                     }
