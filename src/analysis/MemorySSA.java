@@ -49,11 +49,18 @@ public class MemorySSA {
 
     //TODO:同一基本块支配判断
     public boolean localDominates(MemoryAccess dominator, MemoryAccess dominated) {
+        if(dominator==dominated) return true;
+        if(isLiveOnEntry(dominated)) return false;
+        if(isLiveOnEntry(dominator)) return true;
+        //否则比较二者顺序，在前面的支配后面的
+        if(dominator instanceof MemoryPhi) return true;
+
         return true;
     }
 
     public void buildMemorySSA() {
         ArrayList<BasicBlock> DefiningBlocks = new ArrayList<>();
+        //先生成MemoryDef和MemoryUse，但不为他们指定definingAccess
         for (BasicBlock BB : F.getBbList()) {
             boolean InsertIntoDef = false;
             LinkedList<MemoryAccess> Accesses = null;
@@ -219,7 +226,7 @@ public class MemorySSA {
     }
 
     /**
-     * 获得某指令开头的MemoryPhi
+     * 获得某基本块开头的MemoryPhi
      */
     public MemoryPhi getMemoryAccess(BasicBlock BB) {
         return (MemoryPhi) ValueToMemAcc.get(BB);
