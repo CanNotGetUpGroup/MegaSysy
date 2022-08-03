@@ -10,5 +10,5 @@
 /src/run.py
 testcase.*
 .DS_Store
-/src/pass/test
+/src/pass/test/*.txt
 testcase.*
