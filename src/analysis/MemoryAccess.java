@@ -1,11 +1,13 @@
 package analysis;
 
-import ir.BasicBlock;
-import ir.Instruction;
-import ir.Type;
-import ir.Value;
+import ir.*;
+import pass.PassManager;
+import pass.test.testPass;
 import util.CloneMap;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 
 /**
@@ -83,12 +85,23 @@ public class MemoryAccess extends Instruction {
             super(Ops.MemDef,MI,DMA);
             setID(Ver);
         }
+
+        @Override
+        public String toString(){
+            int id=getDefiningAccess().getID();
+            return "; "+getID()+" = MemoryDef("+((id==0)?"liveOnEntry":id)+")";
+        }
     }
 
     public static class MemoryUse extends MemoryDefOrUse{
-        public MemoryUse(Instruction MI, MemoryAccess DMA, int Ver) {
+        public MemoryUse(Instruction MI, MemoryAccess DMA) {
             super(Ops.MemUse,MI,DMA);
-            setID(Ver);
+        }
+
+        @Override
+        public String toString(){
+            int id=getDefiningAccess().getID();
+            return "; MemoryUse("+getDefiningAccess().getID()+")";
         }
     }
 
@@ -129,6 +142,21 @@ public class MemoryAccess extends Instruction {
         public Value getIncomingValue(int i) {
             if (i > getNumOperands()) return null;
             return getOperand(i);
+        }
+
+        @Override
+        public String toString(){
+            StringBuilder sb=new StringBuilder();
+            sb.append("; ").append(getID()).append(" = MemoryPhi(");
+            for (int i = 0; i < getNumOperands(); i++) {
+                int id=((MemoryAccess)getOperand(i)).getID();
+                sb.append("{ ").append(id==0?"liveOnEntry":id).append(", ").append("block ").append(getBlocks().get(i).getName()).append(" } ");
+                if (i != getNumOperands() - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(")");
+            return sb.toString();
         }
     }
 }
