@@ -104,7 +104,7 @@ public class LoopInfo {
         DominatorTree domInfo = new DominatorTree(function);
         Stack<BasicBlock> backNode = new Stack<>();
         // ! 后序遍历domtree domInfo.PostOrder是Dominate tree的后序遍历
-        for (TreeNode DomNode : domInfo.PostOrder) {
+        for (TreeNode DomNode : domInfo.getDTPostOrder()) {
             for (BasicBlock pred : DomNode.BB.getPredecessors()) {
                 // 如果一个结点支配其前继，则将这个边识别为backedge
                 if (domInfo.dominates(DomNode.BB, pred)) {
