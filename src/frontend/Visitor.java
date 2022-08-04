@@ -206,7 +206,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //            while (arr_site < arrayType.getNumElements() * arrayType.getEleSize()) {
 //                tmpArrList.put(arr_site++, Constant.getNullValue(declType));
 //            }
-            curVal = changeArrType(arrayType, tmpArrList, tmpIdx);
+            curVal = changeArrType(arrayType, tmpArrList, tmpIdx,0);
 
             if (symbolTable.inGlobalArea()) {
                 curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, true);
@@ -309,13 +309,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}
-                        arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        if(ctx.constInitVal(i).arrayType.equals(arrTy.getKidType())){
+                            arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        }
                         visit(ctx.constInitVal(i));
                         V.addAll(tmpArrList);
                         Idx.addAll(tmpIdx);
                     }
                 }
-                arr_site=numEle * eleSize+pre;
+                if(arr_site<numEle*eleSize+pre)
+                    arr_site=numEle * eleSize+pre;
                 tmpArrList = V;
                 tmpIdx = Idx;
             }
@@ -323,7 +326,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
-    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V, ArrayList<Integer> Idx) {
+    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V, ArrayList<Integer> Idx,int begin) {
         if(Idx.isEmpty()) return (ConstantArray) Constant.getNullValue(target);
         ArrayList<Value> ret = new ArrayList<>();
         int eleSize = target.getEleSize();
@@ -332,10 +335,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
             int j=0;
             for (int i = 0; i < numEle && j<Idx.size(); i++) {
                 int start=j,end=j;
-                for(;j<Idx.size()&&Idx.get(j)>=i*eleSize&&Idx.get(j)<(i+1)*eleSize;j++){
+                for(;j<Idx.size()&&Idx.get(j)>=begin+i*eleSize&&Idx.get(j)<begin+(i+1)*eleSize;j++){
                     end=j+1;
                 }
-                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)),new ArrayList<>(Idx.subList(start, end))));
+                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)),new ArrayList<>(Idx.subList(start, end)),begin+i*eleSize));
             }
         } else {
             ret.addAll(V);
@@ -446,7 +449,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //                    tmpArrList.put(arr_site++, Constant.getNullValue(declType));
 //                }
                 if (symbolTable.inGlobalArea()) {
-                    curVal = changeArrType(arrayType, tmpArrList, tmpIdx);//全局数组初始化一定是常量
+                    curVal = changeArrType(arrayType, tmpArrList, tmpIdx,0);//全局数组初始化一定是常量
                     curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, false);
                     symbolTable.addValue(name, curVal);
                 }
@@ -573,13 +576,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
-                        arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        if(ctx.initVal(i).arrayType.equals(arrTy.getKidType())){
+                            arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        }
                         visit(ctx.initVal(i));
                         V.addAll(tmpArrList);
                         Idx.addAll(tmpIdx);
                     }
                 }
-                arr_site=numEle * eleSize+pre;
+                if(arr_site<numEle*eleSize+pre)
+                    arr_site=numEle * eleSize+pre;
                 tmpArrList = V;
                 tmpIdx = Idx;
             }
