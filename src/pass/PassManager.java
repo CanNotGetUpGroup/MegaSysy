@@ -58,19 +58,4 @@ public class PassManager {
             mp.runOnCodeGen(CGM);
         }
     }
-
-    /**
-     * example
-     */
-    public static class Hello extends FunctionPass{
-        @Override
-        public void runOnFunction(Function F) {
-            System.out.println("hello!"+F.getName());
-        }
-
-        @Override
-        public String getName() {
-            return "Hello";
-        }
-    }
 }
