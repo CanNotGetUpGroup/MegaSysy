@@ -122,9 +122,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
             }else if(curVal.getType().equals(Type.getFloatTy())){
                 curVal=builder.createFPToSI(curVal,Type.getInt32Ty());
             }
-//            else{
-//                LogError("arr can't be factor");
-//            }
+            else{
+                LogError("arr can't be factor");
+            }
         }
     }
 
@@ -260,13 +260,14 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 for (int i = 0; i < ctx.constInitVal().size(); i++) {
                     if (ctx.constInitVal(i).children.size() == 1) {
                         visit(ctx.constInitVal(i));
-                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-                            LogError("赋值类型与定义不符");
-                        }
-                        //整数转浮点数
-                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
-                        }
+//                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
+//                            LogError("赋值类型与定义不符");
+//                        }
+//                        //整数转浮点数
+//                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
+//                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
+//                        }
+                        castType(declType);
                         /*  a[4][3][2]  arr_site=23
                          arrInstIdx  new             ptr
                              0       23/6=3 23%6=5   gep arrInst.get(0) 3
@@ -527,13 +528,14 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 for (int i = 0; i < ctx.initVal().size(); i++) {
                     if (ctx.initVal(i).children.size() == 1) {
                         visit(ctx.initVal(i));
-                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-                            LogError("赋值类型与定义不符");
-                        }
-                        //整数转浮点数
-                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
-                        }
+//                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
+//                            LogError("赋值类型与定义不符");
+//                        }
+//                        //整数转浮点数
+//                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
+//                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
+//                        }
+                        castType(declType);
                         /*  a[4][3][2]  arr_site=23
                          arrInstIdx  new             ptr
                              0       23/6=3 23%6=5   gep arrInst.get(0) 3

@@ -35,7 +35,7 @@ public class Compiler {
 //                }
 //                pw.println(sb.toString());
 //                pw.flush();
-                return;
+                throw new RuntimeException("skip this testcase");
             }
         }
 
