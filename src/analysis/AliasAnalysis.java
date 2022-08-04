@@ -22,6 +22,8 @@ public class AliasAnalysis {
     private static Module M;
     private static HashMap<GlobalVariable, ArrayList<Function>> gv2func;
     private static HashMap<Function, ArrayList<GlobalVariable>> func2gv;
+    //获取gep在数组中的索引信息，如a[2][i][4]->(a,2,i,4),调用gepInst的getArrayIdx()方法可获得
+    public static HashMap<GetElementPtrInst, ArrayList<Value>> gepToArrayIdx=new HashMap<>();
 
     public static Value getPointerValue(Value pointer) {
         while(pointer instanceof GetElementPtrInst || pointer instanceof LoadInst) {
