@@ -1,11 +1,13 @@
 package ir.instructions;
 
+import analysis.AliasAnalysis;
 import analysis.PointerInfo;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
 import org.antlr.v4.runtime.misc.Pair;
 import util.CloneMap;
+import util.Folder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -193,6 +195,14 @@ public abstract class Instructions {
             for (var i = 1; i < getOperandList().size(); i++) {
                 sb.append(", ").append(getOperand(i).getType()).append(" ").append(getOperand(i).getName());
             }
+            StringBuilder comment=new StringBuilder();
+            for(Value v:getArrayIdx()){
+                comment.append("[");
+                if(v instanceof AllocaInst) comment.append(v.getVarName());
+                else comment.append(v.getName());
+                comment.append("]");
+            }
+            setComment(comment.toString());
             return sb.toString();
         }
 
@@ -299,6 +309,31 @@ public abstract class Instructions {
                 }
             }
             return ConstantValue;
+        }
+
+        public ArrayList<Value> getArrayIdx(){
+            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
+                return AliasAnalysis.gepToArrayIdx.get(this);
+            }
+            ArrayList<Value> ret=new ArrayList<>();
+            if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst){//a
+                ret.add(getOperand(0));
+            }else if(getOperand(0) instanceof LoadInst){//数组参数
+                LoadInst LI=(LoadInst)getOperand(0);
+                AllocaInst AI=(AllocaInst)LI.getOperand(0);
+                ret.add(AI);
+                ret.add(Constants.ConstantInt.get(0));
+            }else{
+                GetElementPtrInst gep=(GetElementPtrInst)getOperand(0);
+                ret=new ArrayList<>(gep.getArrayIdx());
+            }
+            if(ret.size()>1)
+                ret.set(ret.size()-1, Folder.createAdd(ret.get(ret.size()-1),getOperand(1)));
+            for(int i=2;i<getNumOperands();i++){
+                ret.add(getOperand(i));
+            }
+            AliasAnalysis.gepToArrayIdx.put(this,ret);
+            return ret;
         }
 
         @Override
