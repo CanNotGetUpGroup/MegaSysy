@@ -275,11 +275,18 @@ public class Function extends User {
         this.useGlobalVars = useGlobalVars;
     }
 
+    public DominatorTree getDominatorTree() {
+        if(dominatorTree == null){
+            dominatorTree = new DominatorTree(this);
+        }
+        return dominatorTree;
+    }
+
     /**
      * Auto Update DominatorTree
      * @return
      */
-    public DominatorTree getDominatorTree() {
+    public DominatorTree getAndUpdateDominatorTree() {
         if(dominatorTree == null){
             dominatorTree = new DominatorTree(this);
         }else {

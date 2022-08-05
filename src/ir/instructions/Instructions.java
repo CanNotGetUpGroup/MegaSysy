@@ -817,6 +817,19 @@ public abstract class Instructions {
             }
         }
 
+        public boolean isSameWith(Instruction I){
+            if(this==I) return true;
+            if(!(I.getOp().equals(Ops.PHI))||getNumOperands()!=I.getNumOperands()||I.getType()!=getType()){
+                return false;
+            }
+            for(int i=0;i<getNumOperands();i++){
+                if(getOperand(i)!=I.getOperand(i)||getIncomingBlock(i)!=((PHIInst)I).getIncomingBlock(i)){
+                    return false;
+                }
+            }
+            return true;
+        }
+
         /**
          * phi的复制比较复杂，可能造成循环，因此此处不进行incomingValues的copy
          */

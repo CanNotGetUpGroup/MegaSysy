@@ -163,7 +163,7 @@ public class AliasAnalysis {
      */
     public static void runMemorySSA(Function F) {
         M = F.getParent();
-        DominatorTree DT =  F.getDominatorTree();
+        DominatorTree DT =  F.getAndUpdateDominatorTree();
         gv2func = new HashMap<>();
         func2gv = new HashMap<>();
 

@@ -3,17 +3,15 @@ package pass.passes;
 import ir.*;
 import ir.Module;
 import ir.Instruction.Ops;
+import org.antlr.v4.runtime.misc.Pair;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import analysis.DominatorTree;
 import util.IList;
-import util.Pair;
+import util.IListIterator;
 
 public class GVNGCM extends ModulePass {
 
@@ -41,31 +39,60 @@ public class GVNGCM extends ModulePass {
 
     public void functionGVN(Function F) {
         valueTable.clear();
-        BasicBlock entryBB = F.getEntryBB();
-        Stack<BasicBlock> stk = new Stack<>();
-        ArrayList<BasicBlock> reverse = new ArrayList<>();
 
-        stk.push(entryBB);
-        while(!stk.isEmpty()) {
-            BasicBlock cur = stk.pop();
-            reverse.add(cur);
-
-        }
-
-        for(BasicBlock BB : reverse) {
-            basicBlockGVN(BB);
+        //直接利用DT中的逆后序遍历信息
+        for(var node : F.getDominatorTree().getReversePostOrder()) {
+            basicBlockGVN(node.BB);
         }
     }
 
     public void basicBlockGVN(BasicBlock BB) {
-        // 一些指令间优化？
-
-        for(Instruction I :BB.getInstList()) {
-            instructionGVN(I);
+        combinePhi(BB);
+        ArrayList<Instruction> deadInst=new ArrayList<>();
+        IListIterator<Instruction,BasicBlock> It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator(),It_pre= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
+        Instruction I=It.next();
+        while (It.hasNext()) {
+            instructionGVN(I,deadInst);
+            if(deadInst.isEmpty()){
+                I=It.next();
+                continue;
+            }
+            if(I!=BB.getInstList().getFirst().getVal()) It.previous();
+            System.out.println("remove "+deadInst.size()+" instructions");
+            for(Instruction J:deadInst){
+                J.remove();
+            }
+            deadInst.clear();
+            if(I==BB.getInstList().getFirst().getVal()) It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
+            else I=It.next();
         }
     }
 
-    public void instructionGVN(Instruction I) {
+    public void combinePhi(BasicBlock BB){
+        IListIterator<Instruction,BasicBlock> It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
+        Instruction I=It.next();
+        while (I instanceof PHIInst) {
+            PHIInst PI = (PHIInst) I;
+            I = It.next();
+            IListIterator<Instruction, BasicBlock> Jt = BB.getInstList().iterator(I);
+            Instruction J = Jt.next();
+            while (true) {
+                if (!(J instanceof PHIInst)) {
+                    break;
+                }
+                if (PI.isSameWith(J)) {
+                    J.replaceAllUsesWith(PI);
+                    J.remove();
+                    It = (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
+                    I = It.next();
+                    break;
+                }
+                J = Jt.next();
+            }
+        }
+    }
+
+    public void instructionGVN(Instruction I,ArrayList<Instruction> deadInst) {
 
     }
 

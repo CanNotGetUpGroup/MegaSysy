@@ -30,7 +30,7 @@ public class SimplifyCFG extends FunctionPass {
     @Override
     public void runOnFunction(Function F) {
         this.F=F;
-        DT = new DominatorTree(F);
+        DT = F.getAndUpdateDominatorTree();
         boolean changed = mergeEmptyReturnBlocks(F);
         changed|=iterativelySimplify(F);
         if(!changed) return;
