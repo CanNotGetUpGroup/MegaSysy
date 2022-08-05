@@ -39,4 +39,8 @@ public class Register extends MCOperand {
     public Type getType(){
         return type;
     }
+
+    public boolean isPrecolored() {
+        return this instanceof MCRegister && !((MCRegister) this).isAllocated;
+    }
 }

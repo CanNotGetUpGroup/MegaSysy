@@ -2,8 +2,18 @@ package backend.machineCode.Operand;
 
 public class MCRegister extends Register {
 
+    public int getId() {
+        return id;
+    }
+    public boolean isAllocated = false;
+
     private int id;
     private RegName name;
+
+    public static int maxRegNum(Content type){
+        if(type == Content.Int) return 14;
+        else return 32;
+    }
 
 
     private String strName;
@@ -74,6 +84,15 @@ public class MCRegister extends Register {
 
     public RegName getName() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Register))
+            throw new RuntimeException("can't compare");
+        if (!(obj instanceof MCRegister))
+            return false;
+        return getType() == ((MCRegister) obj).getType() && getId() == ((MCRegister) obj).getId();
     }
 
     @Override

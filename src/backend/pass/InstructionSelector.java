@@ -220,14 +220,20 @@ public class InstructionSelector {
                 // TODO: float num cmp
                 if (ir.getNumOperands() == 1) { // unconditional branch
                     var dest = ir.getOperand(0);
-                    new Branch(mbb, mf.getBBMap().get((BasicBlock) dest), false, Branch.Type.Block).pushBacktoInstList();
+                    var mdest =mf.getBBMap().get((BasicBlock) dest);
+                    new Branch(mbb, mdest, false, Branch.Type.Block).pushBacktoInstList();
+                    mbb.addSuccessor(mdest);
                 } else { // conditional branch
                     if (ir.getOperand(0) instanceof Constants.ConstantInt) {
                         int val = ((Constants.ConstantInt) (ir.getOperand(0))).getVal();
                         if (val == 0) {
-                            new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
+                            var dest =  mf.getBBMap().get(ir.getOperand(1));
+                            new Branch(mbb,dest , false, Branch.Type.Block).pushBacktoInstList();
+                            mbb.addSuccessor(dest);
                         } else {  // must be 1
-                            new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block).pushBacktoInstList();
+                            var dest = mf.getBBMap().get(ir.getOperand(2));
+                            new Branch(mbb, dest, false, Branch.Type.Block).pushBacktoInstList();
+                            mbb.addSuccessor(dest);
                         }
                     } else { // cond is an instruction
                         var cond = (CmpInst) ir.getOperand(0);
@@ -247,11 +253,15 @@ public class InstructionSelector {
                                     .pushBacktoInstList();
                         // TODO: change the ir.getOperand(2) after merge
                         // TODO: Float number
-                        MachineInstruction inst = new Branch(mbb, mf.getBBMap().get(ir.getOperand(2)), false, Branch.Type.Block);
+                        var dest = mf.getBBMap().get(ir.getOperand(2));
+                        MachineInstruction inst = new Branch(mbb, dest, false, Branch.Type.Block);
+                        mbb.addSuccessor(dest);
                         inst.setCond(MachineInstruction.Condition.irToMCCond(op));
                         inst.pushBacktoInstList();
 
-                        new Branch(mbb, mf.getBBMap().get(ir.getOperand(1)), false, Branch.Type.Block).pushBacktoInstList();
+                        dest = mf.getBBMap().get(ir.getOperand(1));
+                        new Branch(mbb, dest, false, Branch.Type.Block).pushBacktoInstList();
+                        mbb.addSuccessor(dest);
                     }
                 }
                 node = node.getNext();
@@ -412,8 +422,11 @@ public class InstructionSelector {
                         if (dest == null) {
                             dest = new VirtualRegister();
                             new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, op2).pushBacktoInstList();
-                        } else // Warning: NOT SSA here
-                            new Arithmetic(mbb, Arithmetic.Type.ADD, dest, op2).pushBacktoInstList();
+                        } else {
+                            var dest1 = new VirtualRegister();
+                            new Arithmetic(mbb, Arithmetic.Type.ADD, dest1, dest, op2).pushBacktoInstList();
+                            dest = dest1;
+                        }
                     }
                     if (srcType.isInt32Ty() || i >= ir.getNumOperands() - 1) break;
                     i++;
@@ -424,8 +437,12 @@ public class InstructionSelector {
                     if (dest == null) {
                         dest = new VirtualRegister();
                         new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, constOffset).pushBacktoInstList();
-                    } else // Warning: NOT SSA here
-                        new Arithmetic(mbb, Arithmetic.Type.ADD, dest, constOffset).pushBacktoInstList();
+                    } else {
+                        var dest2 = new VirtualRegister();
+                        new Arithmetic(mbb, Arithmetic.Type.ADD, dest2, dest, constOffset).pushBacktoInstList();
+                        dest = dest2;
+                    }
+
                 }
                 if (dest == null) dest = srcAddr;
                 valueMap.put(ir, dest);
