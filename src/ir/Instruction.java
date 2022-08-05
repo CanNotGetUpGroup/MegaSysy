@@ -23,6 +23,8 @@ public abstract class Instruction extends User {
         ZExt, SIToFP, FPToSI, BitCast,
         //Other
         ICmp, FCmp, Call, Select, PHI,
+        //MemSSA
+        MemDef,MemUse,MemPHI
     }
 
     public BasicBlock getParent() {
@@ -54,6 +56,11 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         instNode = new IListNode<>(this, MyIRBuilder.getInstance().BB.getInstList());
+    }
+
+    public Instruction(Type type,Ops op){
+        super(type,0);
+        this.op=op;
     }
 
     public Instruction(Type type, Ops op, String name, int numOperands) {
@@ -107,6 +114,11 @@ public abstract class Instruction extends User {
             case Ret, Br -> true;
             default -> false;
         };
+    }
+
+    public static boolean isBinary(Ops op){
+        return op.ordinal() >= Ops.Add.ordinal()
+            && op.ordinal() <= Ops.Xor.ordinal();
     }
 
     /**

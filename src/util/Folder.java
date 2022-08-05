@@ -6,11 +6,411 @@ import ir.instructions.Instructions;
 import ir.instructions.Instructions.*;
 import ir.Constants.*;
 import ir.Instruction.Ops;
+import util.Match.*;
 
 /**
- * 常量折叠
+ * 指令化简和常量折叠
  */
 public class Folder {
+    //指令化简
+
+    public static Value simplifyInstruction(Instruction I){
+        Value ret=null;
+        int recurseTimes=3;
+        if(Instruction.isBinary(I.getOp())){
+            ret=simplifyBin(I.getOp(),I.getOperand(0),I.getOperand(1),recurseTimes);
+        }
+//        switch (I.getOp()){
+//            case Add -> {
+//                ret=simplifyAdd(I);
+//            }
+//        }
+        return ret;
+    }
+
+    public static Value simplifyAdd(Value X,Value Y,int recurse){
+        Value ret=createAdd(X,Y);
+        if(ret!=null) return ret;
+        if(X instanceof Constant){
+            Value tmp=X;
+            X=Y;
+            Y=tmp;
+        }
+        Match MX=Match.createMatch(X),MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantInt.get(0));
+        // X = sub (0, Y) || Y = sub (0, X)
+        if(Match.compare(X,new MatchBin(M0,MY,Ops.Sub))
+                ||Match.compare(Y,new MatchBin(M0,MX,Ops.Sub))){
+            return ConstantInt.get(0);
+        }
+        // X = sub (A, B), Y = sub (B, A)
+        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MB,Ops.Sub))
+                &&Match.compare(Y,new MatchBin(Match.createMatch(MB.V),Match.createMatch(MA.V),Ops.Sub))){
+            return ConstantInt.get(0);
+        }
+
+        // X + (Y - X) -> Y
+        // (Y - X) + X -> Y
+        MatchUndef MU=new MatchUndef();
+        if(Match.compare(Y,new MatchBin(MU,MX,Ops.Sub))
+                ||Match.compare(X,new MatchBin(MU,MY,Ops.Sub))){
+            return MU.V;
+        }
+        ret=simplifyAssociative(Ops.Add,X,Y,recurse);
+        return ret;
+    }
+
+    public static Value simplifyFAdd(Value X,Value Y,int recurse){
+        Value ret=createFAdd(X,Y);
+        if(ret!=null) return ret;
+        if(X instanceof Constant){
+            Value tmp=X;
+            X=Y;
+            Y=tmp;
+        }
+        Match MX=Match.createMatch(X),MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantFP.get(0));
+        // X = sub (0, Y) || Y = sub (0, X)
+        if(Match.compare(X,new MatchBin(M0,MY,Ops.FSub))
+                ||Match.compare(Y,new MatchBin(M0,MX,Ops.FSub))){
+            return ConstantFP.get(0);
+        }
+        // X = sub (A, B), Y = sub (B, A)
+        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MB,Ops.FSub))
+                &&Match.compare(Y,new MatchBin(Match.createMatch(MB.V),Match.createMatch(MA.V),Ops.Sub))){
+            return ConstantFP.get(0);
+        }
+
+        // X + (Y - X) -> Y
+        // (Y - X) + X -> Y
+        MatchUndef MU=new MatchUndef();
+        if(Match.compare(Y,new MatchBin(MU,MX,Ops.FSub))
+                ||Match.compare(X,new MatchBin(MU,MY,Ops.FSub))){
+            return MU.V;
+        }
+        ret=simplifyAssociative(Ops.FAdd,X,Y,recurse);
+        return ret;
+    }
+
+    public static Value simplifySub(Value X,Value Y,int recurse){
+        Value ret=createSub(X,Y);
+        if(ret!=null) return ret;
+        Match MY=Match.createMatch(Y);
+        // X - X -> 0
+        if(Match.compare(X,MY)){
+            return ConstantInt.get(0);
+        }
+        ret=simplifySubAssociative(Ops.Sub,X,Y,recurse);
+        return ret;
+    }
+
+    public static Value simplifyFSub(Value X,Value Y,int recurse){
+        Value ret=createFSub(X,Y);
+        if(ret!=null) return ret;
+        Match MY=Match.createMatch(Y);
+        // X - X -> 0
+        if(Match.compare(X,MY)){
+            return ConstantFP.get(0);
+        }
+        ret=simplifySubAssociative(Ops.FSub,X,Y,recurse);
+        return ret;
+    }
+
+    public static Value simplifyMul(Value X,Value Y,int recurse){
+        Value ret=createMul(X,Y);
+        if(ret!=null) return ret;
+        if(X instanceof Constant){
+            Value tmp=X;
+            X=Y;
+            Y=tmp;
+        }
+        Match MX=Match.createMatch(X),MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantInt.get(0));
+        Match M1=new MatchConst(ConstantInt.get(1));
+        // X * 0 -> 0
+        if(Match.compare(Y,M0)){
+            return ConstantInt.get(0);
+        }
+        // X * 1 -> X
+        if(Match.compare(Y,M1)){
+            return X;
+        }
+        // (X / Y) * Y || Y * (X / Y)
+        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MY,Ops.SDiv))
+                ||Match.compare(Y,new MatchBin(MA,MX,Ops.SDiv))){
+            return MA.V;
+        }
+
+        ret=simplifyAssociative(Ops.Mul,X,Y,recurse);
+        return ret;
+    }
+
+    public static Value simplifyFMul(Value X,Value Y,int recurse){
+        Value ret=createFMul(X,Y);
+        if(ret!=null) return ret;
+        if(X instanceof Constant){
+            Value tmp=X;
+            X=Y;
+            Y=tmp;
+        }
+        Match MX=Match.createMatch(X),MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantInt.get(0));
+        Match M1=new MatchConst(ConstantInt.get(1));
+        // X * 0 -> 0
+        if(Match.compare(Y,M0)){
+            return ConstantFP.get(0);
+        }
+        // X * 1 -> X
+        if(Match.compare(Y,M1)){
+            return X;
+        }
+        // (X / Y) * Y || Y * (X / Y)
+        MatchUndef MA=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MY,Ops.FDiv))
+                ||Match.compare(Y,new MatchBin(MA,MX,Ops.FDiv))){
+            return MA.V;
+        }
+
+        ret=simplifyAssociative(Ops.FMul,X,Y,recurse);
+        return ret;
+    }
+
+    public static Value simplifyDiv(Value X,Value Y,int recurse){
+        Value ret=createSDiv(X,Y);
+        if(ret!=null) return ret;
+        Match MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantInt.get(0));
+        // 0 / X -> 0
+        if(Match.compare(X,M0)){
+            return ConstantInt.get(0);
+        }
+        // X / X -> 1
+        if(Match.compare(X,MY)){
+            return ConstantInt.get(1);
+        }
+        // X * Y / Y -> X
+        MatchUndef MA=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MY,Ops.Mul))){
+            return MA.V;
+        }
+        return ret;
+    }
+
+    public static Value simplifyFDiv(Value X,Value Y,int recurse){
+        Value ret=createFDiv(X,Y);
+        if(ret!=null) return ret;
+        Match MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantInt.get(0));
+        // 0 / X -> 0
+        if(Match.compare(X,M0)){
+            return ConstantFP.get(0);
+        }
+        // X / X -> 1
+        if(Match.compare(X,MY)){
+            return ConstantFP.get(1);
+        }
+        // X * Y / Y -> X
+        MatchUndef MA=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MY,Ops.FMul))){
+            return MA.V;
+        }
+        return ret;
+    }
+
+    public static Value simplifySRem(Value X,Value Y,int recurse){
+        Value ret=createSRem(X,Y);
+        if(ret!=null) return ret;
+        Match MY=Match.createMatch(Y);
+        Match M0=new MatchConst(ConstantInt.get(0));
+        // 0 % X -> 0
+        if(Match.compare(X,M0)){
+            return ConstantInt.get(0);
+        }
+        // X % X -> 0
+        if(Match.compare(X,MY)){
+            return ConstantInt.get(0);
+        }
+        // X * Y % Y -> 0
+        MatchUndef MA=new MatchUndef();
+        if(Match.compare(X,new MatchBin(MA,MY,Ops.Mul))){
+            return ConstantInt.get(0);
+        }
+        return ret;
+    }
+
+    /**
+     * 结合律化简
+     * @param recurse 递归深度限制
+     */
+    public static Value simplifyAssociative(Ops Op,Value L,Value R,int recurse){
+        if(!Instruction.isAssociative(Op)) return null;
+        if((recurse--)==0) return null;
+        Instruction LI=null,RI=null;
+        if(L instanceof Instruction){
+            LI=(Instruction)L;
+        }
+        if(R instanceof Instruction){
+            RI=(Instruction)R;
+        }
+        //(A op B) op C ==> A op (B op C)
+        if(LI!=null&&LI.getOp()==Op){
+            Value A=LI.getOperand(0),B=LI.getOperand(1);
+            Value V=simplifyBin(Op,B, RI,recurse);
+            if(V!=null){
+                if(V==B) return L;
+                Value W=simplifyBin(Op,A,V,recurse);
+                if(W!=null){
+                    return W;
+                }
+            }
+        }
+        //A op (B op C) ==> (A op B) op C
+        if(RI!=null&&RI.getOp()==Op){
+            Value B=RI.getOperand(0),C=RI.getOperand(1);
+            Value V=simplifyBin(Op,LI, B,recurse);
+            if(V!=null){
+                if(V==B) return R;
+                Value W=simplifyBin(Op,V,C,recurse);
+                if(W!=null){
+                    return W;
+                }
+            }
+        }
+        //若还支持交换律，则可以继续优化
+        if(!Instruction.isCommutative(Op)) return null;
+        //(A op B) op C ==> (C op A) op B
+        if(LI!=null&&LI.getOp()==Op){
+            Value A=LI.getOperand(0),B=LI.getOperand(1);
+            Value V=simplifyBin(Op,RI, A,recurse);
+            if(V!=null){
+                if(V==A) return L;
+                Value W=simplifyBin(Op,V,B,recurse);
+                if(W!=null){
+                    return W;
+                }
+            }
+        }
+        //A op (B op C) ==> B op (C op A)
+        if(RI!=null&&RI.getOp()==Op){
+            Value B=RI.getOperand(0),C=RI.getOperand(1);
+            Value V=simplifyBin(Op,C,LI,recurse);
+            if(V!=null){
+                if(V==C) return R;
+                return simplifyBin(Op,B,V,recurse);
+            }
+        }
+        return null;
+    }
+
+    /**
+     *
+     * @param Op sub或FSub
+     */
+    public static Value simplifySubAssociative(Ops Op,Value L,Value R,int recurse){
+        if(recurse<=0) return null;
+        Instruction LI=null,RI=null;
+        if(L instanceof Instruction){
+            LI=(Instruction)L;
+        }
+        if(R instanceof Instruction){
+            RI=(Instruction)R;
+        }
+        Ops add=(Op==Ops.Sub)?Ops.Add:Ops.FAdd;
+        // (X + Y) - Z -> X + (Y - Z) or Y + (X - Z)
+        if(LI!=null&&LI.getOp()==add){ //Add或FAdd
+            Value X=LI.getOperand(0),Y=LI.getOperand(1);
+            Value V=simplifyBin(Op,Y,RI,recurse-1);
+            if(V!=null){
+                if(V==Y) return L;
+                Value W=simplifyBin(add,X,V,recurse-1);
+                if(W!=null){
+                    return W;
+                }
+            }
+            V=simplifyBin(Op,X,RI,recurse-1);
+            if(V!=null){
+                if(V==X) return L;
+                Value W=simplifyBin(add,Y,V,recurse-1);
+                if(W!=null){
+                    return W;
+                }
+            }
+        }
+        // X - (Y + Z) -> (X - Y) - Z or (X - Z) - Y
+        if(RI!=null&&RI.getOp()==add){ //Add或FAdd
+            Value Y=RI.getOperand(0),Z=RI.getOperand(1);
+            Value V=simplifyBin(Op,LI,Y,recurse-1);
+            if(V!=null){
+                Value W=simplifyBin(Op,V,Z,recurse-1);
+                if(W!=null){
+                    return W;
+                }
+            }
+            V=simplifyBin(Op,LI,Z,recurse-1);
+            if(V!=null){
+                Value W=simplifyBin(Op,V,Y,recurse-1);
+                if(W!=null){
+                    return W;
+                }
+            }
+        }
+        // Z - (X - Y) -> (Z - X) + Y
+        if(RI!=null&&RI.getOp()==Op){ //Sub或FSub
+            Value X=RI.getOperand(0),Y=RI.getOperand(1);
+            Value V=simplifyBin(Op,LI,X,recurse-1);
+            if(V!=null){
+                return simplifyBin(add,V,Y,recurse-1);
+            }
+        }
+        return null;
+    }
+
+    public static Value simplifyBin(Ops Op,Value L,Value R,int recurse){
+        if(L instanceof GlobalVariable){
+            L=((GlobalVariable) L).getOperand(0);
+        }
+        if(R instanceof GlobalVariable){
+            R=((GlobalVariable) R).getOperand(0);
+        }
+        switch (Op){
+            case Add -> {
+                return simplifyAdd(L,R,recurse);
+            }
+            case FAdd -> {
+                return simplifyFAdd(L,R,recurse);
+            }
+            case Sub -> {
+                return simplifySub(L,R,recurse);
+            }
+            case FSub -> {
+                return simplifyFSub(L,R,recurse);
+            }
+            case Mul -> {
+                return simplifyMul(L,R,recurse);
+            }
+            case FMul -> {
+                return simplifyFMul(L,R,recurse);
+            }
+            case SDiv -> {
+                return simplifyDiv(L,R,recurse);
+            }
+            case FDiv -> {
+                return simplifyFDiv(L,R,recurse);
+            }
+            case SRem -> {
+                return simplifySRem(L,R,recurse);
+            }
+            default -> {
+                return null;
+            }
+        }
+    }
+
+    //常量折叠
+
     public static Constant createIcmp(CmpInst.Predicate P, Constant LHS, Constant RHS) {
         assert LHS instanceof ConstantInt && RHS instanceof ConstantInt;
         assert Instructions.ICmpInst.isIntPredicate(P);
@@ -274,6 +674,10 @@ public class Folder {
 
     public static Value createFDiv(Value LHS, Value RHS) {
         return createBinOp(Ops.FDiv, LHS, RHS);
+    }
+
+    public static Value createSRem(Value LHS, Value RHS) {
+        return createBinOp(Ops.SRem, LHS, RHS);
     }
 
     public static Value createAnd(Value LHS, Value RHS) {

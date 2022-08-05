@@ -2,13 +2,15 @@ package pass.passes;
 
 import ir.*;
 import ir.Module;
+import ir.Instruction.Ops;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
+import analysis.AliasAnalysis;
 import analysis.DominatorTree.TreeNode;
 import java.util.ArrayList;
 import java.util.HashSet;
-
-import java.util.*;
+import java.util.Stack;
+import java.util.Set;
 
 /**
  * 求与Br Ret Store和有附加影响的Call的指令相关的闭包，删除闭包外指令
@@ -17,6 +19,7 @@ import java.util.*;
 public class DeadCodeEmit extends ModulePass {
 
     Set<Instruction> usefulInstSet = new HashSet<>();
+    Stack<Instruction> stk = new Stack<>();
 
     public DeadCodeEmit() {
         super();
@@ -28,6 +31,8 @@ public class DeadCodeEmit extends ModulePass {
         for(Function F:M.getFuncList()){
             // 非Builtin函数
             if(F.isDefined()) {
+                // TODO: 暂时先在这里初始化func-gv映射 StoreDel要用
+                AliasAnalysis.runMemorySSA(F);
                 functionDCE(F);
             }
 
@@ -39,12 +44,35 @@ public class DeadCodeEmit extends ModulePass {
             F.remove();
         }
 
-        // TODO: DEBUG for .ll test
-        M.rename();
     }
 
     public void functionDCE(Function F) {
-        // removeDeadStore
+        for(BasicBlock BB : F.getBbList()) {
+            for(Instruction I : BB.getInstList()) {
+                if(I instanceof StoreInst) {
+                    Value pointer = AliasAnalysis.getArrayValue(I.getOperand(1));
+                    for(var nInstNode = I.getInstNode().getNext(); nInstNode != null;) {
+                        Instruction nInst = nInstNode.getVal();
+                        if(nInst.getOp().equals(Ops.Store)){
+                            if(I.getOperand(1) == nInst.getOperand(1)) {
+                                I.remove();
+                                break;
+                            }
+                        } else if(nInst.getOp().equals(Ops.Load)) {
+                             Value npointer = AliasAnalysis.getArrayValue(nInst.getOperand(0));
+                             if(AliasAnalysis.alias(npointer, pointer)) {
+                                 break;
+                             }
+                        } else if(nInst.getOp().equals(Ops.Call)) {
+                            if(AliasAnalysis.callAlias(pointer, (CallInst)nInst)) {
+                                break;
+                            }
+                        }
+                        nInstNode = nInstNode.getNext();
+                    }
+                }
+            }
+        }
 
         usefulInstSet.clear();
         for(BasicBlock BB : F.getBbList()){
@@ -86,9 +114,18 @@ public class DeadCodeEmit extends ModulePass {
             return;
         }
         usefulInstSet.add(I);
-        for(Value op : I.getOperandList()) {
-            if(op instanceof Instruction) {
-                findClosure((Instruction) op);
+        stk.add(I);
+        findClosureDFS();
+    }
+
+    public void findClosureDFS() {
+        while(!stk.isEmpty()) {
+            Instruction I = stk.pop();
+            for(Value op : I.getOperandList()) {
+                if(op instanceof Instruction && !usefulInstSet.contains((Instruction) op)) {
+                    usefulInstSet.add((Instruction) op);
+                    stk.add((Instruction) op);
+                }
             }
         }
     }
