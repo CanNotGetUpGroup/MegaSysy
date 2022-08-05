@@ -4,6 +4,7 @@
 /.idea/
 /src/backend/test/*
 /MC/
+/1.zip
 /src/testcase.s
 /src/testcase.sy
 /src/windows_run.py

@@ -694,10 +694,6 @@ public class Folder {
         return createBinOp(Ops.FDiv, LHS, RHS);
     }
 
-    public static Value createSRem(Value LHS, Value RHS) {
-        return createBinOp(Ops.SRem, LHS, RHS);
-    }
-
     public static Value createAnd(Value LHS, Value RHS) {
         return createBinOp(Ops.And, LHS, RHS);
     }
