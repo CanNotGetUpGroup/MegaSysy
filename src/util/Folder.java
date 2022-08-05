@@ -11,6 +11,22 @@ import ir.Instruction.Ops;
  * 常量折叠
  */
 public class Folder {
+    public static Value simplifyInstruction(Instruction I){
+        Value ret=null;
+        switch (I.getOp()){
+            case Add -> {
+                ret=simplifyAdd(I);
+            }
+        }
+        return ret;
+    }
+
+    public static Value simplifyAdd(Instruction I){
+        Value ret=createAdd(I.getOperand(0),I.getOperand(1));
+        if(ret!=null) return ret;
+        return ret;
+    }
+
     public static Constant createIcmp(CmpInst.Predicate P, Constant LHS, Constant RHS) {
         assert LHS instanceof ConstantInt && RHS instanceof ConstantInt;
         assert Instructions.ICmpInst.isIntPredicate(P);

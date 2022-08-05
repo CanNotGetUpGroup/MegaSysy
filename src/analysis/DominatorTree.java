@@ -112,13 +112,14 @@ public class DominatorTree {
         PostOrder.add(p);
     }
 
-    public void getReversePostOrder() {
+    public ArrayList<TreeNode> getReversePostOrder() {
         if (ReversePostOrder.size() == 0) {
             var tmp = getPostOrder();
             for (int i = tmp.size() - 1; i >= 0; i--) {
                 ReversePostOrder.add(tmp.get(i));
             }
         }
+        return ReversePostOrder;
     }
 
     public ArrayList<TreeNode> getDTPostOrder() {
