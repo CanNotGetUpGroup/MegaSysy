@@ -116,9 +116,9 @@ public abstract class Instruction extends User {
         };
     }
 
-    public boolean isBinary(){
-        return this.op.ordinal() >= Ops.Add.ordinal()
-            && this.op.ordinal() <= Ops.Xor.ordinal();
+    public static boolean isBinary(Ops op){
+        return op.ordinal() >= Ops.Add.ordinal()
+            && op.ordinal() <= Ops.Xor.ordinal();
     }
 
     /**
