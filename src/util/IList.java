@@ -79,6 +79,10 @@ public class IList<T, P> implements Iterable<T> {
         e.insertBefore(tail);
     }
 
+    public void insertBeforeEnd(IListNode<T, P> e) {
+        e.insertBefore(getLast());
+    }
+
     public void mergeList(IList<T, P> follow) {
         IListNode<T, P> last=getLast();
         IListNode<T, P> followFirst=follow.getFirst();

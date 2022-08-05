@@ -2,6 +2,7 @@ package pass.passes;
 
 import ir.*;
 import ir.Module;
+import ir.DerivedTypes.PointerType;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
 import analysis.AliasAnalysis;
@@ -24,6 +25,7 @@ public class InterproceduralAnalysis extends ModulePass {
             F.getCallerList().clear();
             // F.setSideEffect(true); // TODO: sideEffect判断
             F.setSideEffect(!F.isDefined());
+            F.setUseGlobalVars(!F.isDefined());
         }
         for(Function F : M.getFuncList()) {
             for(BasicBlock BB : F.getBbList()) {
@@ -43,11 +45,28 @@ public class InterproceduralAnalysis extends ModulePass {
                             Value pointer = AliasAnalysis.getPointerValue(addr);
                             if(!AliasAnalysis.isLocal(pointer)){
                                 F.setSideEffect(true);
+                                if(AliasAnalysis.isGlobal(pointer)){
+                                    GlobalVariable gv = (GlobalVariable) pointer;
+                                    if(((PointerType) gv.getType()).getElementType().isInt32Ty() || ((PointerType) gv.getType()).getElementType().isFloatTy()) {
+                                        F.getStoreGlobalVars().add(gv);
+                                    }
+                                }
                             }
                         }
-                        // case Load -> {
-
-                        // }
+                        case Load -> {
+                            Value addr = I.getOperand(0);
+                            if(addr instanceof AllocaInst && (((AllocaInst) addr).getAllocatedType().isInt32Ty()||((AllocaInst) addr).getAllocatedType().isFloatTy())){
+                                continue;
+                            }
+                            Value pointer = AliasAnalysis.getPointerValue(addr);
+                            if(AliasAnalysis.isGlobal(pointer)){
+                                F.setUseGlobalVars(true);
+                                GlobalVariable gv = (GlobalVariable) pointer;
+                                if(((PointerType) gv.getType()).getElementType().isInt32Ty() || ((PointerType) gv.getType()).getElementType().isFloatTy()) {
+                                    F.getLoadGlobalVars().add(gv);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -57,6 +76,9 @@ public class InterproceduralAnalysis extends ModulePass {
             if(F.hasSideEffect()){
                 spreadSideEffect(F);
             }
+            if(F.useGlobalVars()){
+                spreadUseGlobalVariables(F);
+            }
         }
     }
 
@@ -65,6 +87,16 @@ public class InterproceduralAnalysis extends ModulePass {
             if(!callerF.hasSideEffect()){
                 callerF.setSideEffect(true);
                 spreadSideEffect(callerF);
+            }
+        }
+    }
+
+    public void spreadUseGlobalVariables(Function F) {
+        for(Function callerF : F.getCallerList()) {
+            callerF.getStoreGlobalVars().addAll(F.getStoreGlobalVars());
+            if(!callerF.useGlobalVars()) {
+                callerF.setUseGlobalVars(true);
+                spreadUseGlobalVariables(callerF);
             }
         }
     }

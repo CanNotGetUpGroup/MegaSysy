@@ -119,8 +119,11 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (!curVal.getType().equals(ty)) {
             if(curVal.getType().equals(Type.getInt32Ty())){
                 curVal=builder.createSIToFP(curVal,Type.getFloatTy());
-            }else{
+            }else if(curVal.getType().equals(Type.getFloatTy())){
                 curVal=builder.createFPToSI(curVal,Type.getInt32Ty());
+            }
+            else{
+                LogError("arr can't be factor");
             }
         }
     }
@@ -204,7 +207,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //            while (arr_site < arrayType.getNumElements() * arrayType.getEleSize()) {
 //                tmpArrList.put(arr_site++, Constant.getNullValue(declType));
 //            }
-            curVal = changeArrType(arrayType, tmpArrList, tmpIdx);
+            curVal = changeArrType(arrayType, tmpArrList, tmpIdx,0);
 
             if (symbolTable.inGlobalArea()) {
                 curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, true);
@@ -257,13 +260,14 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 for (int i = 0; i < ctx.constInitVal().size(); i++) {
                     if (ctx.constInitVal(i).children.size() == 1) {
                         visit(ctx.constInitVal(i));
-                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-                            LogError("赋值类型与定义不符");
-                        }
-                        //整数转浮点数
-                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
-                        }
+//                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
+//                            LogError("赋值类型与定义不符");
+//                        }
+//                        //整数转浮点数
+//                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
+//                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
+//                        }
+                        castType(declType);
                         /*  a[4][3][2]  arr_site=23
                          arrInstIdx  new             ptr
                              0       23/6=3 23%6=5   gep arrInst.get(0) 3
@@ -307,13 +311,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}
-                        arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        if(ctx.constInitVal(i).arrayType.equals(arrTy.getKidType())){
+                            arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        }
                         visit(ctx.constInitVal(i));
                         V.addAll(tmpArrList);
                         Idx.addAll(tmpIdx);
                     }
                 }
-                arr_site=numEle * eleSize+pre;
+                if(arr_site<numEle*eleSize+pre)
+                    arr_site=numEle * eleSize+pre;
                 tmpArrList = V;
                 tmpIdx = Idx;
             }
@@ -321,7 +328,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
-    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V, ArrayList<Integer> Idx) {
+    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V, ArrayList<Integer> Idx,int begin) {
         if(Idx.isEmpty()) return (ConstantArray) Constant.getNullValue(target);
         ArrayList<Value> ret = new ArrayList<>();
         int eleSize = target.getEleSize();
@@ -330,10 +337,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
             int j=0;
             for (int i = 0; i < numEle && j<Idx.size(); i++) {
                 int start=j,end=j;
-                for(;j<Idx.size()&&Idx.get(j)>=i*eleSize&&Idx.get(j)<(i+1)*eleSize;j++){
+                for(;j<Idx.size()&&Idx.get(j)>=begin+i*eleSize&&Idx.get(j)<begin+(i+1)*eleSize;j++){
                     end=j+1;
                 }
-                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)),new ArrayList<>(Idx.subList(start, end))));
+                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)),new ArrayList<>(Idx.subList(start, end)),begin+i*eleSize));
             }
         } else {
             ret.addAll(V);
@@ -444,7 +451,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //                    tmpArrList.put(arr_site++, Constant.getNullValue(declType));
 //                }
                 if (symbolTable.inGlobalArea()) {
-                    curVal = changeArrType(arrayType, tmpArrList, tmpIdx);//全局数组初始化一定是常量
+                    curVal = changeArrType(arrayType, tmpArrList, tmpIdx,0);//全局数组初始化一定是常量
                     curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, false);
                     symbolTable.addValue(name, curVal);
                 }
@@ -521,13 +528,14 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 for (int i = 0; i < ctx.initVal().size(); i++) {
                     if (ctx.initVal(i).children.size() == 1) {
                         visit(ctx.initVal(i));
-                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-                            LogError("赋值类型与定义不符");
-                        }
-                        //整数转浮点数
-                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
-                        }
+//                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
+//                            LogError("赋值类型与定义不符");
+//                        }
+//                        //整数转浮点数
+//                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
+//                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
+//                        }
+                        castType(declType);
                         /*  a[4][3][2]  arr_site=23
                          arrInstIdx  new             ptr
                              0       23/6=3 23%6=5   gep arrInst.get(0) 3
@@ -571,13 +579,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
-                        arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        if(ctx.initVal(i).arrayType.equals(arrTy.getKidType())){
+                            arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        }
                         visit(ctx.initVal(i));
                         V.addAll(tmpArrList);
                         Idx.addAll(tmpIdx);
                     }
                 }
-                arr_site=numEle * eleSize+pre;
+                if(arr_site<numEle*eleSize+pre)
+                    arr_site=numEle * eleSize+pre;
                 tmpArrList = V;
                 tmpIdx = Idx;
             }
@@ -900,6 +911,25 @@ public class Visitor extends SysyBaseVisitor<Value> {
 
     public Value getLVal(Value V, SysyParser.LValContext ctx) {
         Type ty = V.getType();
+        if(V instanceof GlobalVariable){
+            GlobalVariable gv=(GlobalVariable)V;
+            if(gv.isConstantGlobal()&&gv.getOperand(0).getType().isArrayTy()){
+                ConstantArray CA=(ConstantArray)gv.getOperand(0);
+                Value tmp=CA;
+                int i=0;
+                for (i = 0; i < ctx.exp().size(); i++) {
+                    visit(ctx.exp(i));
+                    if(curVal instanceof ConstantInt){
+                        tmp = ((ConstantArray)tmp).getElement(((ConstantInt)curVal).getVal());
+                    }else{
+                        break;
+                    }
+                }
+                if(i==ctx.exp().size()){
+                    return tmp;
+                }
+            }
+        }
         if (ty.isPointerTy()) {
             PointerType pty = (PointerType) ty;
             if (pty.getElementType().isPointerTy() && ctx.exp().size() != 0) {
@@ -918,6 +948,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             } else if (pty.getElementType().isArrayTy()) {
                 for (int i = 0; i < ctx.exp().size(); i++) {
                     visit(ctx.exp(i));
+
                     V = builder.createGEP(V, new ArrayList<>() {{
                         add(ConstantInt.const_0());
                         add(curVal);

@@ -225,6 +225,16 @@ public class Constants {
         }
 
         /**
+         * 获取a[i]
+         */
+        public Value getElement(int i){
+            if(i>=getNumOperands()){
+                return Constant.getNullValue(getType().getKidType());
+            }
+            return getOperand(i);
+        }
+
+        /**
          * 生成类型为ty的全0数组
          * @param ty
          * @return
@@ -278,6 +288,20 @@ public class Constants {
         @Override
         public Value copy(CloneMap cloneMap) {
             return this;
+        }
+
+        public ArrayList<Integer> getDims() { 
+            ArrayList<Integer> ret = new ArrayList<>();
+            ConstantArray cur = this;
+            while(true) { 
+                ret.add(cur.getArr().size());
+                // 添加短路条件 zeroinit？
+                if(cur.getArr().size()==0 || !(cur.getArr().get(0) instanceof ConstantArray)) {
+                    break;
+                }
+                cur = (ConstantArray) cur.getArr().get(0);
+            }
+            return ret;
         }
     }
 

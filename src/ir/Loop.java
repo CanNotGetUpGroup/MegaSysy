@@ -6,12 +6,24 @@ public class Loop {
 
     private Loop parentLoop; // 父循环
     private BasicBlock loopHeader; // 循环头基本块
+    private BasicBlock loopPreheader; // 循环头基本快的唯一循环外前继，且该前继的唯一后继是循环头基本快（不存在则为null）
     private ArrayList<Loop> subLoops; // loop中的子loop
     private ArrayList<BasicBlock> bbList; // loop中包含的基本块
 
     private ArrayList<BasicBlock> exitingBlocks; // 循环内即将退出循环的block
     private ArrayList<BasicBlock> exitBlocks; // 循环推出后第一个到达的block
     private ArrayList<BasicBlock> latchBlocks; // 跳转回到头部的基本块
+
+    // // Canonical loop 中才计算
+    // // loop header 有两个pred，只有一个 exiting block，只有一个 latch block
+    // private MemInst.Phi indVar; // 索引 phi
+    // private Value indVarInit; // 索引初值
+    // private Value indVarEnd; // 索引边界（可不可以等于边界，自己判断）
+    // private Instruction stepInst; // 索引迭代指令
+    // private Instruction indVarCondInst; // icmp 中携带 indVar 的操作数（在 while (i < n)
+    // 的情况下等于 stepInst）
+    // private Value step; // 迭代长度
+    // private Integer tripCount; // 迭代次数（只考虑 init/end/step 都是常量的情况）
 
     /**
      * 根据父循环生成loop对象
@@ -20,6 +32,7 @@ public class Loop {
      */
     public Loop(Loop parentLoop) {
         this.parentLoop = parentLoop;
+        this.loopPreheader = null;
         this.subLoops = new ArrayList<>();
         this.bbList = new ArrayList<>();
         this.exitingBlocks = new ArrayList<>();
@@ -34,6 +47,7 @@ public class Loop {
      */
     public Loop(BasicBlock loopHeader) {
         this.parentLoop = null;
+        this.loopPreheader = null;
         this.subLoops = new ArrayList<>();
         this.bbList = new ArrayList<>();
         this.exitingBlocks = new ArrayList<>();
@@ -54,6 +68,14 @@ public class Loop {
 
     public BasicBlock getLoopHeader() {
         return loopHeader;
+    }
+
+    public void setLoopPrehead(BasicBlock loopPreheader) {
+        this.loopPreheader = loopPreheader;
+    }
+
+    public BasicBlock getLoopPrehead() {
+        return loopPreheader;
     }
 
     public ArrayList<Loop> getSubLoops() {
@@ -91,8 +113,13 @@ public class Loop {
         return getSingleLatchBlock().getTerminator().getInstNode().getVal();
     }
 
+    /**
+     * 只用于规范化的loop
+     * 有多个preheader的loop返回值为null
+     * 
+     * @return the Predecessor of loop header
+     */
     public BasicBlock getPreHeader() {
-        // ! preHeader 有多个时失效
         BasicBlock preHeader = null;
         int cnt = 0;
         for (var pred : this.loopHeader.getPredecessors()) {
@@ -147,12 +174,11 @@ public class Loop {
     }
 
     public void removeBlock(BasicBlock bb) {
-        // var loop = this;
-        // while(loop != null){
-        // loop.getBbList().remove(bb);
-        // loop = loop.getParentLoop();
-        // }
-        this.bbList.remove(bb);
+        var loop = this;
+        while (loop != null) {
+            loop.getBbList().remove(bb);
+            loop = loop.getParentLoop();
+        }
     }
 
     public void addSubLoop(Loop subLoop) {

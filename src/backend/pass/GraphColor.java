@@ -366,7 +366,7 @@ public class GraphColor {
         ArrayList<String> a = new ArrayList<>();
         a.add("aa");
         a.add("bb");
-        var c = Arrays.asList(a., "cc");
+        var c = Arrays.asList(a, "cc");
 
     }
 
