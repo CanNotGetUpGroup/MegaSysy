@@ -6,6 +6,8 @@ import ir.Function;
 import util.IList;
 import util.IListNode;
 
+import java.util.HashSet;
+
 public class MachineBasicBlock implements Addressable{
     private static int c = 1;
 
@@ -20,6 +22,19 @@ public class MachineBasicBlock implements Addressable{
     public void setLabel(String label) {
         this.label = label;
     }
+
+    public HashSet<MachineBasicBlock> getSuccessors() {
+        return successors;
+    }
+
+
+
+    public void addSuccessor(MachineBasicBlock successor) {
+        this.successors.add(successor) ;
+    }
+
+    private HashSet<MachineBasicBlock> successors = new HashSet<>();
+
 
     private String label;
 

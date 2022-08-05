@@ -1,16 +1,19 @@
 package backend.machineCode;
 
+import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 import ir.BasicBlock;
 import ir.Instruction;
 import ir.Type;
 import ir.instructions.CmpInst;
+import ir.instructions.Instructions;
 import util.IList;
 import util.IListNode;
 import util.MyIRBuilder;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public abstract class MachineInstruction {
     private MachineBasicBlock parent;
@@ -218,6 +221,29 @@ public abstract class MachineInstruction {
     }
 
     public void setOp2(MCOperand op) {
+    }
+
+    public  Register getDef(){
+       return getDest();
+    }
+    public  ArrayList<Register> getUse(){
+        var ans = new ArrayList<Register>();
+
+        var op1 = getOp1();
+        var op2 = getOp2();
+        if(op1 instanceof Register)
+            ans.add((Register) op1);
+        if(op2 instanceof Register){
+            ans.add((Register) op2);
+        } else if(op2 instanceof Address){
+            var a1 = ((Address) op2).getReg();
+            var a2 = ((Address) op2).getOffset();
+            if(a1 != null)
+                ans.add(a1);
+            if(a2 instanceof Register)
+                ans.add((Register) a2);
+        }
+        return ans;
     }
 
 
