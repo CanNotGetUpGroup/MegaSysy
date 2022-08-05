@@ -10,6 +10,7 @@ import ir.instructions.Instructions.*;
 import java.util.*;
 
 import analysis.DominatorTree;
+import util.Folder;
 import util.IList;
 import util.IListIterator;
 
@@ -33,8 +34,8 @@ public class GVNGCM extends ModulePass {
     }
 
     public void functionGVNGCM(Function F) {
-        // functionGVN(F);
-        functionGCM(F);
+        functionGVN(F);
+//        functionGCM(F);
     }
 
     public void functionGVN(Function F) {
@@ -93,7 +94,10 @@ public class GVNGCM extends ModulePass {
     }
 
     public void instructionGVN(Instruction I,ArrayList<Instruction> deadInst) {
-
+        Value V= Folder.simplifyInstruction(I);
+        if(V != null){
+            I.replaceAllUsesWith(V);
+        }
     }
 
     public void functionGCM(Function F) {
@@ -125,7 +129,7 @@ public class GVNGCM extends ModulePass {
                 I.getInstNode().remove();
                 F.getEntryBB().getInstList().insertBeforeEnd(I.getInstNode());
             }
-            if(I.isBinary() || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)) {
+            if(Instruction.isBinary(I.getOp()) || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)) {
                 for(Value op : I.getOperandList()) {
                     if(op instanceof Instruction) {
                         Instruction opInst = (Instruction)op;
@@ -209,7 +213,7 @@ public class GVNGCM extends ModulePass {
     }
 
     public boolean scheduleAble(Instruction I) {
-        return I.isBinary() || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)
+        return Instruction.isBinary(I.getOp()) || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)
             || (I.getOp().equals(Ops.Call) && ((CallInst) I).withoutGEP());
     }
 
