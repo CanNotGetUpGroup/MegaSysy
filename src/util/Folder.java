@@ -1,6 +1,7 @@
 package util;
 
 import ir.*;
+import ir.instructions.BinaryInstruction;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
 import ir.instructions.Instructions.*;
@@ -13,8 +14,10 @@ import util.Match.*;
  */
 public class Folder {
     //指令化简
+    public static Instruction InsertBefore;
 
     public static Value simplifyInstruction(Instruction I){
+        InsertBefore=I;
         Value ret=null;
         int recurseTimes=3;
         if(Instruction.isBinary(I.getOp())){
@@ -138,11 +141,11 @@ public class Folder {
             return X;
         }
         // (X / Y) * Y || Y * (X / Y)
-        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
-        if(Match.compare(X,new MatchBin(MA,MY,Ops.SDiv))
-                ||Match.compare(Y,new MatchBin(MA,MX,Ops.SDiv))){
-            return MA.V;
-        }
+//        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
+//        if(Match.compare(X,new MatchBin(MA,MY,Ops.SDiv))
+//                ||Match.compare(Y,new MatchBin(MA,MX,Ops.SDiv))){
+//            return MA.V;
+//        }
 
         ret=simplifyAssociative(Ops.Mul,X,Y,recurse);
         return ret;
@@ -258,25 +261,27 @@ public class Folder {
         //(A op B) op C ==> A op (B op C)
         if(LI!=null&&LI.getOp()==Op){
             Value A=LI.getOperand(0),B=LI.getOperand(1);
-            Value V=simplifyBin(Op,B, RI,recurse);
+            Value V=simplifyBin(Op,B, R,recurse);
             if(V!=null){
                 if(V==B) return L;
                 Value W=simplifyBin(Op,A,V,recurse);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,A,V,InsertBefore);
             }
         }
         //A op (B op C) ==> (A op B) op C
         if(RI!=null&&RI.getOp()==Op){
             Value B=RI.getOperand(0),C=RI.getOperand(1);
-            Value V=simplifyBin(Op,LI, B,recurse);
+            Value V=simplifyBin(Op,L, B,recurse);
             if(V!=null){
                 if(V==B) return R;
                 Value W=simplifyBin(Op,V,C,recurse);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,V,C,InsertBefore);
             }
         }
         //若还支持交换律，则可以继续优化
@@ -284,22 +289,27 @@ public class Folder {
         //(A op B) op C ==> (C op A) op B
         if(LI!=null&&LI.getOp()==Op){
             Value A=LI.getOperand(0),B=LI.getOperand(1);
-            Value V=simplifyBin(Op,RI, A,recurse);
+            Value V=simplifyBin(Op,R, A,recurse);
             if(V!=null){
                 if(V==A) return L;
                 Value W=simplifyBin(Op,V,B,recurse);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,V,B,InsertBefore);
             }
         }
         //A op (B op C) ==> B op (C op A)
         if(RI!=null&&RI.getOp()==Op){
             Value B=RI.getOperand(0),C=RI.getOperand(1);
-            Value V=simplifyBin(Op,C,LI,recurse);
+            Value V=simplifyBin(Op,C,L,recurse);
             if(V!=null){
                 if(V==C) return R;
-                return simplifyBin(Op,B,V,recurse);
+                Value W=simplifyBin(Op,B,V,recurse);
+                if(W!=null){
+                    return W;
+                }
+                return BinaryInstruction.create(Op,B,V,InsertBefore);
             }
         }
         return null;
@@ -322,47 +332,55 @@ public class Folder {
         // (X + Y) - Z -> X + (Y - Z) or Y + (X - Z)
         if(LI!=null&&LI.getOp()==add){ //Add或FAdd
             Value X=LI.getOperand(0),Y=LI.getOperand(1);
-            Value V=simplifyBin(Op,Y,RI,recurse-1);
+            Value V=simplifyBin(Op,Y,R,recurse-1);
             if(V!=null){
                 if(V==Y) return L;
                 Value W=simplifyBin(add,X,V,recurse-1);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,X,V,InsertBefore);
             }
-            V=simplifyBin(Op,X,RI,recurse-1);
+            V=simplifyBin(Op,X,R,recurse-1);
             if(V!=null){
                 if(V==X) return L;
                 Value W=simplifyBin(add,Y,V,recurse-1);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,Y,V,InsertBefore);
             }
         }
         // X - (Y + Z) -> (X - Y) - Z or (X - Z) - Y
         if(RI!=null&&RI.getOp()==add){ //Add或FAdd
             Value Y=RI.getOperand(0),Z=RI.getOperand(1);
-            Value V=simplifyBin(Op,LI,Y,recurse-1);
+            Value V=simplifyBin(Op,L,Y,recurse-1);
             if(V!=null){
                 Value W=simplifyBin(Op,V,Z,recurse-1);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,V,Z,InsertBefore);
             }
-            V=simplifyBin(Op,LI,Z,recurse-1);
+            V=simplifyBin(Op,L,Z,recurse-1);
             if(V!=null){
                 Value W=simplifyBin(Op,V,Y,recurse-1);
                 if(W!=null){
                     return W;
                 }
+                return BinaryInstruction.create(Op,V,Y,InsertBefore);
             }
         }
         // Z - (X - Y) -> (Z - X) + Y
         if(RI!=null&&RI.getOp()==Op){ //Sub或FSub
             Value X=RI.getOperand(0),Y=RI.getOperand(1);
-            Value V=simplifyBin(Op,LI,X,recurse-1);
+            Value V=simplifyBin(Op,L,X,recurse-1);
             if(V!=null){
-                return simplifyBin(add,V,Y,recurse-1);
+                Value W=simplifyBin(add,V,Y,recurse-1);
+                if(W!=null){
+                    return W;
+                }
+                return BinaryInstruction.create(Op,V,Y,InsertBefore);
             }
         }
         return null;

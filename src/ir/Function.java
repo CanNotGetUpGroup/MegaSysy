@@ -168,6 +168,12 @@ public class Function extends User {
     }
 
     public void remove() {
+        for(BasicBlock BB:getBbList()){
+            for(Instruction I:BB.getInstList()){
+                I.remove();
+            }
+            BB.remove(true);
+        }
         funcNode.remove();
         dropUsesAsValue();
         dropUsesAsUser();

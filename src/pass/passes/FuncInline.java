@@ -101,7 +101,7 @@ public class FuncInline extends ModulePass {
                 }
             }
         } while (localChanged);
-        M.rename();
+//        M.rename();
     }
 
     /**

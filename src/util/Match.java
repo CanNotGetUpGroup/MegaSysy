@@ -1,9 +1,6 @@
 package util;
 
-import ir.Constant;
-import ir.Constants;
-import ir.Instruction;
-import ir.Value;
+import ir.*;
 
 import java.util.regex.Matcher;
 
@@ -16,7 +13,8 @@ public abstract class Match {
 
     public static Match createMatch(Value V){
         if(V instanceof Constant) return new MatchConst((Constant) V);
-        if(V instanceof Instruction) return new MatchInst((Instruction)V);
+        else if(V instanceof Instruction) return new MatchInst((Instruction)V);
+        else if(V instanceof Argument) return new MatchArgument((Argument) V);
         return null;
     }
 
@@ -46,6 +44,19 @@ public abstract class Match {
             Instruction IV=(Instruction)V;
             return false;
          }
+    }
+
+    public static class MatchArgument extends Match{
+        Argument A;
+
+        public MatchArgument(Argument a) {
+            A = a;
+        }
+
+        @Override
+        public boolean match(Value V) {
+            return A==V;//判断参数是否相同
+        }
     }
 
     public static class MatchBin extends Match{

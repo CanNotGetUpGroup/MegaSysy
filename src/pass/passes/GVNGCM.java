@@ -13,6 +13,7 @@ import analysis.DominatorTree;
 import util.Folder;
 import util.IList;
 import util.IListIterator;
+import util.MyIRBuilder;
 
 public class GVNGCM extends ModulePass {
 
@@ -36,13 +37,14 @@ public class GVNGCM extends ModulePass {
     public void functionGVNGCM(Function F) {
         functionGVN(F);
 //        functionGCM(F);
+        Module.getInstance().rename(F);
     }
 
     public void functionGVN(Function F) {
         valueTable.clear();
 
         //直接利用DT中的逆后序遍历信息
-        for(var node : F.getDominatorTree().getReversePostOrder()) {
+        for(var node : F.getAndUpdateDominatorTree().getReversePostOrder()) {
             basicBlockGVN(node.BB);
         }
     }
@@ -58,8 +60,11 @@ public class GVNGCM extends ModulePass {
                 I=It.next();
                 continue;
             }
-            if(I!=BB.getInstList().getFirst().getVal()) It.previous();
-            System.out.println("remove "+deadInst.size()+" instructions");
+            if(I!=BB.getInstList().getFirst().getVal()) {
+                It.previous();
+                It.previous();
+            }
+//            System.out.println("remove "+deadInst.size()+" instructions");
             for(Instruction J:deadInst){
                 J.remove();
             }
@@ -97,6 +102,7 @@ public class GVNGCM extends ModulePass {
         Value V= Folder.simplifyInstruction(I);
         if(V != null){
             I.replaceAllUsesWith(V);
+            deadInst.add(I);
         }
     }
 
