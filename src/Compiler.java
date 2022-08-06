@@ -23,7 +23,7 @@ public class Compiler {
         FileWriter fw=new FileWriter(args[2]);
         PrintWriter pw=new PrintWriter(fw);
 
-        String[] str={"float.sy"};
+        String[] str={"dead-code-elimination-1.sy","dead-code-elimination-2.sy","dead-code-elimination-3.sy"};
         for(String s:str){
             if(args[3].endsWith(s)){
 //                InputStream in=new FileInputStream(args[3]);
@@ -52,7 +52,7 @@ public class Compiler {
         Module module = Module.getInstance();
         module.rename();
 
-        if(O2){
+        if(true){
             PassManager.initialization();
             PassManager.initializationMC();
         }
