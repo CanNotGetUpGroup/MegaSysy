@@ -19,6 +19,9 @@ public class GVNGCM extends ModulePass {
 
     private ArrayList<Pair<Value, Value>> valueTable = new ArrayList<>();
     private Set<Instruction> visInsts = new HashSet<>();
+    private static final HashMap<Value,Integer> valueToInteger=new HashMap<>();
+    private static final HashMap<Integer,Value> integerToValue=new HashMap<>();
+    private static int nextValueNumber=0;
 
     public GVNGCM() {
         super();
@@ -116,6 +119,11 @@ public class GVNGCM extends ModulePass {
             I.replaceAllUsesWith(V);
             deadInst.add(I);
             ret=true;
+        }
+        switch (I.getOp()){
+            case Load->{
+                LoadInst LI=(LoadInst)I;
+            }
         }
 
         return ret;
