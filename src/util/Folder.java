@@ -7,6 +7,7 @@ import ir.instructions.Instructions;
 import ir.instructions.Instructions.*;
 import ir.Constants.*;
 import ir.Instruction.Ops;
+import org.stringtemplate.v4.misc.STModelAdaptor;
 import util.Match.*;
 
 /**
@@ -23,11 +24,17 @@ public class Folder {
         if(Instruction.isBinary(I.getOp())){
             ret=simplifyBin(I.getOp(),I.getOperand(0),I.getOperand(1),recurseTimes);
         }
-//        switch (I.getOp()){
-//            case Add -> {
-//                ret=simplifyAdd(I);
-//            }
-//        }
+        switch (I.getOp()){
+            case PHI -> {
+                ret=simplifyPhi((PHIInst) I);
+            }
+            case ICmp -> {
+                ret=simplifyICmp(((CmpInst)I).getPredicate(),I.getOperand(0),I.getOperand(1));
+            }
+            case FCmp -> {
+                ret=simplifyFCmp(((CmpInst)I).getPredicate(),I.getOperand(0),I.getOperand(1));
+            }
+        }
         return ret;
     }
 
@@ -427,10 +434,63 @@ public class Folder {
         }
     }
 
+    public static Value simplifyPhi(PHIInst PI){
+        return PI.hasConstantValue(true);
+    }
+
+    public static Value simplifyICmp(CmpInst.Predicate P, Value LHS, Value RHS){
+        if(LHS instanceof GlobalVariable){
+            LHS=((GlobalVariable) LHS).getOperand(0);
+        }
+        if(RHS instanceof GlobalVariable){
+            RHS=((GlobalVariable) RHS).getOperand(0);
+        }
+        if(LHS instanceof Constant){
+            if(RHS instanceof Constant){
+                return createIcmp(P,(Constant) LHS,(Constant) RHS);
+            }
+            Value tmp=LHS;
+            LHS=RHS;
+            RHS=tmp;
+            P=CmpInst.getSwappedPre(P);
+        }
+        //icmp X,X
+        if(LHS==RHS) return ConstantInt.get(Type.getInt1Ty(),CmpInst.trueWhenEqual(P)?1:0);
+        return null;
+    }
+
+    public static Value simplifyFCmp(CmpInst.Predicate P, Value LHS, Value RHS){
+        if(LHS instanceof GlobalVariable){
+            LHS=((GlobalVariable) LHS).getOperand(0);
+        }
+        if(RHS instanceof GlobalVariable){
+            RHS=((GlobalVariable) RHS).getOperand(0);
+        }
+        if(LHS instanceof Constant){
+            if(RHS instanceof Constant){
+                return createFcmp(P,(Constant) LHS,(Constant) RHS);
+            }
+            Value tmp=LHS;
+            LHS=RHS;
+            RHS=tmp;
+            P=CmpInst.getSwappedPre(P);
+        }
+        //Fcmp X,X
+        if(LHS==RHS) return ConstantInt.get(Type.getInt1Ty(),CmpInst.trueWhenEqual(P)?1:0);
+        return null;
+    }
+
+    public static Value simplifyCast(Ops Op,Value V,Type target){
+        if(V instanceof Constant){
+            return createCast(Op, (Constant) V,target);
+        }
+        return null;
+    }
+
     //常量折叠
 
     public static Constant createIcmp(CmpInst.Predicate P, Constant LHS, Constant RHS) {
-        assert LHS instanceof ConstantInt && RHS instanceof ConstantInt;
+        if(!(LHS instanceof ConstantInt && RHS instanceof ConstantInt)) return null;
         assert Instructions.ICmpInst.isIntPredicate(P);
 
         Type ResultType = Type.getInt1Ty();
@@ -455,7 +515,7 @@ public class Folder {
     }
 
     public static Constant createFcmp(CmpInst.Predicate P, Constant LHS, Constant RHS) {
-        assert LHS instanceof ConstantFP && RHS instanceof ConstantFP;
+        if(!(LHS instanceof ConstantFP && RHS instanceof ConstantFP)) return null;
         assert Instructions.ICmpInst.isIntPredicate(P);
 
         Type ResultType = Type.getInt1Ty();
@@ -463,17 +523,17 @@ public class Folder {
         ConstantFP R = (ConstantFP) RHS;
 
         switch (P) {
-            case FCMP_OEQ, FCMP_UEQ:
+            case  FCMP_UEQ:
                 return ConstantInt.get(ResultType, L.getVal() == R.getVal() ? 1 : 0);
-            case FCMP_ONE, FCMP_UNE:
+            case  FCMP_UNE:
                 return ConstantInt.get(ResultType, L.getVal() != R.getVal() ? 1 : 0);
-            case FCMP_OLT, FCMP_ULT:
+            case  FCMP_ULT:
                 return ConstantInt.get(ResultType, L.getVal() < R.getVal() ? 1 : 0);
-            case FCMP_OGT, FCMP_UGT:
+            case  FCMP_UGT:
                 return ConstantInt.get(ResultType, L.getVal() > R.getVal() ? 1 : 0);
-            case FCMP_OLE, FCMP_ULE:
+            case  FCMP_ULE:
                 return ConstantInt.get(ResultType, L.getVal() <= R.getVal() ? 1 : 0);
-            case FCMP_OGE, FCMP_UGE:
+            case  FCMP_UGE:
                 return ConstantInt.get(ResultType, L.getVal() >= R.getVal() ? 1 : 0);
         }
         return null;
@@ -481,23 +541,26 @@ public class Folder {
 
     public static Constant createCast(Instruction.Ops Op, Constant C, Type Ty) {
         switch (Op) {
-            case ZExt:
+            case ZExt -> {
                 if (C instanceof ConstantInt) {
                     return ConstantInt.get(Ty, ((ConstantInt) C).getVal());
                 }
                 return null;
-            case SIToFP:
+            }
+            case SIToFP -> {
                 if (C instanceof ConstantInt) {
                     float val = (float) ((ConstantInt) C).getVal();
                     return ConstantFP.get(val);
                 }
                 return null;
-            case FPToSI:
+            }
+            case FPToSI -> {
                 if (C instanceof ConstantFP) {
                     int val = (int) ((ConstantFP) C).getVal();
                     return ConstantInt.get(val);
                 }
                 return null;
+            }
         }
         return null;
     }
@@ -694,6 +757,10 @@ public class Folder {
         return createBinOp(Ops.FDiv, LHS, RHS);
     }
 
+    public static Value createSRem(Value LHS, Value RHS) {
+        return createBinOp(Ops.SRem, LHS, RHS);
+    }
+
     public static Value createAnd(Value LHS, Value RHS) {
         return createBinOp(Ops.And, LHS, RHS);
     }
@@ -727,7 +794,7 @@ public class Folder {
             BasicBlock TrueBlock = (BI).getTrueBlock();
             BasicBlock FalseBlock = BI.getFalseBlock();
             if (TrueBlock == FalseBlock) {
-                TrueBlock.removePredecessor(BB);
+//                TrueBlock.removePredecessor(BB);
                 BranchInst newBI = (BranchInst) builder.createBr(TrueBlock);
                 BI.remove();
                 //TODO:删除BI的Cond

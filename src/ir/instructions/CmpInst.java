@@ -13,14 +13,6 @@ public abstract class CmpInst extends Instruction {
         ICMP_SLT, ///< signed less than
         ICMP_SLE, ///< signed less or equal
         FCMP_FALSE, ///< Always false (always folded)
-        FCMP_OEQ,   ///< True if ordered and equal
-        FCMP_OGT,   ///< True if ordered and greater than
-        FCMP_OGE,   ///< True if ordered and greater than or equal
-        FCMP_OLT,   ///< True if ordered and less than
-        FCMP_OLE,   ///< True if ordered and less than or equal
-        FCMP_ONE,   ///< True if ordered and operands are unequal
-        FCMP_ORD,   ///< True if ordered (no nans)
-        FCMP_UNO,   ///< True if unordered: isnan(X) | isnan(Y)
         FCMP_UEQ,   ///< True if unordered or equal
         FCMP_UGT,  ///< True if unordered or greater than
         FCMP_UGE,  ///< True if unordered, greater than, or equal
@@ -28,6 +20,33 @@ public abstract class CmpInst extends Instruction {
         FCMP_ULE,  ///< True if unordered, less than, or equal
         FCMP_UNE,  ///< True if unordered or not equal
         FCMP_TRUE, ///< Always true (always folded)
+    }
+
+    public static Predicate getSwappedPre(Predicate P){
+        return switch (P){
+            case ICMP_EQ -> Predicate.ICMP_EQ;
+            case ICMP_NE -> Predicate.ICMP_NE;
+            case ICMP_SGT -> Predicate.ICMP_SLT;
+            case ICMP_SGE -> Predicate.ICMP_SLE;
+            case ICMP_SLT -> Predicate.ICMP_SGT;
+
+            case ICMP_SLE -> Predicate.ICMP_SGE;
+            case FCMP_FALSE -> Predicate.FCMP_FALSE;
+            case FCMP_UEQ -> Predicate.FCMP_UEQ;
+            case FCMP_UGT -> Predicate.FCMP_ULT;
+            case FCMP_UGE -> Predicate.FCMP_ULE;
+            case FCMP_ULT -> Predicate.FCMP_UGT;
+            case FCMP_ULE -> Predicate.FCMP_UGE;
+            case FCMP_UNE -> Predicate.FCMP_UNE;
+            case FCMP_TRUE -> Predicate.FCMP_TRUE;
+        };
+    }
+
+    public static boolean trueWhenEqual(Predicate P){
+        return switch (P) {
+            case ICMP_EQ, ICMP_SGE, ICMP_SLE, FCMP_UEQ, FCMP_UGE, FCMP_ULE -> true;
+            default -> false;
+        };
     }
 
     private Predicate predicate;

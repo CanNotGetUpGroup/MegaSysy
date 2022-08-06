@@ -29,6 +29,7 @@ public abstract class Instruction extends User {
 
     public BasicBlock getParent() {
 //        return Parent;
+        if(instNode.getParent()==null) return null;
         return instNode.getParent().getVal();
     }
 
@@ -146,6 +147,7 @@ public abstract class Instruction extends User {
     }
 
     public Function getFunction(){
+        if(getParent()==null) return null;
         return getParent().getParent();
     }
 }

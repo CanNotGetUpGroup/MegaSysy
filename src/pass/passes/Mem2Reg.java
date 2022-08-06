@@ -45,7 +45,7 @@ public class Mem2Reg extends FunctionPass {
         PhiToAllocaMap.clear();
         Visited.clear();
 
-        DominatorTree DT=new DominatorTree(F);
+        DominatorTree DT=F.getAndUpdateDominatorTree();
         promoteMem2Reg(F,DT);
         Module.getInstance().rename(F);
     }

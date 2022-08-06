@@ -54,7 +54,15 @@ public abstract class User extends Value {
     }
 
     public void removeOperand(int idx) {
-        OperandList.get(idx).removeUseByUser(this);
+        OperandList.get(idx).removeUse(this,idx);
+        for(int i=idx+1;i<OperandList.size();i++){
+            for(Use use:OperandList.get(i).getUseList()){
+                if(use.getU()==this){
+                    use.setOperandNo(i-1);
+                    break;
+                }
+            }
+        }
         OperandList.remove(idx);
         numOperands = OperandList.size();
     }

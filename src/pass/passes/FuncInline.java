@@ -79,6 +79,10 @@ public class FuncInline extends ModulePass {
 
             for (int i = 0; i < callInsts.size(); i++) {
                 CallInst CI = callInsts.get(i);
+                if(CI.getParent()==null){//已被删除
+                    callInsts.remove(i--);
+                    continue;
+                }
                 Function caller = CI.getFunction();
                 Function callee = CI.getCalledFunction();
 
@@ -193,7 +197,7 @@ public class FuncInline extends ModulePass {
         leave.getInstList().splice(callInstIt,CI.getInstNode(),null);
         leave.setComment("leave inline "+CI);
         //将originBB的phi指令转换为leave的
-        for(PHIInst phiInst:originBB.getPHIs()){
+        for(PHIInst phiInst:new ArrayList<>(originBB.getPHIs())){
             phiInst.replaceIncomingBlock(originBB,leave);
         }
         originBB.getPHIs().clear();

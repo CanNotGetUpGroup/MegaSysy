@@ -121,7 +121,9 @@ public class SimplifyCFG extends FunctionPass {
             BranchInst BI = (BranchInst) BB.getTerminator();
             if (BI.getNumOperands() == 1) {
                 //消除仅包含无条件分支的基本块
-                if (BB.getFirstNonPHI() == BB.getTerminator()) {
+                if (BB.getFirstNonPHI() == BB.getTerminator()
+//                        &&BB.getPredecessorsNum()<=2
+                ) {
                     ret|=removeEmptyUnCondBrBlock(BB);
                 }
             }
@@ -134,12 +136,12 @@ public class SimplifyCFG extends FunctionPass {
      * 合并无条件跳转指令且能合并的基本块
      */
     public boolean removeEmptyUnCondBrBlock(BasicBlock BB) {
-        if (BB == BB.getParent().getEntryBB()&&BB.getSuccessor(0).getPredecessorsNum()!=1) return false;
+        if (BB == BB.getParent().getEntryBB()) return false;
         BasicBlock Succ = BB.getSuccessor(0);
         if (BB == Succ) return false;
         //判断是否能合并
         BasicBlock OnlyBB = Succ.getOnlyPredecessor();
-        if (OnlyBB == null) {
+       if (OnlyBB == null) {
             Set<BasicBlock> PredBB = new HashSet<>(BB.getPredecessors());
             for (Instruction I : Succ.getInstList()) {
                 if (!(I instanceof PHIInst)) {
@@ -173,6 +175,7 @@ public class SimplifyCFG extends FunctionPass {
                     }
                 }
             }
+            //检查BB中的phi是否还有use
             for (Instruction I : BB.getInstList()) {
                 if (!(I instanceof PHIInst)) {
                     break;
@@ -205,7 +208,7 @@ public class SimplifyCFG extends FunctionPass {
             BB.getTerminator().remove();
             removeTerminator=true;
             Succ.getInstList().splice(Succ.getFirstNonPHI().getInstNode().getIterator(), BB.getInstList());
-        } else {
+        } else {//此处的phi在之前应该已经检查完毕，不存在use
             for (Instruction I : BB.getInstList()) {
                 if (I instanceof PHIInst) {
                     I.remove();
