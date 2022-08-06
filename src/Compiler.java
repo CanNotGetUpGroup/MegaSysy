@@ -53,6 +53,8 @@ public class Compiler {
         module.rename();
 
         if(true){
+            //TODO：优化掉undef
+            PassManager.ignoreUndef=false;
             PassManager.initialization();
             PassManager.initializationMC();
         }

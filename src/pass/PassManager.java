@@ -22,7 +22,7 @@ public class PassManager {
         passes.add(new Mem2Reg());
         passes.add(new GVNGCM());
 
-//        passes.add(new FuncInline());
+        passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());//FuncInline为其创造更多机会
         passes.add(new Mem2Reg());//处理掉新产生的alloca
         passes.add(new SimplifyCFG());
