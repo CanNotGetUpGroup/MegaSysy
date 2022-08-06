@@ -35,6 +35,9 @@ public class Folder {
             case FCmp -> {
                 ret=simplifyFCmp(((CmpInst)I).getPredicate(),I.getOperand(0),I.getOperand(1));
             }
+            case ZExt -> {
+                ret=simplifyCast(I.getOp(),I.getOperand(0),I.getType());
+            }
         }
         return ret;
     }
