@@ -1,5 +1,7 @@
 package pass.passes;
 
+import analysis.AliasAnalysis;
+import analysis.PointerInfo;
 import ir.*;
 import ir.Module;
 import ir.Instruction.Ops;
@@ -19,6 +21,7 @@ public class GVNGCM extends ModulePass {
 
     private ArrayList<Pair<Value, Value>> valueTable = new ArrayList<>();
     private Set<Instruction> visInsts = new HashSet<>();
+    private ArrayList<Instruction> deadInst=new ArrayList<>();
     private static final HashMap<Value,Integer> valueToInteger=new HashMap<>();
     private static final HashMap<Integer,Value> integerToValue=new HashMap<>();
     private static int nextValueNumber=0;
@@ -40,6 +43,7 @@ public class GVNGCM extends ModulePass {
     public void functionGVNGCM(Function F) {
         boolean shouldContinue=true;
         while (shouldContinue){
+            AliasAnalysis.runMemorySSA(F);
             shouldContinue=functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
             shouldContinue|=new SimplifyCFG().run(F);
@@ -61,11 +65,10 @@ public class GVNGCM extends ModulePass {
 
     public boolean basicBlockGVN(BasicBlock BB) {
         boolean ret=combinePhi(BB);
-        ArrayList<Instruction> deadInst=new ArrayList<>();
         IListIterator<Instruction,BasicBlock> It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator(),It_pre= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
         Instruction I=It.next();
         while (It.hasNext()) {
-            ret|=instructionGVN(I,deadInst);
+            ret|=instructionGVN(I);
             if(deadInst.isEmpty()){
                 I=It.next();
                 continue;
@@ -112,21 +115,89 @@ public class GVNGCM extends ModulePass {
         return ret;
     }
 
-    public boolean instructionGVN(Instruction I,ArrayList<Instruction> deadInst) {
+    public boolean instructionGVN(Instruction I) {
         boolean ret=false;
         Value V= Folder.simplifyInstruction(I);
         if(V != null){
             I.replaceAllUsesWith(V);
-            deadInst.add(I);
+            addInstToDeadList(I);
             ret=true;
         }
-        switch (I.getOp()){
-            case Load->{
-                LoadInst LI=(LoadInst)I;
+        if (I.getOp() == Ops.Load) {
+            LoadInst LI = (LoadInst) I;
+            if(loadGVN(LI)){
+                return true;
             }
         }
+        if(I.getType().isVoidTy()) return false;
+        int now=nextValueNumber;
+        int num=lookUpOrAdd(I);
+        if(I.getOp().equals(Ops.Alloca)||I.isTerminator()||I.getOp().equals(Ops.PHI)||num>now){
+            addToLeader(num,I);
+            return false;
+        }
+        Value replace=findLeader(num);
+        if(replace==null){
+            addToLeader(num,I);
+        }else if(replace==I){
+            return false;
+        }
+        replace(I,replace);
+        addInstToDeadList(I);
 
-        return ret;
+        return true;
+    }
+
+    public boolean loadGVN(LoadInst LI){
+        if(LI.getUseList().isEmpty()){
+            addInstToDeadList(LI);
+        }
+        Value Address=LI.getOperand(0);
+        //若不是数组，则得到null
+        ArrayList<Value> arrayIdx=AliasAnalysis.getArrayInfo(Address);
+        Value Pointer=arrayIdx.get(0);
+        if(Pointer instanceof GlobalVariable){
+            GetElementPtrInst gep=(GetElementPtrInst)Address;
+            Constant C=gep.getConstantValue();
+            if(C!=null){
+                replace(LI,C);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int lookUpOrAdd(Value V){
+        if(valueToInteger.containsKey(V)) return valueToInteger.get(V);
+        //只有Instruction需要通过编号判断是否等价
+        if(!(V instanceof Instruction)){
+            valueToInteger.put(V,nextValueNumber);
+            return nextValueNumber++;
+        }
+        Instruction I=(Instruction)V;
+        //TODO:判断I的hash是否存在
+
+        valueToInteger.put(V,nextValueNumber);
+        return nextValueNumber++;
+    }
+
+    public void replace(Instruction I,Value repl){
+        if(I==repl) return;
+        I.replaceAllUsesWith(repl);
+    }
+
+    public void addToLeader(int N,Value V){
+        integerToValue.put(N,V);
+    }
+
+    public Value findLeader(int N){
+        return integerToValue.get(N);
+    }
+
+    public void addInstToDeadList(Instruction I){
+        deadInst.add(I);
+        int num=valueToInteger.remove(I);
+        if(integerToValue.get(num)==I) integerToValue.remove(num);
     }
 
     public void functionGCM(Function F) {

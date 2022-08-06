@@ -52,7 +52,7 @@ public class Compiler {
         Module module = Module.getInstance();
         module.rename();
 
-        if(true){
+        if(O2){
             //TODO：优化掉undef
             PassManager.ignoreUndef=false;
             PassManager.initialization();

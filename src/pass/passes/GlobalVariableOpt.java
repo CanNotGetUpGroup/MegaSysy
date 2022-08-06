@@ -36,7 +36,7 @@ public class GlobalVariableOpt extends ModulePass {
     /**
      * 全局变量本地化，顺便优化没有被再次赋值的全局变量，删除没有被读取的全局变量
      */
-    private boolean globalToLocal(GlobalVariable GV){
+    public static boolean globalToLocal(GlobalVariable GV){
         //获取GlobalVariable的基本信息
         PointerInfo PI=new PointerInfo(GV);
         PI.calculateInfo(GV);
