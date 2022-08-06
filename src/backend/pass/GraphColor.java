@@ -589,6 +589,7 @@ public class GraphColor {
 
         MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
         MachineInstruction newInst;
+        int saveOnStack = 7;
 
         // reserve space for temp variable on stack
         for (var inst : firstBb.getInstList()) {
@@ -599,10 +600,23 @@ public class GraphColor {
                 newInst.setPrologue(true);
                 newInst.getInstNode().insertBefore(inst.getInstNode());
 
+
                 // set Frame Pointer -> Fp = sp + 4
                 newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
                 newInst.setPrologue(true);
                 newInst.getInstNode().insertBefore(inst.getInstNode());
+
+                // push callee save register
+                // TODO: only save those used
+
+                for(int i = 10; i >= 4; i--){
+                    newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
+                    newInst.setPrologue(true);
+                    newInst.getInstNode().insertBefore(inst.getInstNode());
+                }
+                func.addStackTop(4 * saveOnStack);
+
+                // reserve for spilled
                 int offset = 4 * func.getSpiltNumOnStack() + 4 * paraOnStack;
                 if ((offset + func.getStackTop()) % 8 != 0) offset += 4;
                 MCOperand c;
@@ -621,10 +635,17 @@ public class GraphColor {
             for (var inst : bb.getInstList()) {
                 if (inst.isEpilogue()) {
 
-                    new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), new MCRegister(MCRegister.RegName.r11), new ImmediateNumber(4)).getInstNode().insertBefore(inst.getInstNode());
-                    newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(MCRegister.RegName.r11));
-                    newInst.setEpilogue(true);
-                    newInst.getInstNode().insertBefore(inst.getInstNode());
+                    new Arithmetic(firstBb, SUB,
+                            new MCRegister(MCRegister.RegName.SP),
+                            new MCRegister(MCRegister.RegName.r11),
+                            new ImmediateNumber(4 * (saveOnStack + 1)))
+                            .getInstNode().insertBefore(inst.getInstNode());
+
+                    for(int i = 4; i <= 11; i++) {
+                        newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(Register.Content.Int, i));
+                        newInst.setEpilogue(true);
+                        newInst.getInstNode().insertBefore(inst.getInstNode());
+                    }
                 }
             }
         }
@@ -634,7 +655,7 @@ public class GraphColor {
 
     public void run() {
         var MCdegree = new HashMap<Register, Integer>();
-        for(int i = 0; i < MCRegister.maxRegNum(Register.Content.Int); i++){
+        for (int i = 0; i < 20; i++) {
             MCdegree.put(new MCRegister(Register.Content.Int, i), Integer.MAX_VALUE);
         }
         for (var f : funcList) {
@@ -685,8 +706,10 @@ public class GraphColor {
                         Coalesce();
                     else if (!freezeWorklist.isEmpty())
                         freeze();
-                    else if (!spilledNodes.isEmpty())
+                    else if (!spillWorklist.isEmpty()) {
+                        System.out.println("spill");
                         SelectSpill();
+                    }
                 } while (!simplifyWorklist.isEmpty() || !worklistMoves.isEmpty() || !freezeWorklist.isEmpty() || !spillWorklist.isEmpty());
                 AssignColors();
                 if (spillWorklist.isEmpty()) {
@@ -694,6 +717,7 @@ public class GraphColor {
                     setStack(f);
                     break;
                 }
+                System.out.println("Rewrite");
                 RewriteProgram(f);
             }
         }
