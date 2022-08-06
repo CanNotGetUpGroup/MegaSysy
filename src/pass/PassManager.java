@@ -10,6 +10,8 @@ import java.util.ArrayList;
 public class PassManager {
     public static ArrayList<Pass> passes=new ArrayList<>();
     public static ArrayList<MCPass> MCPasses=new ArrayList<>();
+    //官方测例可以保证不会出现undef的情况，因此某些情况下可以激进地忽略掉undef（可能无法通过中端测试）
+    public static boolean ignoreUndef=false;
 
     /**
      * 初始化，在此处按照顺序添加IR pass

@@ -2,6 +2,7 @@ package ir;
 
 import ir.instructions.Instructions.*;
 import org.antlr.v4.runtime.misc.Pair;
+import pass.PassManager;
 import util.CloneMap;
 import util.IList;
 import util.IListNode;
@@ -161,7 +162,7 @@ public class BasicBlock extends Value {
             Phi.removeIncomingValue(Pred, true);
             if (numPred == 1)
                 continue;
-            Value PhiConstant = Phi.hasConstantValue(true);
+            Value PhiConstant = Phi.hasConstantValue(PassManager.ignoreUndef);
             if (PhiConstant != null) {
                 Phi.replaceAllUsesWith(PhiConstant);
                 Phi.remove();

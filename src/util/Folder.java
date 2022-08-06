@@ -8,6 +8,7 @@ import ir.instructions.Instructions.*;
 import ir.Constants.*;
 import ir.Instruction.Ops;
 import org.stringtemplate.v4.misc.STModelAdaptor;
+import pass.PassManager;
 import util.Match.*;
 
 /**
@@ -346,7 +347,7 @@ public class Folder {
                 if(W!=null){
                     return W;
                 }
-                return BinaryInstruction.create(Op,X,V,InsertBefore);
+                return BinaryInstruction.create(add,X,V,InsertBefore);
             }
             V=simplifyBin(Op,X,R,recurse-1);
             if(V!=null){
@@ -355,7 +356,7 @@ public class Folder {
                 if(W!=null){
                     return W;
                 }
-                return BinaryInstruction.create(Op,Y,V,InsertBefore);
+                return BinaryInstruction.create(add,Y,V,InsertBefore);
             }
         }
         // X - (Y + Z) -> (X - Y) - Z or (X - Z) - Y
@@ -387,7 +388,7 @@ public class Folder {
                 if(W!=null){
                     return W;
                 }
-                return BinaryInstruction.create(Op,V,Y,InsertBefore);
+                return BinaryInstruction.create(add,V,Y,InsertBefore);
             }
         }
         return null;
@@ -435,7 +436,7 @@ public class Folder {
     }
 
     public static Value simplifyPhi(PHIInst PI){
-        return PI.hasConstantValue(true);
+        return PI.hasConstantValue(PassManager.ignoreUndef);
     }
 
     public static Value simplifyICmp(CmpInst.Predicate P, Value LHS, Value RHS){

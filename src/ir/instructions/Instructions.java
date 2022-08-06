@@ -772,7 +772,7 @@ public abstract class Instructions {
             for (int i = 1, e = getNumOperands(); i != e; ++i)
                 if (getIncomingValue(i) != ConstantValue && getIncomingValue(i) != this) {
                     if(ignoreUndef&&Constants.UndefValue.isUndefValue(ConstantValue)){
-                        //测例语义保证了不会出现undef，此处可以激进地忽略
+                        //测例语义保证了不会出现undef，此处可以激进地忽略(中端测试可能无法通过)
                         ConstantValue=getIncomingValue(i);
                         continue;
                     }
