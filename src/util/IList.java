@@ -90,8 +90,14 @@ public class IList<T, P> implements Iterable<T> {
             return;
         }
         tail = follow.getTail();
+        tail.setParent(this);
         if(last==null){
             head=follow.getHead();
+            head.setParent(this);
+            while(followFirst!=null){
+                followFirst.setParent(this);
+                followFirst=followFirst.getNext();
+            }
             return;
         }
 
@@ -176,7 +182,11 @@ public class IList<T, P> implements Iterable<T> {
         return new ListItr(head.getNext());
     }
 
+    /**
+     * t为null时，可用previous()方法逆序遍历
+     */
     public IListIterator<T,P> iterator(T t) {
+        if(t==null) return new ListItr(null);
         IListNode<T, P> H = head.getNext(), T = tail.getPrev();
         while ((H != T)) {
             if (H.getVal() == t) {
@@ -189,7 +199,7 @@ public class IList<T, P> implements Iterable<T> {
             if (H == T) break;
             T = T.getPrev();
         }
-        return H.getVal() == t ? new ListItr(H) : end;
+        return H.getVal() == t ? new ListItr(H) : new ListItr(null);
     }
 
     public Iterator<T> end(){
