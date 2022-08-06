@@ -49,6 +49,7 @@ public class GlobalVariableOpt extends ModulePass {
 //                    System.out.println("localize");
                     builder.setInsertPoint(GS.getAccessingFunction().getEntryBB());
                     Instructions.AllocaInst AI= (Instructions.AllocaInst) builder.createAlloca(ty);
+                    AI.setVarName("global_"+GV.getName().substring(1));
                     Iterator<Instruction> It=GS.getAccessingFunction().getEntryBB().getInstList().iterator();
                     Instruction I = It.next();
                     while(It.hasNext()){

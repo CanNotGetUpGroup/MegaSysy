@@ -2,6 +2,7 @@ package ir;
 
 import ir.instructions.Instructions.*;
 import org.antlr.v4.runtime.misc.Pair;
+import pass.PassManager;
 import util.CloneMap;
 import util.IList;
 import util.IListNode;
@@ -73,6 +74,7 @@ public class BasicBlock extends Value {
     }
 
     public Function getParent() {
+        if(bbNode.getParent()==null) return null;
         return bbNode.getParent().getVal();
     }
 
@@ -100,6 +102,9 @@ public class BasicBlock extends Value {
     public void remove() {
         bbNode.remove();
         dropUsesAsValue();
+        for(PHIInst phi:new ArrayList<>(PHIs)){
+            phi.removeIncomingValue(this,false);
+        }
         PHIs.clear();
         getTerminator().dropUsesAsUser();
     }
@@ -108,6 +113,9 @@ public class BasicBlock extends Value {
     public void remove(boolean terminatorHasRemoved) {
         bbNode.remove();
         dropUsesAsValue();
+        for(PHIInst phi:new ArrayList<>(PHIs)){
+            phi.removeIncomingValue(this,false);
+        }
         PHIs.clear();
         if (!terminatorHasRemoved)
             getTerminator().dropUsesAsUser();
@@ -154,7 +162,7 @@ public class BasicBlock extends Value {
             Phi.removeIncomingValue(Pred, true);
             if (numPred == 1)
                 continue;
-            Value PhiConstant = Phi.hasConstantValue();
+            Value PhiConstant = Phi.hasConstantValue(PassManager.ignoreUndef);
             if (PhiConstant != null) {
                 Phi.replaceAllUsesWith(PhiConstant);
                 Phi.remove();
@@ -259,7 +267,7 @@ public class BasicBlock extends Value {
             use.getU().setOperand(use.getOperandNo(), BB);
         }
         getUseList().clear();
-        for (var PI : PHIs) {
+        for (var PI : new ArrayList<>(PHIs)) {
             PI.replaceIncomingBlock(this, BB);
         }
         PHIs.clear();

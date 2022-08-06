@@ -654,6 +654,16 @@ public abstract class Instructions {
             return sb.toString();
         }
 
+        public void remove(){
+            for(BasicBlock BB:blocks){
+//                getParent().removePredecessor(BB);
+                BB.getPHIs().remove(this);
+            }
+            getInstNode().remove();
+            dropUsesAsValue();
+            dropUsesAsUser();
+        }
+
         public static PHIInst create(Type ty, int block_num) {
             return new PHIInst(ty, block_num);
         }
@@ -691,6 +701,9 @@ public abstract class Instructions {
         }
 
         public void replaceIncomingBlock(BasicBlock OLD, BasicBlock BB) {
+            if(blocks.contains(BB)){
+                removeIncomingValue(BB,true);
+            }
             int i = blocks.indexOf(OLD);
             if (i > getNumOperands() || i < 0) return;
             blocks.set(i, BB);
@@ -735,15 +748,15 @@ public abstract class Instructions {
         }
 
         /**
-         * 删除来自某基本块的Value
+         * 删除来自某基本块的Value，注意会自动删除基本块的PHIs中对应的phi指令
          *
          * @param BB         来源基本块
          * @param removeThis 在phi指令没有Value后，是否将其删除
          */
         public void removeIncomingValue(BasicBlock BB, boolean removeThis) {
             removeOperand(blocks.indexOf(BB));
-            BB.getPHIs().remove(new Pair<>(this, blocks.indexOf(BB)));
             blocks.remove(BB);
+            BB.getPHIs().remove(this);
             if (removeThis && getNumOperands() == 0) {
                 replaceAllUsesWith(Constants.UndefValue.get(getType()));
                 remove();
@@ -754,10 +767,15 @@ public abstract class Instructions {
          * 若phi都返回同一个Value，则返回这个Value，否则返回null
          * 注意：可能返回phi本身 %1 = phi [%1, %br1] [%2, %br2]
          */
-        public Value hasConstantValue() {
+        public Value hasConstantValue(boolean ignoreUndef) {
             Value ConstantValue = getIncomingValue(0);
             for (int i = 1, e = getNumOperands(); i != e; ++i)
                 if (getIncomingValue(i) != ConstantValue && getIncomingValue(i) != this) {
+                    if(ignoreUndef&&Constants.UndefValue.isUndefValue(ConstantValue)){
+                        //测例语义保证了不会出现undef，此处可以激进地忽略(中端测试可能无法通过)
+                        ConstantValue=getIncomingValue(i);
+                        continue;
+                    }
                     if (ConstantValue != this)
                         return null;
                     ConstantValue = getIncomingValue(i);

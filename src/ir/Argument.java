@@ -48,4 +48,9 @@ public class Argument extends Value {
         cloneMap.put(this,ret);
         return ret;
     }
+
+    public void remove(){
+//        parent.getArguments().remove(this);
+        dropUsesAsValue();
+    }
 }
