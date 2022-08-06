@@ -195,7 +195,8 @@ public class RegAllocator {
 
                         inst.setOp2(reg);
 
-                    } else if (op2 instanceof Address && ((Address) op2).getReg() instanceof VirtualRegister) {
+                    }
+                    else if (op2 instanceof Address && ((Address) op2).getReg() instanceof VirtualRegister) {
 
                         int offset = 4 * vRegHash.get(((Address) op2).getReg()) + func.getStackTop();
                         Address addr;

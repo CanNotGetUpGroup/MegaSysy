@@ -2,6 +2,7 @@ package backend;
 
 import backend.machineCode.MachineDataBlock;
 import backend.machineCode.MachineFunction;
+import backend.pass.GraphColor;
 import backend.pass.InstructionSelector;
 import backend.pass.PhiElimination;
 import backend.pass.RegAllocator;
@@ -77,7 +78,7 @@ public class CodeGenManager {
     }
 
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName("/Users/luxia/code/MegaSysy/src/backend/test/in.txt"); // 获取输入流
+        CharStream inputStream = CharStreams.fromFileName("/Users/luxia/code/MegaSysy/src/backend/test/0in.txt"); // 获取输入流
         FileWriter fw1 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/ir_out.txt");
         FileWriter fw2 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/arm_out.txt");
         PrintWriter pw1 = new PrintWriter(fw1);
@@ -94,7 +95,7 @@ public class CodeGenManager {
         module.rename();
 
 
-        if(true){ // if initialization
+        if (true) { // if initialization
             PassManager.initialization();
             PassManager.initializationMC();
         }
