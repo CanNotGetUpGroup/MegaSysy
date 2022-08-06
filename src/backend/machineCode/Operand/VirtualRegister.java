@@ -7,6 +7,16 @@ import static backend.machineCode.Operand.Register.Type.VIRTUAL;
 public class VirtualRegister extends Register {
     private static int c = 0;
 
+    public int getColorId() {
+        return colorId;
+    }
+
+    public void setColorId(int colorId) {
+        this.colorId = colorId;
+    }
+
+    private int colorId = -1;
+
     private static int counter() {
         return c++;
     }
@@ -19,12 +29,14 @@ public class VirtualRegister extends Register {
 
     public VirtualRegister() {
         super(VIRTUAL);
-        name = "v" + counter();
+        this.id = counter();
+        name = "v" + id;
     }
 
     public VirtualRegister(Content content) {
         super(VIRTUAL, content);
-        name = "v" + counter();
+        this.id = counter();
+        name = "v" + id;
     }
 
     @Override
@@ -34,11 +46,15 @@ public class VirtualRegister extends Register {
         if(obj instanceof MCRegister)
             return false;
         var reg = (VirtualRegister) obj;
-        return reg.getType() == getType() && Objects.equals(reg.getName(), reg.getName());
+        return reg.getType() == getType() && Objects.equals(reg.getName(), getName());
     }
 
     @Override
     public String toString() {
+        if(colorId != -1){
+            return (isFloat()? "s" : "r") + colorId;
+        }
+
         return name;
     }
 }

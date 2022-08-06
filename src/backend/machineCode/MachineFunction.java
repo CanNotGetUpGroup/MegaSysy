@@ -25,6 +25,19 @@ public class MachineFunction implements Addressable{
 
     private int maxParaNumOnStack = 0;
 
+    public int getSpiltNumOnStack() {
+        return spiltNumOnStack;
+    }
+
+    public void setSpiltNumOnStack(int spiltNumOnStack) {
+        this.spiltNumOnStack = spiltNumOnStack;
+    }
+
+    public void addSpliteNumOnStack(int inc){
+        this.spiltNumOnStack += inc;
+    }
+
+    private int spiltNumOnStack = 0;
 
 
     public int getStackTop() {
