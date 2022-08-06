@@ -35,27 +35,34 @@ public class GVNGCM extends ModulePass {
     }
 
     public void functionGVNGCM(Function F) {
-        functionGVN(F);
+        boolean shouldContinue=true;
+        while (shouldContinue){
+            shouldContinue=functionGVN(F);
+            new DeadCodeEmit().runOnModule(Module.getInstance());
+            shouldContinue|=new SimplifyCFG().run(F);
+        }
 //        functionGCM(F);
         Module.getInstance().rename(F);
     }
 
-    public void functionGVN(Function F) {
+    public boolean functionGVN(Function F) {
+        boolean ret=false;
         valueTable.clear();
 
         //直接利用DT中的逆后序遍历信息
         for(var node : F.getAndUpdateDominatorTree().getReversePostOrder()) {
-            basicBlockGVN(node.BB);
+            ret|=basicBlockGVN(node.BB);
         }
+        return ret;
     }
 
-    public void basicBlockGVN(BasicBlock BB) {
-        combinePhi(BB);
+    public boolean basicBlockGVN(BasicBlock BB) {
+        boolean ret=combinePhi(BB);
         ArrayList<Instruction> deadInst=new ArrayList<>();
         IListIterator<Instruction,BasicBlock> It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator(),It_pre= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
         Instruction I=It.next();
         while (It.hasNext()) {
-            instructionGVN(I,deadInst);
+            ret|=instructionGVN(I,deadInst);
             if(deadInst.isEmpty()){
                 I=It.next();
                 continue;
@@ -72,9 +79,11 @@ public class GVNGCM extends ModulePass {
             if(I==BB.getInstList().getFirst().getVal()) It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
             else I=It.next();
         }
+        return ret;
     }
 
-    public void combinePhi(BasicBlock BB){
+    public boolean combinePhi(BasicBlock BB){
+        boolean ret=false;
         IListIterator<Instruction,BasicBlock> It= (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
         Instruction I=It.next();
         while (I instanceof PHIInst) {
@@ -87,6 +96,7 @@ public class GVNGCM extends ModulePass {
                     break;
                 }
                 if (PI.isSameWith(J)) {
+                    ret=true;
                     J.replaceAllUsesWith(PI);
                     J.remove();
                     It = (IListIterator<Instruction, BasicBlock>) BB.getInstList().iterator();
@@ -96,14 +106,19 @@ public class GVNGCM extends ModulePass {
                 J = Jt.next();
             }
         }
+        return ret;
     }
 
-    public void instructionGVN(Instruction I,ArrayList<Instruction> deadInst) {
+    public boolean instructionGVN(Instruction I,ArrayList<Instruction> deadInst) {
+        boolean ret=false;
         Value V= Folder.simplifyInstruction(I);
         if(V != null){
             I.replaceAllUsesWith(V);
             deadInst.add(I);
+            ret=true;
         }
+
+        return ret;
     }
 
     public void functionGCM(Function F) {

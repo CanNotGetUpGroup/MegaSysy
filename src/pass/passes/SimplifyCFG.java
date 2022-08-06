@@ -39,6 +39,18 @@ public class SimplifyCFG extends FunctionPass {
         } while (changed);
     }
 
+    public boolean run(Function F) {
+        this.F=F;
+        DT = F.getAndUpdateDominatorTree();
+        boolean changed = mergeEmptyReturnBlocks(F);
+        changed|=iterativelySimplify(F);
+        if(!changed) return false;
+        do {
+            changed = iterativelySimplify(F);
+        } while (changed);
+        return true;
+    }
+
     /**
      * 合并只有ret和phi指令的基本块
      */
