@@ -20,7 +20,7 @@ public class PassManager {
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
-        passes.add(new GVNGCM());
+        passes.add(new GVNGCM());//Mem2Reg处理掉了所有local alloca
 
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());//FuncInline为其创造更多机会
