@@ -120,7 +120,15 @@ public class Branch extends MachineInstruction {
 
     @Override
     public ArrayList<Register> getDef() {
-        return getUse();
+        var ans = new ArrayList<Register>();
+        if (type == Type.Call) {
+            ans.addAll(IntStream
+                    .range(0, 4)
+                    .mapToObj(i -> new MCRegister(Register.Content.Int, i))
+                    .collect(Collectors.toSet()));
+        }
+
+        return ans;
     }
 
     public static void main(String[] args) {
