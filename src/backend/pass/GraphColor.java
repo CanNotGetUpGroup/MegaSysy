@@ -381,9 +381,14 @@ public class GraphColor {
             }
         }
     }
+    private Random rand = new Random();
 
     void SelectSpill() {
-        var m = spillWorklist.iterator().next();
+//        var m = spillWorklist.iterator().next();
+        var n = new ArrayList<>(spillWorklist);
+        var i = rand.nextInt(n.size());
+        var m = n.get(i);
+
         // TODO: elected using favorite heuristic
         //Note: avoid choosing nodes that are the tiny live ranges
         //resulting from the fetches of previously spilled registers
@@ -432,6 +437,7 @@ public class GraphColor {
                 var op1 = i.getOp1();
                 var op2 = i.getOp2();
                 if (dest instanceof VirtualRegister) {
+//                    System.out.println(dest);
                     ((VirtualRegister) dest).setColorId(colorMap.get(getAlias(dest)));
                 }
                 if (op1 instanceof VirtualRegister) {
@@ -531,7 +537,7 @@ public class GraphColor {
                 } else if (op2 instanceof Address) {
                     var reg = ((Address) op2).getReg();
 
-                    if (reg instanceof VirtualRegister) {
+                    if (reg instanceof VirtualRegister && spillMap.containsKey(reg)) {
 
                         int offset = 4 * spillMap.get(((Address) op2).getReg()) + func.getStackTop();
                         Address addr;
@@ -554,7 +560,7 @@ public class GraphColor {
                     }
                     //  地址的第二个参数可能也是reg, 肯定还得是int
                     var offsetReg = ((Address) op2).getOffset();
-                    if (offsetReg instanceof VirtualRegister) {
+                    if (offsetReg instanceof VirtualRegister && spillMap.containsKey(offsetReg)) {
                         int offset = 4 * spillMap.get(offsetReg) + func.getStackTop();
                         Address addr;
                         // TODO: 1024 for coprocessor and 4096 for arm processor
@@ -651,7 +657,7 @@ public class GraphColor {
         }
     }
 
-
+    HashSet<Register> spiltRegs = new HashSet<>();
 
     public void run() {
         var MCdegree = new HashMap<Register, Integer>();
@@ -707,12 +713,14 @@ public class GraphColor {
                     else if (!freezeWorklist.isEmpty())
                         freeze();
                     else if (!spillWorklist.isEmpty()) {
-                        System.out.println("spill");
+
+//                        System.out.println("spill");
                         SelectSpill();
                     }
                 } while (!simplifyWorklist.isEmpty() || !worklistMoves.isEmpty() || !freezeWorklist.isEmpty() || !spillWorklist.isEmpty());
                 AssignColors();
-                if (spillWorklist.isEmpty()) {
+                if (spilledNodes.isEmpty()) {
+
                     substituteAllRegister(f);
                     setStack(f);
                     break;
