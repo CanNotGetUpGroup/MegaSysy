@@ -16,6 +16,11 @@ public class Register extends MCOperand {
 
     int id;
     private Type type;
+
+    public Content getContent() {
+        return content;
+    }
+
     private Content content;
 
     Register(Type type){

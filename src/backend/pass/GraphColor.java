@@ -71,8 +71,8 @@ public class GraphColor {
                 var uses = inst.getUse();
 
                 for (var d : def)
-                    if (!curLiveInfo.liveDef.contains(d)) {
-                        curLiveInfo.liveUse.add(d);
+                    if (!curLiveInfo.liveUse.contains(d)) {
+                        curLiveInfo.liveDef.add(d);
                     }
                 for (var use : uses)
                     if (!curLiveInfo.liveDef.contains(use)) {
@@ -159,12 +159,12 @@ public class GraphColor {
                 }
                 var def = inst.getDef();
                 live.addAll(def);
-                for(var d : def) {
+                for (var d : def) {
                     for (var l : live) {
                         addEdge(l, d);
                     }
                     // live := use(I) ∪ (live\def(I))
-                    live.remove(def);
+                    live.remove(d);
                 }
 
                 live.addAll(inst.getUse());
@@ -391,8 +391,16 @@ public class GraphColor {
     void SelectSpill() {
 //        var m = spillWorklist.iterator().next();
         var n = new ArrayList<>(spillWorklist);
-        var i = rand.nextInt(n.size());
-        var m = n.get(i);
+//        var i = rand.nextInt(n.size());
+//        var m = n.get(i);
+        Register m = null;
+        for (var i : n) {
+           if(substitutions.contains(i))
+               continue;
+           m = i; break;
+        }
+        if(m == null)
+          m = n.get(0);
 
         // TODO: elected using favorite heuristic
         //Note: avoid choosing nodes that are the tiny live ranges
@@ -404,7 +412,6 @@ public class GraphColor {
     }
 
     void AssignColors() {
-//        System.out.println("select stack" + selectStack);
         for (int i = 0; i < MCRegister.maxRegNum(Register.Content.Int); i++) {
             colorMap.put(new MCRegister(Register.Content.Int, i), i);
         }
@@ -429,7 +436,6 @@ public class GraphColor {
         }
         for (var n : coloredNodes) {
             // TODO: MC register not in colorMap
-//            System.out.println("color:" + getAlias(n) + " " + colorMap.get(getAlias(n)));
             colorMap.put(n, colorMap.get(getAlias(n)));
         }
     }
@@ -442,7 +448,6 @@ public class GraphColor {
                 var op1 = i.getOp1();
                 var op2 = i.getOp2();
                 if (dest instanceof VirtualRegister) {
-//                    System.out.println(dest);
                     ((VirtualRegister) dest).setColorId(colorMap.get(getAlias(dest)));
                 }
                 if (op1 instanceof VirtualRegister) {
@@ -473,6 +478,7 @@ public class GraphColor {
         for (var reg : spilledNodes) {
             spillMap.put(reg, i++);
         }
+        // TODO: 现在vreg溢出之后就一直在内存里，但可以考虑溢出之后还有机会回来
         for (var bb : func.getBbList()) {
             // lots of load and store for spilt register
             for (var inst : bb.getInstList()) {
@@ -480,6 +486,8 @@ public class GraphColor {
                 var op1 = inst.getOp1();
                 var op2 = inst.getOp2();
                 if (dest instanceof VirtualRegister && spillMap.containsKey(dest)) {
+                    var substitution = new VirtualRegister((dest).getContent());
+                    substitutions.add(substitution);
                     var prevNode = inst;
                     int offset = 4 * spillMap.get(dest) + func.getStackTop();
                     Address addr;
@@ -499,9 +507,12 @@ public class GraphColor {
                         prevNode = temp;
                         addr = new Address(addrReg);
                     }
-                    new LoadOrStore(bb, LoadOrStore.Type.STORE, dest, addr).setForFloat(dest.isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertAfter(prevNode.getInstNode());
+                    inst.setDest(substitution);
+                    new LoadOrStore(bb, LoadOrStore.Type.STORE, substitution, addr).setForFloat(dest.isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertAfter(prevNode.getInstNode());
                 }
                 if (op1 instanceof VirtualRegister && spillMap.containsKey(op1)) {
+                    var substitution = new VirtualRegister(((VirtualRegister) op1).getContent());
+                    substitutions.add(substitution);
                     int offset = 4 * spillMap.get((VirtualRegister) op1) + func.getStackTop();
                     Address addr;
                     if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -519,9 +530,14 @@ public class GraphColor {
                         addr = new Address(addrReg);
                     }
 
-                    new LoadOrStore(bb, LoadOrStore.Type.LOAD, (VirtualRegister) op1, addr).setForFloat(((VirtualRegister) op1).isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertBefore(inst.getInstNode());
+                    inst.setOp1(substitution);
+                    new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr)
+                            .setForFloat(((VirtualRegister) op1).isFloat(), new ArrayList<>(List.of("32")))
+                            .getInstNode().insertBefore(inst.getInstNode());
                 }
                 if (op2 instanceof VirtualRegister && spillMap.containsKey(op2)) {
+                    var substitution = new VirtualRegister(((VirtualRegister) op2).getContent());
+                    substitutions.add(substitution);
                     int offset = 4 * spillMap.get((VirtualRegister) op2) + func.getStackTop();
                     Address addr;
                     if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -538,12 +554,14 @@ public class GraphColor {
                         temp.getInstNode().insertBefore(inst.getInstNode());
                         addr = new Address(addrReg);
                     }
-                    new LoadOrStore(bb, LoadOrStore.Type.LOAD, (VirtualRegister) op2, addr).setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertBefore(inst.getInstNode());
+                    inst.setOp2(substitution);
+                    new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertBefore(inst.getInstNode());
                 } else if (op2 instanceof Address) {
                     var reg = ((Address) op2).getReg();
 
                     if (reg instanceof VirtualRegister && spillMap.containsKey(reg)) {
-
+                        var substitution = new VirtualRegister(reg.getContent());
+                        substitutions.add(substitution);
                         int offset = 4 * spillMap.get(((Address) op2).getReg()) + func.getStackTop();
                         Address addr;
                         if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -560,12 +578,14 @@ public class GraphColor {
                             temp.getInstNode().insertBefore(inst.getInstNode());
                             addr = new Address(addrReg);
                         }
-
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, reg, addr).getInstNode().insertBefore(inst.getInstNode());
+                        ((Address) op2).setReg(substitution);
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).getInstNode().insertBefore(inst.getInstNode());
                     }
                     //  地址的第二个参数可能也是reg, 肯定还得是int
                     var offsetReg = ((Address) op2).getOffset();
                     if (offsetReg instanceof VirtualRegister && spillMap.containsKey(offsetReg)) {
+                        var substitution = new VirtualRegister(((VirtualRegister) offsetReg).getContent());
+                        substitutions.add(substitution);
                         int offset = 4 * spillMap.get(offsetReg) + func.getStackTop();
                         Address addr;
                         // TODO: 1024 for coprocessor and 4096 for arm processor
@@ -583,7 +603,8 @@ public class GraphColor {
                             temp.getInstNode().insertBefore(inst.getInstNode());
                             addr = new Address(addrReg);
                         }
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, (VirtualRegister) offsetReg, addr).getInstNode().insertBefore(inst.getInstNode());
+                        ((Address) op2).setOffset(substitution);
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, (VirtualRegister) substitution, addr).getInstNode().insertBefore(inst.getInstNode());
                     }
                 } // end of if op2 is address
             }
@@ -663,6 +684,7 @@ public class GraphColor {
     }
 
     HashSet<Register> spiltRegs = new HashSet<>();
+    HashSet<Register> substitutions = new HashSet<>();
 
     public void run() {
         var MCdegree = new HashMap<Register, Integer>();
@@ -671,36 +693,41 @@ public class GraphColor {
         }
         for (var f : funcList) {
             if (!f.isDefined()) continue;
-
+            int time = 0;
+            substitutions = new HashSet<>();
             while (true) {
-                simplifyWorklist = new HashSet<>(); // list of low-degree non-move-related nodes.
-                freezeWorklist = new HashSet<>(); // low-degree move-related nodes.
-                spillWorklist = new HashSet<>(); // high-degree nodes.
-                spilledNodes = new HashSet<>(); // nodes marked for spilling during this round; initially empty.
-                coalescedNodes = new HashSet<>(); // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
-                coloredNodes = new HashSet<>(); // nodes successfully colored.
-                selectStack = new ArrayDeque<>(); // stack containing temporaries removed from the graph.
+                if (++time > 5) throw new RuntimeException("to many rewrite");
+                // initial all data structure
+                {
+                    simplifyWorklist = new HashSet<>(); // list of low-degree non-move-related nodes.
+                    freezeWorklist = new HashSet<>(); // low-degree move-related nodes.
+                    spillWorklist = new HashSet<>(); // high-degree nodes.
+                    spilledNodes = new HashSet<>(); // nodes marked for spilling during this round; initially empty.
+                    coalescedNodes = new HashSet<>(); // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
+                    coloredNodes = new HashSet<>(); // nodes successfully colored.
+                    selectStack = new ArrayDeque<>(); // stack containing temporaries removed from the graph.
 
-                coalescedMoves = new HashSet<>(); // moves that have been coalesced.
-                constrainedMoves = new HashSet<>();// moves whose source and target interfere.
-                frozenMoves = new HashSet<>();// moves that will no longer be considered for coalescing.
-                worklistMoves = new HashSet<>(); // moves enabled for possible coalescing.
-                activeMoves = new HashSet<>(); //moves not yet ready for coalescing.
+                    coalescedMoves = new HashSet<>(); // moves that have been coalesced.
+                    constrainedMoves = new HashSet<>();// moves whose source and target interfere.
+                    frozenMoves = new HashSet<>();// moves that will no longer be considered for coalescing.
+                    worklistMoves = new HashSet<>(); // moves enabled for possible coalescing.
+                    activeMoves = new HashSet<>(); //moves not yet ready for coalescing.
 
-                adjSet = new HashSet<>(); // the set of interference edges (u, v) in the graph.
-                adjList = new HashMap<>(); // the set of interference edges (u, v) in the graph.
-                degree = new HashMap<>(MCdegree); // an array containing the current degree of each node. Precolored nodes are initialized with a degree of ∞,
+                    adjSet = new HashSet<>(); // the set of interference edges (u, v) in the graph.
+                    adjList = new HashMap<>(); // the set of interference edges (u, v) in the graph.
+                    degree = new HashMap<>(MCdegree); // an array containing the current degree of each node. Precolored nodes are initialized with a degree of ∞,
 
-                moveList = new HashMap<>(); // a mapping from node to the list of moves it is associated with.
-                alias = new HashMap<>(); // when a move (u, v) has been coalesced, and v put in coalescedNodes, then alias(v) = u.
+                    moveList = new HashMap<>(); // a mapping from node to the list of moves it is associated with.
+                    alias = new HashMap<>(); // when a move (u, v) has been coalesced, and v put in coalescedNodes, then alias(v) = u.
 
-                colorMap = new HashMap<>();
+                    colorMap = new HashMap<>();
 
-                liveInfoMap = new HashMap<>();
+                    liveInfoMap = new HashMap<>();
 
-
+                }
                 LivenessAnalysis(f);
                 build(f);
+
                 Set<Register> init = new HashSet<>();
                 for (var bb : f.getBbList()) {
                     for (var i : bb.getInstList()) {
@@ -718,7 +745,6 @@ public class GraphColor {
                         freeze();
                     else if (!spillWorklist.isEmpty()) {
 
-//                        System.out.println("spill");
                         SelectSpill();
                     }
                 } while (!simplifyWorklist.isEmpty() || !worklistMoves.isEmpty() || !freezeWorklist.isEmpty() || !spillWorklist.isEmpty());
