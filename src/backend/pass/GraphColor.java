@@ -69,9 +69,11 @@ public class GraphColor {
             for (var inst : bb.getInstList()) {
                 var def = inst.getDef();
                 var uses = inst.getUse();
-                if (def != null && !curLiveInfo.liveUse.contains(def)) {
-                    curLiveInfo.liveDef.add(def);
-                }
+
+                for (var d : def)
+                    if (!curLiveInfo.liveDef.contains(d)) {
+                        curLiveInfo.liveUse.add(d);
+                    }
                 for (var use : uses)
                     if (!curLiveInfo.liveDef.contains(use)) {
                         curLiveInfo.liveUse.add(use);
@@ -147,22 +149,24 @@ public class GraphColor {
                         moveList.putIfAbsent(i, new HashSet<>());
                         moveList.get(i).add((Move) inst);
                     }
-                    if (inst.getDef() != null) {
-                        moveList.putIfAbsent(inst.getDef(), new HashSet<>());
-                        moveList.get(inst.getDef()).add((Move) inst);
+
+                    for (var i : inst.getDef()) {
+                        moveList.putIfAbsent(i, new HashSet<>());
+                        moveList.get(i).add((Move) inst);
                     }
 
                     worklistMoves.add((Move) inst);
                 }
                 var def = inst.getDef();
-                if (def != null) {
-                    live.add(def);
+                live.addAll(def);
+                for(var d : def) {
                     for (var l : live) {
-                        addEdge(l, def);
+                        addEdge(l, d);
                     }
                     // live := use(I) ∪ (live\def(I))
                     live.remove(def);
                 }
+
                 live.addAll(inst.getUse());
             }
         }
@@ -381,6 +385,7 @@ public class GraphColor {
             }
         }
     }
+
     private Random rand = new Random();
 
     void SelectSpill() {
@@ -615,7 +620,7 @@ public class GraphColor {
                 // push callee save register
                 // TODO: only save those used
 
-                for(int i = 10; i >= 4; i--){
+                for (int i = 10; i >= 4; i--) {
                     newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
                     newInst.setPrologue(true);
                     newInst.getInstNode().insertBefore(inst.getInstNode());
@@ -647,7 +652,7 @@ public class GraphColor {
                             new ImmediateNumber(4 * (saveOnStack + 1)))
                             .getInstNode().insertBefore(inst.getInstNode());
 
-                    for(int i = 4; i <= 11; i++) {
+                    for (int i = 4; i <= 11; i++) {
                         newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(Register.Content.Int, i));
                         newInst.setEpilogue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
@@ -699,8 +704,7 @@ public class GraphColor {
                 Set<Register> init = new HashSet<>();
                 for (var bb : f.getBbList()) {
                     for (var i : bb.getInstList()) {
-                        if (i.getDef() != null && i.getDef() instanceof VirtualRegister)
-                            init.add(i.getDef());
+                        init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister).toList());
                         init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister).toList());
                     }
                 }

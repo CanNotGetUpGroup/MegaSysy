@@ -119,10 +119,8 @@ public class Branch extends MachineInstruction {
     }
 
     @Override
-    public Register getDef() {
-        if(type == Type.Call)
-            return new MCRegister(Register.Content.Int, 0);
-        return null;
+    public ArrayList<Register> getDef() {
+        return getUse();
     }
 
     public static void main(String[] args) {
