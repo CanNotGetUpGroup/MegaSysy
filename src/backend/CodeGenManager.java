@@ -2,6 +2,7 @@ package backend;
 
 import backend.machineCode.MachineDataBlock;
 import backend.machineCode.MachineFunction;
+import backend.pass.GraphColor;
 import backend.pass.InstructionSelector;
 import backend.pass.PhiElimination;
 import backend.pass.RegAllocator;
@@ -48,6 +49,21 @@ public class CodeGenManager {
         CodeGenManager.module = module;
     }
 
+    private void halfRun1() {
+        var selector = new InstructionSelector(module);
+        selector.run();
+        this.funcList = selector.getFuncList();
+        this.dataBlockArrayList = selector.getGlobalDataList();
+
+        var phiEliminate = new PhiElimination(funcList);
+        phiEliminate.run();
+    }
+
+    private void halfRun2() {
+        var allocator = new GraphColor(funcList);
+        allocator.run();
+    }
+
     public void run() {
         var selector = new InstructionSelector(module);
         selector.run();
@@ -57,7 +73,7 @@ public class CodeGenManager {
         var phiEliminate = new PhiElimination(funcList);
         phiEliminate.run();
 
-        var allocator = new RegAllocator(funcList);
+        var allocator = new GraphColor(funcList);
         allocator.run();
     }
 
@@ -77,14 +93,15 @@ public class CodeGenManager {
     }
 
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName("/Users/luxia/code/MegaSysy/src/backend/test/in.txt"); // 获取输入流
-        FileWriter fw1 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/ir_out.txt");
-        FileWriter fw2 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/arm_out.txt");
+        CharStream inputStream = CharStreams.fromFileName("/Users/luxia/code/MegaSysy/src/backend/test/0in.txt"); // 获取输入流
+        FileWriter fw1 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/1ir_out.txt");
+        FileWriter fw2 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/2lir_out.txt");
+        FileWriter fw3 = new FileWriter("/Users/luxia/code/MegaSysy/src/backend/test/3arm_out.txt");
         PrintWriter pw1 = new PrintWriter(fw1);
         PrintWriter pw2 = new PrintWriter(fw2);
+        PrintWriter pw3 = new PrintWriter(fw3);
 
         SysyLexer lexer = new SysyLexer(inputStream);
-
         CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
         Visitor visitor = new Visitor();
         SysyParser parser = new SysyParser(tokenStream);
@@ -93,8 +110,9 @@ public class CodeGenManager {
         Module module = Module.getInstance();
         module.rename();
 
-
-        if(true){ // if initialization
+        if (true) {
+            //TODO：优化掉undef
+            PassManager.ignoreUndef = false;
             PassManager.initialization();
             PassManager.initializationMC();
         }
@@ -106,9 +124,14 @@ public class CodeGenManager {
         // back-end
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
-        mc.run();
+        mc.halfRun1();
 
         pw2.println(mc.toArm());
         pw2.flush();
+
+        mc.halfRun2();
+
+        pw3.println(mc.toArm());
+        pw3.flush();
     }
 }
