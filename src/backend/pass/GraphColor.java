@@ -646,7 +646,7 @@ public class GraphColor {
                     newInst.setPrologue(true);
                     newInst.getInstNode().insertBefore(inst.getInstNode());
                 }
-                func.addStackTop(4 * saveOnStack);
+//                func.addStackTop(4 * saveOnStack);
 
                 // reserve for spilled
                 int offset = 4 * func.getSpiltNumOnStack() + 4 * paraOnStack;
@@ -750,7 +750,6 @@ public class GraphColor {
                 } while (!simplifyWorklist.isEmpty() || !worklistMoves.isEmpty() || !freezeWorklist.isEmpty() || !spillWorklist.isEmpty());
                 AssignColors();
                 if (spilledNodes.isEmpty()) {
-
                     substituteAllRegister(f);
                     setStack(f);
                     break;
