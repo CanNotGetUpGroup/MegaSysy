@@ -1,30 +1,32 @@
 package pass.passes;
 
-import analysis.AliasAnalysis;
-import analysis.PointerInfo;
+import analysis.*;
 import ir.*;
 import ir.Module;
 import ir.Instruction.Ops;
+import ir.instructions.BinaryInstruction;
+import ir.instructions.CmpInst;
 import org.antlr.v4.runtime.misc.Pair;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
 
 import java.util.*;
 
-import analysis.DominatorTree;
 import util.Folder;
 import util.IList;
 import util.IListIterator;
 import util.MyIRBuilder;
 
 public class GVNGCM extends ModulePass {
-
-    private ArrayList<Pair<Value, Value>> valueTable = new ArrayList<>();
     private Set<Instruction> visInsts = new HashSet<>();
     private ArrayList<Instruction> deadInst=new ArrayList<>();
+    //注意维护hashToValue和integerToValue的唯一性，对应的都是leader value
     private static final HashMap<Value,Integer> valueToInteger=new HashMap<>();
     private static final HashMap<Integer,Value> integerToValue=new HashMap<>();
     private static int nextValueNumber=0;
+    private static final HashMap<Integer,Value> hashToValue=new HashMap<>();
+    private static final HashMap<Value,Integer> valueToHash=new HashMap<>();
+    private DominatorTree DT;
 
     public GVNGCM() {
         super();
@@ -40,24 +42,33 @@ public class GVNGCM extends ModulePass {
         }
     }
 
+    public void clear(){
+        valueToInteger.clear();
+        integerToValue.clear();
+        hashToValue.clear();
+        valueToHash.clear();
+        nextValueNumber=0;
+    }
+
     public void functionGVNGCM(Function F) {
         boolean shouldContinue=true;
         while (shouldContinue){
+            clear();
             AliasAnalysis.runMemorySSA(F);
             shouldContinue=functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
+//            functionGCM(F);
             shouldContinue|=new SimplifyCFG().run(F);
         }
-//        functionGCM(F);
         Module.getInstance().rename(F);
     }
 
     public boolean functionGVN(Function F) {
         boolean ret=false;
-        valueTable.clear();
 
         //直接利用DT中的逆后序遍历信息
-        for(var node : F.getAndUpdateDominatorTree().getReversePostOrder()) {
+        DT=F.getAndUpdateDominatorTree();
+        for(var node : DT.getReversePostOrder()) {
             ret|=basicBlockGVN(node.BB);
         }
         return ret;
@@ -121,7 +132,7 @@ public class GVNGCM extends ModulePass {
         if(V != null){
             I.replaceAllUsesWith(V);
             addInstToDeadList(I);
-            ret=true;
+            return true;
         }
         if (I.getOp() == Ops.Load) {
             LoadInst LI = (LoadInst) I;
@@ -139,8 +150,14 @@ public class GVNGCM extends ModulePass {
         Value replace=findLeader(num);
         if(replace==null){
             addToLeader(num,I);
+            return false;
         }else if(replace==I){
             return false;
+        }else if((replace instanceof Instruction)){//TODO:等待GCM完成后删除
+            Instruction RI=(Instruction)replace;
+            if(!DT.dominates(RI.getParent(),I.getParent())){
+                return false;
+            }
         }
         replace(I,replace);
         addInstToDeadList(I);
@@ -157,11 +174,15 @@ public class GVNGCM extends ModulePass {
         ArrayList<Value> arrayIdx=AliasAnalysis.getArrayInfo(Address);
         Value Pointer=arrayIdx.get(0);
         if(Pointer instanceof GlobalVariable){
-            GetElementPtrInst gep=(GetElementPtrInst)Address;
-            Constant C=gep.getConstantValue();
-            if(C!=null){
-                replace(LI,C);
-                return true;
+            PointerInfo PI=new PointerInfo(Pointer);
+            PI.calculateInfo(Pointer);
+            if(!PI.isStored()){
+                GetElementPtrInst gep=(GetElementPtrInst)Address;
+                Constant C=gep.getConstantValue();
+                if(C!=null){
+                    replace(LI,C);
+                    return true;
+                }
             }
         }
         return false;
@@ -176,7 +197,27 @@ public class GVNGCM extends ModulePass {
         }
         Instruction I=(Instruction)V;
         //TODO:判断I的hash是否存在
-
+        if(Instruction.isBinary(I.getOp())||Instruction.isCmp(I.getOp())||
+                I.getOp().equals(Ops.Load)
+//                ||I.getOp().equals(Ops.GetElementPtr)
+                ||I.getOp().equals(Ops.Call)
+        ){
+            int hash=getHash(I);
+            if(hashToValue.containsKey(hash)){
+                Value leader=hashToValue.get(hash);
+                int leaderOrder=valueToInteger.get(leader);
+                valueToInteger.put(V,leaderOrder);
+                valueToHash.put(V,hash);
+                return leaderOrder;
+            }else {
+                hashToValue.put(hash,V);
+                valueToHash.put(V,hash);
+                valueToInteger.put(V,nextValueNumber);
+                return nextValueNumber++;
+            }
+        }
+        hashToValue.put(nextValueNumber,V);
+        valueToHash.put(V,nextValueNumber);
         valueToInteger.put(V,nextValueNumber);
         return nextValueNumber++;
     }
@@ -196,8 +237,110 @@ public class GVNGCM extends ModulePass {
 
     public void addInstToDeadList(Instruction I){
         deadInst.add(I);
-        int num=valueToInteger.remove(I);
-        if(integerToValue.get(num)==I) integerToValue.remove(num);
+        if(valueToInteger.containsKey(I)){
+            int num=valueToInteger.remove(I);
+            if(integerToValue.get(num)==I) {
+                integerToValue.remove(num);
+                hashToValue.remove(valueToHash.get(I));
+            }
+        }
+    }
+
+    public int getHash(Value V){
+        //非指令Value可直接获取Hash
+        if(!(V instanceof Instruction)){
+            return lookUpOrAdd(V);
+        }
+        if(valueToHash.containsKey(V)) return valueToHash.get(V);
+        Instruction I=(Instruction)V;
+        if(Instruction.isBinary(I.getOp())){
+            return getHash((BinaryInstruction) I);
+        }else if(Instruction.isCmp(I.getOp())){
+            return getHash((CmpInst)I);
+        }else if(I.getOp().equals(Ops.GetElementPtr)){
+            return getHash((GetElementPtrInst)I);
+        }else if(I.getOp().equals(Ops.Load)){
+            return getHash((LoadInst)I);
+        }else if(I.getOp().equals(Ops.Call)){
+            return getHash((CallInst)I);
+        }
+        //其余情况不计算hash
+        return lookUpOrAdd(I);
+    }
+
+    public int getHash(BinaryInstruction BI){
+        Value L=BI.getOperand(0),R=BI.getOperand(1);
+        int lhs=getHash(L),rhs=getHash(R);
+        ArrayList<Integer> array=new ArrayList<>();
+        if(Instruction.isCommutative(BI.getOp())&&lhs>rhs){
+            array.add(rhs);
+            array.add(lhs);
+        }else{
+            array.add(lhs);
+            array.add(rhs);
+        }
+        return hashCombine(BI.getOp(),BI.getType(),array);
+    }
+
+    public int getHash(CmpInst Cmp){
+        Value L=Cmp.getOperand(0),R=Cmp.getOperand(1);
+        int lhs=getHash(L),rhs=getHash(R);
+        ArrayList<Integer> array=new ArrayList<>();
+        if(lhs>rhs){
+            array.add(CmpInst.getSwappedPre(Cmp.getPredicate()).ordinal());
+            array.add(rhs);
+            array.add(lhs);
+        }else{
+            array.add(Cmp.getPredicate().ordinal());
+            array.add(lhs);
+            array.add(rhs);
+        }
+        return hashCombine(Cmp.getOp(),Cmp.getType(),array);
+    }
+
+    public int getHash(GetElementPtrInst GEP){
+        ArrayList<Integer> array=new ArrayList<>();
+        ArrayList<Value> arrayIdx=GEP.getArrayIdx();
+        for(Value v:arrayIdx){
+            array.add(getHash(v));
+        }
+        return hashCombine(GEP.getOp(),GEP.getType(),array);
+    }
+
+    public int getHash(LoadInst LI){
+        Value Address=LI.getOperand(0);
+        MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(LI);
+        ArrayList<Integer> array=new ArrayList<>();
+        array.add(getHash(Address));
+        if(MA!=null)
+            array.add(((MemoryAccess.MemoryUse)MA).getDefiningAccess().getID());
+        return hashCombine(LI.getOp(), LI.getType(),array);
+    }
+
+    public int getHash(CallInst CI){
+        ArrayList<Integer> array=new ArrayList<>();
+        array.add(getHash(CI.getOperand(0)));
+        for(int i=1;i<CI.getNumOperands();i++){
+            array.add(getHash(CI.getOperand(i)));
+        }
+        MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(CI);
+        if(MA!=null)
+            array.add(MA.getID());
+        return hashCombine(CI.getOp(),CI.getType(),array);
+    }
+
+    /**
+     * 最简单的乘质数相加
+     */
+    public int hashCombine(Ops op,Type ty,ArrayList<Integer> operands){
+        final int prime=31;
+        int result = 1;
+        result = prime * result + op.ordinal();
+        result = prime * result + ty.getHashcode();
+        for(Integer v:operands){
+            result = prime * result + v;
+        }
+        return result;
     }
 
     public void functionGCM(Function F) {
@@ -296,6 +439,7 @@ public class GVNGCM extends ModulePass {
                     minBB = curBB;
                     minLoopDepth = curLoopDepth;
                 }
+//                if(DT.getNode(curBB).equals(DT.Root)) break;
             }
             I.getInstNode().remove();
             minBB.getInstList().insertBeforeEnd(I.getInstNode());

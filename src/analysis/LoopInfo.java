@@ -91,6 +91,12 @@ public class LoopInfo {
         return loop.getBlockHeader() == bb;
     }
 
+    public void clear(){
+        bbLoopMap.clear();
+        allLoops.clear();
+        topLevelLoops.clear();
+    }
+
     /**
      * 分析算法会按dom-tree的后序序列进行遍历 这样可以先找到最内层的循环（后序，逆后序）
      * 每遍历一个node就会看其对应的block是否支配他的某个前继block
@@ -101,6 +107,7 @@ public class LoopInfo {
      * @param function LoopInfo的计算是以function为单位的
      */
     public void computeLoopInfo(Function function) {
+        clear();
         DominatorTree domInfo = new DominatorTree(function);
         Stack<BasicBlock> backNode = new Stack<>();
         // ! 后序遍历domtree domInfo.PostOrder是Dominate tree的后序遍历

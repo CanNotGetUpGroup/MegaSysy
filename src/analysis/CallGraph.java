@@ -183,6 +183,9 @@ public class CallGraph {
         public void dropRef(){
             ReferTimes--;
             if(ReferTimes==0){
+                CG.getNode(F).getCalledFunctions().forEach(callEE->{
+                    callEE.b.dropRef();
+                });
                 CG.CallNodes.remove(F);
                 F.remove();
                 CG=null;

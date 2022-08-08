@@ -24,11 +24,11 @@ public class MyContext {
     /**
      * types instance
      */
-    public static final IntegerType Int32Ty = new DerivedTypes.IntegerType(0);
-    public static final IntegerType Int1Ty = new DerivedTypes.IntegerType(1);
-    public static final Type FloatTy = new Type(Type.TypeID.FloatTyID,2);
-    public static final Type VoidTy = new Type(Type.TypeID.VoidTyID,3);
-    public static final Type LabelTy = new Type(Type.TypeID.LabelTyID,4);
+    public static final IntegerType Int32Ty = new DerivedTypes.IntegerType(1);
+    public static final IntegerType Int1Ty = new DerivedTypes.IntegerType(2);
+    public static final Type FloatTy = new Type(Type.TypeID.FloatTyID,3);
+    public static final Type VoidTy = new Type(Type.TypeID.VoidTyID,4);
+    public static final Type LabelTy = new Type(Type.TypeID.LabelTyID,5);
 
     public HashMap<Integer, ArrayType> arrayTypes;
     public HashMap<Integer, FunctionType> functionTypes;
@@ -44,6 +44,12 @@ public class MyContext {
         public HashMap<Type, UndefValue> UndefConstants;
     public ConstantInt int1_0;
     public ConstantInt int1_1;
+
+    /**
+     * Type or Constant to hash
+     */
+    public HashMap<Constant,Integer> Constant2Hash=new HashMap<>();
+    public HashMap<Type,Integer> Type2Hash=new HashMap<>();
 
     /**
      * value命名序号
