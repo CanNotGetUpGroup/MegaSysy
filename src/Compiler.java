@@ -60,9 +60,16 @@ public class Compiler {
         }
         PassManager.run(module);
 
+
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
-        mc.run();
+
+        if(O2){
+            mc.performanceRun();
+        }else{
+            mc.run();
+        }
+
         PassManager.runMC(mc);
 
         pw.println(mc.toArm());
