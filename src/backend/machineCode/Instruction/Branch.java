@@ -8,7 +8,6 @@ import backend.machineCode.Operand.MCRegister;
 import backend.machineCode.Operand.Register;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -131,7 +130,4 @@ public class Branch extends MachineInstruction {
         return ans;
     }
 
-    public static void main(String[] args) {
-
-    }
 }
