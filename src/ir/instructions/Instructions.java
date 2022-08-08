@@ -195,14 +195,14 @@ public abstract class Instructions {
             for (var i = 1; i < getOperandList().size(); i++) {
                 sb.append(", ").append(getOperand(i).getType()).append(" ").append(getOperand(i).getName());
             }
-            StringBuilder comment=new StringBuilder();
-            for(Value v:getArrayIdx()){
-                comment.append("[");
-                if(v instanceof AllocaInst) comment.append(v.getVarName());
-                else comment.append(v.getName());
-                comment.append("]");
-            }
-            setComment(comment.toString());
+//            StringBuilder comment=new StringBuilder();
+//            for(Value v:getArrayIdx()){
+//                comment.append("[");
+//                if(v instanceof AllocaInst) comment.append(v.getVarName());
+//                else comment.append(v.getName());
+//                comment.append("]");
+//            }
+//            setComment(comment.toString());
             return sb.toString();
         }
 
@@ -296,18 +296,19 @@ public abstract class Instructions {
                 CA = (Constants.ConstantArray) ((GetElementPtrInst) source).getConstantValue();
             }
             Init = CA;
+            Constant tmp=CA;
             if (CA == null) return null;
-            ConstantValue = CA;
             for (int i = 2; i < getNumOperands(); i++) {
                 Value V = getOperand(i);
                 if (V instanceof Constants.ConstantInt) {
                     Constants.ConstantInt CI = (Constants.ConstantInt) V;
                     int idx = CI.getVal();
-                    ConstantValue = (Constant) ((Constants.ConstantArray) ConstantValue).getElement(idx);
+                    tmp = (Constant) ((Constants.ConstantArray) tmp).getElement(idx);
                 } else {
                     return null;
                 }
             }
+            ConstantValue = tmp;
             return ConstantValue;
         }
 

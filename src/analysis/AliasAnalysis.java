@@ -24,6 +24,7 @@ public class AliasAnalysis {
     private static HashMap<Function, ArrayList<GlobalVariable>> func2gv;
     //获取gep在数组中的索引信息，如a[2][i][4]->(a,2,i,4),调用gepInst的getArrayIdx()方法可获得
     public static HashMap<GetElementPtrInst, ArrayList<Value>> gepToArrayIdx=new HashMap<>();
+    public static MemorySSA MSSA;
 
     public static Value getPointerValue(Value pointer) {
         while(pointer instanceof GetElementPtrInst || pointer instanceof LoadInst) {
@@ -73,6 +74,13 @@ public class AliasAnalysis {
         }else {
             return null;
         }
+    }
+
+    public static ArrayList<Value> getArrayInfo(Value pointer){
+        if(pointer instanceof GetElementPtrInst){
+            return ((GetElementPtrInst)pointer).getArrayIdx();
+        }
+        return new ArrayList<>(){{add(null);}};
     }
 
     /**
@@ -190,6 +198,7 @@ public class AliasAnalysis {
             }
         }
         // TODO: LOADSTORE Analysis
+        MSSA=new MemorySSA(F,F.getDominatorTree());
     }
 
     private static boolean isUsingGV(Function F, GlobalVariable gv) {

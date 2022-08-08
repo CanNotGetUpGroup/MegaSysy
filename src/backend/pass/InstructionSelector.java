@@ -469,8 +469,8 @@ public class InstructionSelector {
                 if (cond.getOp() == Instruction.Ops.FCmp)
                     new VMRS(mbb, new MCRegister(MCRegister.RegName.APSR_nzcv), new MCRegister(MCRegister.RegName.FPSCR))
                             .pushBacktoInstList();
-                new Move(mbb, dest, new ImmediateNumber(0)).pushBacktoInstList();
 
+                new Move(mbb, dest, new ImmediateNumber(0)).pushBacktoInstList();
                 MachineInstruction inst = new Move(mbb, dest, new ImmediateNumber(1));
 
                 inst.setCond(MachineInstruction.Condition.irToMCCond(op));

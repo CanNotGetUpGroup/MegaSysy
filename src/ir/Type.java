@@ -36,6 +36,7 @@ public class Type {
     public Type(TypeID tid,int hashcode) {
         ID=tid;
         this.hashcode=hashcode;
+        MyContext.getInstance().Type2Hash.put(this,hashcode);
     }
 
     @Override

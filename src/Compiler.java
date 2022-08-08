@@ -14,6 +14,7 @@ import java.io.*;
 import java.util.Arrays;
 
 public class Compiler {
+    private static final Module module=Module.getInstance();
     /**
      * 功能测试：compiler -S -o testcase.s testcase.sy
      * 性能测试：compiler -S -o testcase.s testcase.sy -O2
@@ -23,7 +24,7 @@ public class Compiler {
         FileWriter fw=new FileWriter(args[2]);
         PrintWriter pw=new PrintWriter(fw);
 
-        String[] str={"float.sy"};
+        String[] str={};
         for(String s:str){
             if(args[3].endsWith(s)){
 //                InputStream in=new FileInputStream(args[3]);
@@ -49,18 +50,26 @@ public class Compiler {
         SysyParser parser = new SysyParser(tokenStream);
         ParseTree tree = parser.program(); // 获取语法树的根节点
         visitor.visit(tree);
-        Module module = Module.getInstance();
         module.rename();
 
         if(O2){
+            //TODO：优化掉undef
+            PassManager.ignoreUndef=false;
             PassManager.initialization();
             PassManager.initializationMC();
         }
         PassManager.run(module);
 
+
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
-        mc.run();
+
+        if(O2){
+            mc.performanceRun();
+        }else{
+            mc.run();
+        }
+
         PassManager.runMC(mc);
 
         pw.println(mc.toArm());
