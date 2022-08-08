@@ -53,13 +53,27 @@ public class LICM extends FunctionPass {
         }
         ArrayList<Instruction> Invariant = detectInvarint(loop); // 循环不变量标记
         // 将标记的循环不变量按顺序提升到循环外部
-        for (var inst : Invariant) {
-            if (inst instanceof BinaryInstruction) {
-                BinaryInstruction binInst = (BinaryInstruction) inst;
-                CloneMap cloneMap = new CloneMap();
-                var copyInst = binInst.copy(cloneMap);
-                inst.remove();
-                loop.getLoopPrehead().getInstList().insertBeforeEnd(copyInst.getInstNode());
+        CloneMap cloneMap = new CloneMap();
+        while (!Invariant.isEmpty()) {
+            for (var inst : Invariant) {
+                if (inst instanceof BinaryInstruction) { // 目前只考虑了binary instruction
+                    BinaryInstruction binInst = (BinaryInstruction) inst;
+                    // 如果它的oprand是循环不变量且在loop中，那么需要先提升它的operand，此次先跳过
+                    boolean canLift = true;
+                    for (int i = 1; i < binInst.getNumOperands(); ++i) {
+                        if (binInst.getOperand(i) instanceof Instruction) {
+                            Instruction opInst = (Instruction) binInst.getOperand(i);
+                            if (loop.getBbList().contains(opInst.getParent()) && Invariant.contains(opInst)) {
+                                canLift = false;
+                            }
+                        }
+                    }
+                    if (canLift) {
+                        var copyInst = binInst.copy(cloneMap);
+                        inst.remove();
+                        loop.getLoopPrehead().getInstList().insertBeforeEnd(copyInst.getInstNode());
+                    }
+                }
             }
         }
     }
