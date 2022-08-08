@@ -72,6 +72,7 @@ public class DominatorTree {
         removeUnreachableBB();
         calculateDomTree();
         calculateDomFrontier();
+        updateDFSNumbers();
     }
 
     public void update(Function F) {
@@ -293,12 +294,12 @@ public class DominatorTree {
         }
 
         public boolean dominatedBy(TreeNode TA) {
-            TreeNode IDom, TB = this;
-            while ((IDom = TB.IDom) != TB && IDom != null && IDom.level >= TA.level) {
-                TB = IDom;
-            }
-            return TB == TA;
-            // return this.DFSInNum>=other.DFSInNum&&this.DFSOutNum<=other.DFSOutNum;
+//            TreeNode IDom, TB = this;
+//            while ((IDom = TB.IDom) != TB && IDom != null && IDom.level >= TA.level) {
+//                TB = IDom;
+//            }
+//            return TB == TA;
+             return this.DFSInNum>=TA.DFSInNum&&this.DFSOutNum<=TA.DFSOutNum;
         }
 
         @Override

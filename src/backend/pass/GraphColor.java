@@ -731,8 +731,8 @@ public class GraphColor {
                 Set<Register> init = new HashSet<>();
                 for (var bb : f.getBbList()) {
                     for (var i : bb.getInstList()) {
-                        init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister).toList());
-                        init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister).toList());
+                        init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
+                        init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
                     }
                 }
                 makeWorkList(init);
