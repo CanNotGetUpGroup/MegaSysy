@@ -70,8 +70,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
         symbolTable.addValue("putarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_array), "putarray", module, false));
         symbolTable.addValue("putfarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_farray), "putfarray", module, false));
         symbolTable.addValue("memset", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_memset), "memset", module, false));
-        symbolTable.addValue("starttime", builder.createFunction(FunctionType.get(Type.getVoidTy()), "_sysy_starttime", module, false));
-        symbolTable.addValue("stoptime", builder.createFunction(FunctionType.get(Type.getVoidTy()), "_sysy_stoptime", module, false));
+        symbolTable.addValue("starttime", builder.createFunction(FunctionType.get(Type.getVoidTy(),param_int), "_sysy_starttime", module, false));
+        symbolTable.addValue("stoptime", builder.createFunction(FunctionType.get(Type.getVoidTy(),param_int), "_sysy_stoptime", module, false));
 
         return super.visitProgram(ctx);
     }
@@ -1032,10 +1032,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
             if (F == null) {
                 LogError("未找到名为" + name + "的函数");
             }
-            FunctionType FT = (FunctionType) F.getType();
+            FunctionType FT =  F.getType();
             int argNum = 0;
             if (ctx.funcRParams() != null) {
                 argNum = ctx.funcRParams().exp().size();
+            }
+            if(ctx.IDENT().getText().equals("starttime")||ctx.IDENT().getText().equals("stoptime")){
+                argNum = 1;
             }
             if (FT.getContainedTys().size() - 1 != argNum) {//参数数量不对
                 LogError("函数" + symbolTable.getName(F) + "参数数量不对");
@@ -1046,6 +1049,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 visit(ctx.funcRParams());
             }
             fType.pop();
+            if(ctx.IDENT().getText().equals("starttime")||ctx.IDENT().getText().equals("stoptime")){
+                paramList.add(new ArrayList<>(){{add(ConstantInt.get(0));}});
+            }
             curVal = builder.createCall(F, paramList.pop());
             curVal.setComment("call "+ctx.getText());
         }

@@ -156,7 +156,8 @@ public class GVNGCM extends ModulePass {
             return false;
         } else if (replace == I) {
             return false;
-        } else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
+        }
+        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
             Instruction RI = (Instruction) replace;
             if (!DT.dominates(RI.getParent(), I.getParent())) {
                 return false;
@@ -441,7 +442,9 @@ public class GVNGCM extends ModulePass {
                         int index = 0;
                         for (Value val : userInst.getOperandList()) { // PHI incoming vals
                             if (val instanceof Instruction && val.getUseList().contains(use)) {
-                                userBB = userInst.getParent().getPredecessor(index);
+//                                这里想要获取的是phi节点val对应的基本块？(index跟getPredecessor并不对应)
+//                                userBB = userInst.getParent().getPredecessor(index);
+                                userBB=((PHIInst)userInst).getIncomingBlock(index);
                                 curBB = (curBB == null) ? userBB : DT.findSharedParent(DT.getNode(curBB), DT.getNode(userBB)).BB;
                             }
                             index++;
