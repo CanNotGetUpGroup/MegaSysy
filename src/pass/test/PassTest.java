@@ -15,20 +15,22 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 public class PassTest {
+    private static final Module module=Module.getInstance();
     public static void main(String[] args) throws IOException {
-        CharStream inputStream = CharStreams.fromFileName(args[0]); // 获取输入流
-        FileWriter fw=new FileWriter(args[1]);
-        PrintWriter pw=new PrintWriter(fw);
+        {
+            CharStream inputStream = CharStreams.fromFileName(args[0]); // 获取输入流
 
-        SysyLexer lexer = new SysyLexer(inputStream);
+            SysyLexer lexer = new SysyLexer(inputStream);
 
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
-        Visitor visitor=new Visitor();
-        SysyParser parser = new SysyParser(tokenStream);
-        ParseTree tree = parser.program(); // 获取语法树的根节点
-        visitor.visit(tree);
-        Module module = Module.getInstance();
-        module.rename();
+            CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
+            Visitor visitor = new Visitor();
+            SysyParser parser = new SysyParser(tokenStream);
+            ParseTree tree = parser.program(); // 获取语法树的根节点
+            visitor.visit(tree);
+            module.rename();
+        }
+        FileWriter fw = new FileWriter(args[1]);
+        PrintWriter pw = new PrintWriter(fw);
 
         //添加Pass
         PassManager.initialization();
