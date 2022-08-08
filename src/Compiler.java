@@ -14,6 +14,7 @@ import java.io.*;
 import java.util.Arrays;
 
 public class Compiler {
+    private static final Module module=Module.getInstance();
     /**
      * 功能测试：compiler -S -o testcase.s testcase.sy
      * 性能测试：compiler -S -o testcase.s testcase.sy -O2
@@ -49,7 +50,6 @@ public class Compiler {
         SysyParser parser = new SysyParser(tokenStream);
         ParseTree tree = parser.program(); // 获取语法树的根节点
         visitor.visit(tree);
-        Module module = Module.getInstance();
         module.rename();
 
         if(O2){
