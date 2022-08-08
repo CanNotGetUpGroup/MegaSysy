@@ -122,6 +122,10 @@ public abstract class Instruction extends User {
             && op.ordinal() <= Ops.Xor.ordinal();
     }
 
+    public static boolean isCmp(Ops op){
+        return op.equals(Ops.ICmp)||op.equals(Ops.FCmp);
+    }
+
     /**
      * 从基本块中删除
      */

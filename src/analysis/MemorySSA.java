@@ -14,6 +14,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 
+/**
+ * 粒度不够细，没有精确到具体的array（如对b[i]赋值后，导致无法识别a[i]的版本）
+ * TODO:1.精确到数组2.精确到数组元素
+ */
 public class MemorySSA {
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
     private final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemAccList;//基本块中储存的MemoryAccess
@@ -131,9 +135,9 @@ public class MemorySSA {
 
     public void dfsRename(RenamePassData RPD, Set<BasicBlock> Visited) {
         DominatorTree.TreeNode Node = RPD.treeNode;
-        MemoryAccess IncomingVal = RPD.Val;
         if (!Node.Children.isEmpty()) {
             for (DominatorTree.TreeNode Child : Node.Children) {
+                MemoryAccess IncomingVal = RPD.Val;
                 BasicBlock BB = Child.BB;
                 boolean AlreadyVisited = !Visited.add(BB);
                 if (AlreadyVisited) {
@@ -196,15 +200,21 @@ public class MemorySSA {
 
     /**
      * TODO:新建I的MemoryAccess，可能需要用到Alias Analysis中的信息判断是否改写、读取了内存？
-     * 这里暂时只通过指令类型判断
+     * 这里暂时只通过load是否为参数以及callee的side effect
      */
     public MemoryDefOrUse createNewAccess(Instruction I) {
         MemoryDefOrUse ret = null;
         switch (I.getOp()) {
             case Store, Call -> {
+//                if(I.getOp().equals(Instruction.Ops.Call)&&(!((Function)I.getOperand(0)).hasSideEffect())){
+//                    return null;
+//                }
                 ret = new MemoryDef(I, null, ID++);
             }
             case Load -> {
+                if(AliasAnalysis.isParam(I.getOperand(0))){
+                    return null;
+                }
                 ret = new MemoryUse(I, null);
             }
         }
