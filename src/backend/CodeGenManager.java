@@ -73,9 +73,24 @@ public class CodeGenManager {
         var phiEliminate = new PhiElimination(funcList);
         phiEliminate.run();
 
+        var allocator = new RegAllocator(funcList);
+        allocator.run();
+    }
+
+    public void performanceRun() {
+        var selector = new InstructionSelector(module);
+        selector.run();
+        this.funcList = selector.getFuncList();
+        this.dataBlockArrayList = selector.getGlobalDataList();
+
+        var phiEliminate = new PhiElimination(funcList);
+        phiEliminate.run();
+
         var allocator = new GraphColor(funcList);
         allocator.run();
     }
+
+
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
