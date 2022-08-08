@@ -16,7 +16,7 @@ for file in os.listdir(functional_testcase):
 
 for file in functional_file_list:
     print(functional_testcase+file+".sy:")
-    a=os.system("java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy -O2")
+    a=os.system("java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy")
 
 performance_testcase=testcase+"/performance/"
 performance_out_pass=out_directory+"/performance/"
