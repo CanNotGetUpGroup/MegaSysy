@@ -462,11 +462,11 @@ public abstract class Instructions {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             String funcName = getOperand(0).getName();
-            if (funcName.equals("_sysy_stoptime")) {
-                funcName = "stoptime";
-            } else if (funcName.equals("_sysy_starttime")) {
-                funcName = "starttime";
-            }
+//            if (funcName.equals("_sysy_stoptime")) {
+//                funcName = "stoptime";
+//            } else if (funcName.equals("_sysy_starttime")) {
+//                funcName = "starttime";
+//            }
             if (((FunctionType) getOperand(0).getType()).getReturnType().isVoidTy()) {
                 sb.append("call ").append(this.getType()).append(" @").append(funcName);
             } else {
