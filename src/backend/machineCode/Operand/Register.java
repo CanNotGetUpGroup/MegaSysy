@@ -1,5 +1,7 @@
 package backend.machineCode.Operand;
 
+import java.util.Objects;
+
 public class Register extends MCOperand {
 
     public enum Type{
@@ -12,7 +14,13 @@ public class Register extends MCOperand {
         Int
     }
 
+    int id;
     private Type type;
+
+    public Content getContent() {
+        return content;
+    }
+
     private Content content;
 
     Register(Type type){
@@ -42,5 +50,15 @@ public class Register extends MCOperand {
 
     public boolean isPrecolored() {
         return this instanceof MCRegister && !((MCRegister) this).isAllocated;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return this.toString().equals(obj.toString());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, type, content);
     }
 }

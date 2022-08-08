@@ -1,5 +1,6 @@
 package backend.machineCode;
 
+import backend.machineCode.Instruction.Arithmetic;
 import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
@@ -223,8 +224,11 @@ public abstract class MachineInstruction {
     public void setOp2(MCOperand op) {
     }
 
-    public  Register getDef(){
-       return getDest();
+    public  ArrayList<Register> getDef(){
+        var ans = new ArrayList<Register>();
+        if(getDest() != null)
+            ans.add(getDest());
+       return ans;
     }
     public  ArrayList<Register> getUse(){
         var ans = new ArrayList<Register>();
