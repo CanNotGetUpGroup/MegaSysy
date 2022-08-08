@@ -64,6 +64,11 @@ public class CodeGenManager {
         allocator.run();
     }
 
+    private void halfRun22() {
+        var allocator = new RegAllocator(funcList);
+        allocator.run();
+    }
+
     public void run() {
         var selector = new InstructionSelector(module);
         selector.run();
@@ -125,7 +130,7 @@ public class CodeGenManager {
         Module module = Module.getInstance();
         module.rename();
 
-        if (true) {
+        if (false) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
             PassManager.initialization();
