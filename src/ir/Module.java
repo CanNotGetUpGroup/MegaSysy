@@ -10,7 +10,7 @@ public class Module {
     private final ArrayList<GlobalVariable> globalVariables; //全局变量
     private final IList<Function, Module> funcList; //函数
     private static final Module module = new Module();
-    private static final boolean openComment=false;
+    private static final boolean openComment=true;
 
     private Module() {
         this.globalVariables = new ArrayList<>();

@@ -121,6 +121,19 @@ public class BasicBlock extends Value {
             getTerminator().dropUsesAsUser();
     }
 
+    public void removeThisAndAllInst() {
+        bbNode.remove();
+        dropUsesAsValue();
+        for(PHIInst phi:new ArrayList<>(PHIs)){
+            phi.removeIncomingValue(this,false);
+        }
+        PHIs.clear();
+        for(Instruction I:getInstList()){
+            I.remove();
+        }
+//        getTerminator().dropUsesAsUser();
+    }
+
     /**
      * 获取终结符指令
      */

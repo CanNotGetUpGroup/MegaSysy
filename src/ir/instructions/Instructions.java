@@ -516,7 +516,7 @@ public abstract class Instructions {
 
         public boolean withoutGEP() {
             Function F = (Function) this.getOperand(0);
-            if (F.hasSideEffect()) {
+            if (F.hasSideEffect()||F.useGlobalVars()) {
                 return false;
             }
             for (Value val : this.getOperandList()) {
@@ -858,7 +858,7 @@ public abstract class Instructions {
                 return (PHIInst) cloneMap.get(this);
             }
             PHIInst ret = new PHIInst(getType(), getNumOperands());
-            ret.setName(getName() + cloneMap.hashCode());
+            ret.setName(getName() + "_" + cloneMap.hashCode());
             cloneMap.put(this, ret);
             return ret;
         }
