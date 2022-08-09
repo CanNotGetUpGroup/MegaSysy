@@ -64,7 +64,14 @@ public class LoadImm extends MachineInstruction {
                 sb.append("mov");
                 if (dest.isFloat()) sb.append(typeInfoString());
                 sb.append("\t").append(dest).append(", ").append(value);
-            } else
+            } else if(ImmediateNumber.isLegalImm(~value)){
+                if (dest.isFloat())
+                    sb.append("v");
+                sb.append("mvn");
+                if (dest.isFloat()) sb.append(typeInfoString());
+                sb.append("\t").append(dest).append(", ").append(~value);
+            }
+            else
                 sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
                         .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16);
         } else {
@@ -72,5 +79,14 @@ public class LoadImm extends MachineInstruction {
         }
 
         return sb.toString();
+    }
+
+    public static void main(String[] args) {
+        System.out.println(65535);
+        System.out.println(~65535);
+        System.out.println(Integer.toHexString(65535));
+        System.out.println(Integer.toHexString(~65535));
+        System.out.println(ImmediateNumber.isLegalImm(65535));
+        System.out.println(ImmediateNumber.isLegalImm(~65535));
     }
 }

@@ -25,7 +25,9 @@ import java.util.ArrayList;
 public class CodeGenManager {
 
     private static Module module;
+
     private static CodeGenManager codeGenManager;
+
 
     //        private final ArrayList<GlobalVariable> globalVariables;
     private ArrayList<MachineDataBlock> dataBlockArrayList;
@@ -46,8 +48,8 @@ public class CodeGenManager {
         CodeGenManager.module = module;
     }
 
-    private void halfRun1() {
-        var selector = new InstructionSelector(module);
+    private void halfRun1(boolean optimize) {
+        var selector = new InstructionSelector(module, optimize);
         selector.run();
         this.funcList = selector.getFuncList();
         this.dataBlockArrayList = selector.getGlobalDataList();
@@ -71,7 +73,7 @@ public class CodeGenManager {
     }
 
     public void run() {
-        var selector = new InstructionSelector(module);
+        var selector = new InstructionSelector(module, false);
         selector.run();
         this.funcList = selector.getFuncList();
         this.dataBlockArrayList = selector.getGlobalDataList();
@@ -84,7 +86,7 @@ public class CodeGenManager {
     }
 
     public void performanceRun() {
-        var selector = new InstructionSelector(module);
+        var selector = new InstructionSelector(module, true);
         selector.run();
         this.funcList = selector.getFuncList();
         this.dataBlockArrayList = selector.getGlobalDataList();
@@ -94,6 +96,8 @@ public class CodeGenManager {
 
         var allocator = new GraphColor(funcList);
         allocator.run();
+        var clean = new Clean(funcList);
+        clean.run();
     }
 
 
@@ -145,12 +149,12 @@ public class CodeGenManager {
         // back-end
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
-        mc.halfRun1();
+        mc.halfRun1(false);
 
         pw2.println(mc.toArm());
         pw2.flush();
 
-        mc.halfRun2();
+        mc.halfRun22();
 
         pw3.println(mc.toArm());
         pw3.flush();

@@ -27,8 +27,6 @@ public class PhiElimination {
         for (var f : funcList) {
             for (var mbb : f.getBbList()) {
 
-
-
                 for (var inst : mbb.getInstList()) {
                     if (inst instanceof Phi) {
                         var ir = ((Phi) inst).getIr();
