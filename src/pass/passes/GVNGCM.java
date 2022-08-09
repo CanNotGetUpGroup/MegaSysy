@@ -59,7 +59,7 @@ public class GVNGCM extends ModulePass {
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
-//            functionGCM(F);
+            functionGCM(F);
             shouldContinue |= new SimplifyCFG().run(F);
         }
         Module.getInstance().rename(F);
@@ -142,6 +142,10 @@ public class GVNGCM extends ModulePass {
             if (loadGVN(LI)) {
                 return true;
             }
+        }else if(I.getOp().equals(Ops.Call)){
+            if(!((CallInst)I).withoutGEP()){
+                return false;
+            }
         }
         if (I.getType().isVoidTy()) return false;
         int now = nextValueNumber;
@@ -157,12 +161,12 @@ public class GVNGCM extends ModulePass {
         } else if (replace == I) {
             return false;
         }
-        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
-            Instruction RI = (Instruction) replace;
-            if (!DT.dominates(RI.getParent(), I.getParent())) {
-                return false;
-            }
-        }
+//        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
+//            Instruction RI = (Instruction) replace;
+//            if (!DT.dominates(RI.getParent(), I.getParent())) {
+//                return false;
+//            }
+//        }
         replace(I, replace);
         addInstToDeadList(I);
 
@@ -172,6 +176,7 @@ public class GVNGCM extends ModulePass {
     public boolean loadGVN(LoadInst LI) {
         if (LI.getUseList().isEmpty()) {
             addInstToDeadList(LI);
+            return true;
         }
         Value Address = LI.getOperand(0);
         //若不是数组，则得到null
@@ -263,7 +268,7 @@ public class GVNGCM extends ModulePass {
             int num = valueToInteger.remove(I);
             if (integerToValue.get(num) == I) {
                 integerToValue.remove(num);
-                hashToValue.remove(valueToHash.get(I));
+                hashToValue.remove(valueToHash.get(I).a);
             }
         }
     }
@@ -340,6 +345,9 @@ public class GVNGCM extends ModulePass {
     }
 
     public Pair<Integer,ArrayList<Integer>> getHash(CallInst CI) {
+        if(!CI.withoutGEP()){
+            return new Pair<>(CI.hashCode(),null_array);
+        }
         ArrayList<Integer> array = new ArrayList<>();
         array.add(getHash(CI.getOperand(0)).a);
         for (int i = 1; i < CI.getNumOperands(); i++) {
@@ -395,7 +403,8 @@ public class GVNGCM extends ModulePass {
                 I.getInstNode().remove();
                 F.getEntryBB().getInstList().insertBeforeEnd(I.getInstNode());
             }
-            if (Instruction.isBinary(I.getOp()) || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)) {
+            if (Instruction.isBinary(I.getOp()) || Instruction.isCmp(I.getOp())
+                    || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)) {
                 for (Value op : I.getOperandList()) {
                     if (op instanceof Instruction) {
                         Instruction opInst = (Instruction) op;
@@ -454,6 +463,25 @@ public class GVNGCM extends ModulePass {
                     }
                 }
             }
+            //MemPhi不在useList中
+            if(AliasAnalysis.MSSA.getMemoryAccess(I)!=null){
+                MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
+                for(Use use:MA.getUseList()){
+                    User user=use.getU();
+                    if(user instanceof MemoryAccess.MemoryPhi){
+                        MemoryAccess.MemoryPhi userInst = (MemoryAccess.MemoryPhi) user;
+                        BasicBlock userBB;
+                        int index = 0;
+                        for (Value value : (userInst).getIncomingValues()) {
+                            if (value.getUseList().contains(use)) {
+                                userBB = userInst.getIncomingBlock(index);
+                                curBB = (curBB == null) ? userBB : DT.findSharedParent(DT.getNode(curBB), DT.getNode(userBB)).BB;
+                            }
+                            index++;
+                        }
+                    }
+                }
+            }
             // upper:current lower:curBB
             BasicBlock minBB = curBB;
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
@@ -475,6 +503,7 @@ public class GVNGCM extends ModulePass {
                     if (inst.getOperandList().contains(I)) {
                         I.getInstNode().remove();
                         minBB.getInstList().insertBefore(I.getInstNode(), inst.getInstNode());
+                        break;//此处忘了break
                     }
                 }
             }
@@ -482,7 +511,8 @@ public class GVNGCM extends ModulePass {
     }
 
     public boolean scheduleAble(Instruction I) {
-        return Instruction.isBinary(I.getOp()) || I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)
+        return Instruction.isBinary(I.getOp()) || Instruction.isCmp(I.getOp()) ||
+                I.getOp().equals(Ops.Load) || I.getOp().equals(Ops.GetElementPtr)
                 || (I.getOp().equals(Ops.Call) && ((CallInst) I).withoutGEP());
     }
 

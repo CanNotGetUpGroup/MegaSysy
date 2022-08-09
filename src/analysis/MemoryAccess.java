@@ -17,6 +17,7 @@ import java.util.ArrayList;
 public class MemoryAccess extends Instruction {
     private BasicBlock BB;//不使用Instruction的getParent，因为需要将其插入ilist
     private int ID;
+    private Value pointer;//对应的alloca或global variable（callInst没有单独的pointer，而是通过MemorySSA中的CI2Pointers获取）
 
     public MemoryAccess(Ops op, BasicBlock BB) {
         super(Type.getVoidTy(), op);
@@ -42,6 +43,14 @@ public class MemoryAccess extends Instruction {
     @Override
     public Value copy(CloneMap cloneMap) {
         return null;
+    }
+
+    public Value getPointer() {
+        return pointer;
+    }
+
+    public void setPointer(Value pointer) {
+        this.pointer = pointer;
     }
 
     /**
