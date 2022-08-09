@@ -78,6 +78,7 @@ public class InstructionSelector {
             head = head.getNext();
             var f = head.getVal();
             MachineFunction mf = new MachineFunction(f.getName());
+            mf.setLoopInfo(f.getLoopInfo());
             mf.setStackTop(optimize? 36 : 8);
 
             if (f.isDefined())
@@ -113,6 +114,7 @@ public class InstructionSelector {
             head = head.getNext();
             var bb = head.getVal();
             MachineBasicBlock mbb = new MachineBasicBlock(mf);
+            mbb.setLoopDepth(irFunction.getLoopInfo().getLoopDepthForBB(bb));
             mbb.pushBacktoBBList();
             bbMap.put(bb, mbb);
         }

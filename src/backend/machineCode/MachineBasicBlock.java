@@ -38,6 +38,16 @@ public class MachineBasicBlock implements Addressable{
 
     private String label;
 
+    private int loopDepth;
+
+    public void setLoopDepth(int l){
+        this.loopDepth=l;
+    }
+
+    public int getLoopDepth(){
+        return loopDepth;
+    }
+
 
     private MachineFunction parent;
     private IListNode<MachineBasicBlock, MachineFunction> bbNode;

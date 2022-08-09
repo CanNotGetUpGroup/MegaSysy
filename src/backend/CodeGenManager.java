@@ -104,7 +104,7 @@ public class CodeGenManager {
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\t.data\n");
+//        sb.append("\t.data\n");
         for (var block : dataBlockArrayList) {
             sb.append(block);
         }

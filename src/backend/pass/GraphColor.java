@@ -390,24 +390,21 @@ public class GraphColor {
     private Random rand = new Random();
 
     void SelectSpill() {
-//        var m = spillWorklist.iterator().next();
-        var n = new ArrayList<>(spillWorklist);
-//        var i = rand.nextInt(n.size());
-//        var m = n.get(i);
-        Register m = null;
-        for (var i : n) {
-            if (substitutions.contains(i))
-                continue;
-            m = i;
-            break;
+        Double maxScore = 0.0;
+        Register m = spillWorklist.iterator().next();
+        for (var i : spillWorklist) {
+            double curScore;
+             curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(1.4, loopDepth.getOrDefault(i, 0));
+            if (substitutions.contains(i)) {
+                curScore = -1;
+            }
+            if(curScore >= maxScore){
+                maxScore = curScore;
+                m = i;
+            }
         }
 
 
-
-
-
-        if (m == null)
-            m = n.get(0);
 
         // TODO: elected using favorite heuristic
         //Note: avoid choosing nodes that are the tiny live ranges
@@ -717,6 +714,7 @@ public class GraphColor {
     HashSet<Register> spiltRegs = new HashSet<>();
     HashSet<Register> substitutions = new HashSet<>();
     HashSet<Integer> registerUsed = new HashSet<>();
+    HashMap<Register, Integer> loopDepth;
 
     public void run() {
         var MCdegree = new HashMap<Register, Integer>();
@@ -739,6 +737,7 @@ public class GraphColor {
                 if (++time > 5) throw new RuntimeException("to many rewrite");
                 // initial all data structure
                 {
+                    loopDepth = new HashMap<>();
                     simplifyWorklist = new HashSet<>(); // list of low-degree non-move-related nodes.
                     freezeWorklist = new HashSet<>(); // low-degree move-related nodes.
                     spillWorklist = new HashSet<>(); // high-degree nodes.
@@ -770,9 +769,16 @@ public class GraphColor {
 
                 Set<Register> init = new HashSet<>();
                 for (var bb : f.getBbList()) {
+                    int bbDepth = bb.getLoopDepth();
                     for (var i : bb.getInstList()) {
                         init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
                         init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
+                        for(var u : i.getUse()){
+                            var depth = loopDepth.getOrDefault(u, 0);
+                            if(bbDepth > depth)
+                                depth = bbDepth;
+                            loopDepth.put(u , depth);
+                        }
                     }
                 }
                 makeWorkList(init);
