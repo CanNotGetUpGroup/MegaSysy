@@ -90,7 +90,8 @@ public class Arithmetic extends MachineInstruction {
         return (isForFloat() ? "v" : "")
                 + type.toString() + (isSetState() ? "S" : "")
                 + (getCond() != null ? getCond().toString() : "") + typeInfoString() + "\t"
-                + destReg.toString() + ", " + op1.toString() + ", " + op2.toString();
+                + destReg.toString() + ", " + op1.toString() + ", " + op2.toString()
+                + (hasShift()? ", " + getShifter() : "");
     }
 
     @Override

@@ -1,9 +1,11 @@
 package backend.machineCode;
 
 import backend.machineCode.Instruction.Arithmetic;
+import backend.machineCode.Instruction.Shift;
 import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
+import backend.machineCode.Operand.Shifter;
 import ir.BasicBlock;
 import ir.Instruction;
 import ir.Type;
@@ -86,6 +88,23 @@ public abstract class MachineInstruction {
         this.cond = cond;
     }
 
+    public Shifter getShifter() {
+        return shifter;
+    }
+
+    public void setShifter(Shifter shifter) {
+        this.shifter = shifter;
+    }
+
+    public void setShifter(Shift.Type type, int sh) {
+        this.shifter = new Shifter(type, sh);
+    }
+
+    public boolean hasShift(){
+        return shifter != null;
+    }
+
+    private Shifter shifter = null;
 
     private Condition cond;
 
