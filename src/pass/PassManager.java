@@ -20,10 +20,9 @@ public class PassManager {
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
-        passes.add(new GVNGCM());//Mem2Reg处理掉了所有local alloca
-
         passes.add(new LoopInfoUpdate()); // 计算循环信息
         passes.add(new LICM());// 循环不变量外提
+        passes.add(new GVNGCM());//Mem2Reg处理掉了所有local alloca
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());//FuncInline为其创造更多机会
         passes.add(new Mem2Reg());//处理掉新产生的alloca
