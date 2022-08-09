@@ -1,5 +1,6 @@
 package backend.machineCode;
 
+import analysis.LoopInfo;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 import ir.*;
@@ -67,6 +68,16 @@ public class MachineFunction implements Addressable{
     public boolean isLeaf() {
         return isLeaf;
     }
+
+    public LoopInfo getLoopInfo() {
+        return loopInfo;
+    }
+
+    public void setLoopInfo(LoopInfo loopInfo) {
+        this.loopInfo = loopInfo;
+    }
+
+    private LoopInfo loopInfo;
 
     public void setLeaf(boolean isLeaf) {
         this.isLeaf = isLeaf;
