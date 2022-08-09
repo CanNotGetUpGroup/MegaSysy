@@ -21,6 +21,17 @@ public abstract class MachineInstruction {
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
 
+    public boolean isSetState() {
+        return setState;
+    }
+
+    public void setSetState(boolean setState) {
+        this.setState = setState;
+    }
+
+    private boolean setState;
+
+
     public boolean isforBr() {
         return forBr;
     }
@@ -85,7 +96,8 @@ public abstract class MachineInstruction {
         GE, ///> Signed greater than or equal
         LT, ///> Signed less than
         GT, ///> Signed greater than
-        LE; ///> Signed less than or equal
+        LE, ///> Signed less than or equal
+        PL; ///> Positive or zero result
 
         static public Condition getOpposite(Condition cond) {
             return switch (cond) {
@@ -95,6 +107,7 @@ public abstract class MachineInstruction {
                 case LT -> GE;
                 case GT -> LE;
                 case LE -> GT;
+                default -> throw new RuntimeException("didn't finish" + cond);
             };
         }
 

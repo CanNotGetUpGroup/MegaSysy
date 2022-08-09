@@ -754,7 +754,7 @@ public class GraphColor {
                     setStack(f);
                     break;
                 }
-                System.out.println("Rewrite");
+//                System.out.println("Rewrite");
                 RewriteProgram(f);
             }
         }
