@@ -52,7 +52,7 @@ public class Compiler {
         visitor.visit(tree);
         module.rename();
 
-        if(false){
+        if(O2){
             //TODO：优化掉undef
             PassManager.ignoreUndef=false;
             PassManager.initialization();

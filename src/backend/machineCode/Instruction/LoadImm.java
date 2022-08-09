@@ -80,4 +80,13 @@ public class LoadImm extends MachineInstruction {
 
         return sb.toString();
     }
+
+    public static void main(String[] args) {
+        System.out.println(65535);
+        System.out.println(~65535);
+        System.out.println(Integer.toHexString(65535));
+        System.out.println(Integer.toHexString(~65535));
+        System.out.println(ImmediateNumber.isLegalImm(65535));
+        System.out.println(ImmediateNumber.isLegalImm(~65535));
+    }
 }

@@ -678,12 +678,9 @@ public class InstructionSelector {
         var type = val.getType();
 
         if (val instanceof GlobalVariable) {
-            if (valueMap.containsKey(val))
-                return valueMap.get(val);
             var dataBlock = globalDataHash.get(val);
             Register dest = new VirtualRegister();
             new LoadImm(parent, dest, dataBlock).insertBefore(node);
-            valueMap.put(val, dest);
             return dest;
         } else if (val instanceof Constant) {
             if (type.isInt1Ty() || type.isInt32Ty()) {

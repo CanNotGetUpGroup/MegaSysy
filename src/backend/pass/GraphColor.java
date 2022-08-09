@@ -654,21 +654,21 @@ public class GraphColor {
                 // TODO: only save those used
 
                 for (int i = 10; i >= 4; i--) {
-//                    if (!registerUsed.contains(i)) {
-//                        saveOnStack--;
-//                        continue;
-//                    }
+                    if (!registerUsed.contains(i)) {
+                        saveOnStack--;
+                        continue;
+                    }
                     newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
                     newInst.setPrologue(true);
                     newInst.getInstNode().insertBefore(inst.getInstNode());
                 }
                 // will clean later
-//                newInst = new Comment(firstBb, "for not on stack");
-//                newInst.setPrologue(true);
-//                newInst.insertBefore(inst.getInstNode());
-//                newInst = new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), 4 * (7 - saveOnStack));
-//                newInst.setPrologue(true);
-//                newInst.getInstNode().insertBefore(inst.getInstNode());
+                newInst = new Comment(firstBb, "for not on stack");
+                newInst.setPrologue(true);
+                newInst.insertBefore(inst.getInstNode());
+                newInst = new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), 4 * (7 - saveOnStack));
+                newInst.setPrologue(true);
+                newInst.getInstNode().insertBefore(inst.getInstNode());
 
                 // reserve for spilled
                 int offset = 4 * func.getSpiltNumOnStack() + 4 * paraOnStack;
@@ -695,11 +695,11 @@ public class GraphColor {
                             new ImmediateNumber(4 * (saveOnStack + 1)))
                             .getInstNode().insertBefore(inst.getInstNode());
 
-//                    registerUsed.add(11);
+                    registerUsed.add(11);
                     for (int i = 4; i <= 11; i++) {
-//                        if (!registerUsed.contains(i)) {
-//                            continue;
-//                        }
+                        if (!registerUsed.contains(i)) {
+                            continue;
+                        }
                         newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(Register.Content.Int, i));
                         newInst.setEpilogue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
