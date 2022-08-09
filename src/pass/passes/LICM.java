@@ -59,7 +59,6 @@ public class LICM extends FunctionPass {
             ArrayList<Instruction> Invariant = detectInvarint(loop); // 循环不变量标记
             ArrayList<Instruction> Invariantorder = new ArrayList<>(); // 循环不变量标记提升的顺序
             // 获取被标记的循环不变量的提升顺序
-            CloneMap cloneMap = new CloneMap();
             while (Invariant.size() != Invariantorder.size()) {
                 for (var inst : Invariant) {
                     if (Invariantorder.contains(inst)) {
@@ -69,10 +68,10 @@ public class LICM extends FunctionPass {
                         BinaryInstruction binInst = (BinaryInstruction) inst;
                         // 如果它的oprand是循环不变量且在loop中，那么需要先提升它的operand，此次先跳过
                         boolean canLift = true;
-                        for (int i = 1; i < binInst.getNumOperands(); ++i) {
+                        for (int i = 0; i < binInst.getNumOperands(); ++i) {
                             if (binInst.getOperand(i) instanceof Instruction) {
                                 Instruction opInst = (Instruction) binInst.getOperand(i);
-                                if (loop.getBbList().contains(opInst.getParent()) && Invariant.contains(opInst)) {
+                                if (loop.getBbList().contains(opInst.getParent()) && !Invariantorder.contains(opInst)) {
                                     canLift = false;
                                 }
                             }
@@ -86,9 +85,8 @@ public class LICM extends FunctionPass {
             // 将标记的循环不变量按顺序提升到循环外部
             for (var inst : Invariantorder) {
                 if (inst instanceof BinaryInstruction) {
-                    var copyInst = (BinaryInstruction) inst.copy(cloneMap);
-                    inst.remove();
-                    loop.getLoopPrehead().getInstList().insertBeforeEnd(copyInst.getInstNode());
+                    inst.getInstNode().remove();
+                    loop.getLoopPrehead().getInstList().insertBeforeEnd(inst.getInstNode());
                 }
             }
         }
@@ -106,7 +104,7 @@ public class LICM extends FunctionPass {
                         if (Invariant.contains(inst)) {
                             continue;
                         }
-                        for (var i = 1; i < inst.getOperandList().size(); i++) { // 对每一个instruction的每一个use operand遍历
+                        for (var i = 0; i < inst.getOperandList().size(); i++) { // 对每一个instruction的每一个use operand遍历
                             var op = inst.getOperand(i);
                             if (!(op instanceof Constant)) {
                                 if (op instanceof Instruction) {

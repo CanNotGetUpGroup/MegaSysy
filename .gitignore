@@ -14,5 +14,4 @@ testcase.*
 /src/pass/test/*.txt
 testcase.*
 /FrontedTest/
-.gitignore
-src/pass/test/run.py
+/src/pass/test/run_1.py
