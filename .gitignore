@@ -13,3 +13,6 @@ testcase.*
 .DS_Store
 /src/pass/test/*.txt
 testcase.*
+/FrontedTest/
+.gitignore
+src/pass/test/run.py
