@@ -24,11 +24,13 @@ public class InstructionSelector {
     private Module module;
     private ArrayList<MachineFunction> funcList;
     private ArrayList<MachineDataBlock> globalDataList;
+    private boolean optimize = false;
 
-    public InstructionSelector(Module module) {
+    public InstructionSelector(Module module, boolean optimize) {
         this.module = module;
         funcList = new ArrayList<>();
         globalDataList = new ArrayList<>();
+        this.optimize = optimize;
     }
 
     public ArrayList<MachineFunction> getFuncList() {
@@ -76,6 +78,7 @@ public class InstructionSelector {
             head = head.getNext();
             var f = head.getVal();
             MachineFunction mf = new MachineFunction(f.getName());
+            mf.setStackTop(optimize? 32 : 8);
 
             if (f.isDefined())
                 mf.setDefined(true);
@@ -570,11 +573,12 @@ public class InstructionSelector {
             }
             case SRem -> {
 //                var
+                System.out.println(ir);
                 var op2 = ir.getOperand(1);
                 int val = -1;
                 if (op2 instanceof Constants.ConstantInt)
                     val = ((Constants.ConstantInt) op2).getVal();
-                if (op2 instanceof Constants.ConstantInt && isPowerOfTwo(val)) {
+                if (optimize && op2 instanceof Constants.ConstantInt && isPowerOfTwo(val)) {
                     if (val < 0) val = -val;
                     var r1 = valueToMCOperand(mbb, ir.getOperand(0));
                     var copy = new VirtualRegister();
