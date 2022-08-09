@@ -64,7 +64,14 @@ public class LoadImm extends MachineInstruction {
                 sb.append("mov");
                 if (dest.isFloat()) sb.append(typeInfoString());
                 sb.append("\t").append(dest).append(", ").append(value);
-            } else
+            } else if(ImmediateNumber.isLegalImm(~value)){
+                if (dest.isFloat())
+                    sb.append("v");
+                sb.append("mvn");
+                if (dest.isFloat()) sb.append(typeInfoString());
+                sb.append("\t").append(dest).append(", ").append(~value);
+            }
+            else
                 sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
                         .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16);
         } else {
