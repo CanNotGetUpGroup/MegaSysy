@@ -165,6 +165,7 @@ public class MemoryAccess extends Instruction {
                 }
             }
             sb.append(")");
+            sb.append(" ").append(getPointer().getName());
             return sb.toString();
         }
     }

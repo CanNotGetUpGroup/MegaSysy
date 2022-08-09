@@ -57,9 +57,10 @@ public class GVNGCM extends ModulePass {
         while (shouldContinue) {
             clear();
             AliasAnalysis.runMemorySSA(F);
+            AliasAnalysis.gepToArrayIdx.clear();
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
-            functionGCM(F);
+//            functionGCM(F);
             shouldContinue |= new SimplifyCFG().run(F);
         }
         Module.getInstance().rename(F);
@@ -161,12 +162,12 @@ public class GVNGCM extends ModulePass {
         } else if (replace == I) {
             return false;
         }
-//        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
-//            Instruction RI = (Instruction) replace;
-//            if (!DT.dominates(RI.getParent(), I.getParent())) {
-//                return false;
-//            }
-//        }
+        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
+            Instruction RI = (Instruction) replace;
+            if (!DT.dominates(RI.getParent(), I.getParent())) {
+                return false;
+            }
+        }
         replace(I, replace);
         addInstToDeadList(I);
 
@@ -205,7 +206,7 @@ public class GVNGCM extends ModulePass {
             return nextValueNumber++;
         }
         Instruction I = (Instruction) V;
-        //TODO:判断I的hash是否存在
+        //判断I的hash是否存在
         if (Instruction.isBinary(I.getOp()) || Instruction.isCmp(I.getOp()) ||
                 I.getOp().equals(Ops.Load)
 //                ||I.getOp().equals(Ops.GetElementPtr)
@@ -415,6 +416,19 @@ public class GVNGCM extends ModulePass {
                         }
                     }
                 }
+                //MemoryUse和MemoryDef
+                MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
+                if(MA!=null){
+                    BasicBlock BB=MA.getBB();
+                    if(MA instanceof MemoryAccess.MemoryUse){
+                        MemoryAccess.MemoryUse MU=(MemoryAccess.MemoryUse)MA;
+                        BB=MU.getDefiningAccess().getBB();
+                    }
+                    if(DT.getNode(BB).level>DT.getNode(I.getParent()).level){
+                        I.getInstNode().remove();
+                        BB.getInstList().insertBeforeEnd(I.getInstNode());
+                    }
+                }
             }
 
             if (I.getOp().equals(Ops.Call) && ((CallInst) I).withoutGEP()) {
@@ -436,6 +450,10 @@ public class GVNGCM extends ModulePass {
 
     public void scheduleLate(Instruction I, Function F) {
         DominatorTree DT = F.getDominatorTree();
+
+        if(I.getName().startsWith("%190")){
+            System.out.println("");
+        }
 
         if (scheduleAble(I) && !visInsts.contains(I)) {
             visInsts.add(I);

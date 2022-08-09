@@ -26,9 +26,10 @@ public class MemorySSA {
     private final HashMap<Instructions.AllocaInst,Integer> AllocaLookup= new HashMap<>();
     private final HashMap<Instructions.PHIInst,Integer> PhiToAllocaMap=new HashMap<>();
     private ArrayList<Instructions.AllocaInst> allocaInsts;
-    private final ArrayList<Instructions.CallInst> CIs=new ArrayList<>();
+    private final HashMap<BasicBlock,Integer> BBNumbers= new HashMap<>();
     private final HashMap<Instructions.CallInst,ArrayList<Value>> CI2Pointers=new HashMap<>();
     private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Defs=new HashMap<>();
+//    private final Set<BasicBlock> Visited=new HashSet<>();
 
     public MemorySSA(Function F, DominatorTree DT) {
         this.F = F;
@@ -104,6 +105,14 @@ public class MemorySSA {
             if(!(I instanceof Instructions.AllocaInst)) break;
             IncomingValues.put(I,LiveOnEntry);
         }
+
+//        Stack<RenamePassData> RenamePassWorkList=new Stack<>();
+//        RenamePassWorkList.add(new RenamePassData(DT.Parent.getEntryBB(),null,IncomingValues));
+//        do{
+//            RenamePassData RPD=RenamePassWorkList.pop();
+//            RenamePass(RPD.BB,RPD.Pred,RPD.Val,RenamePassWorkList);
+//        }while(!RenamePassWorkList.isEmpty());
+
         RenamePass(DT, IncomingValues, Visited);
 
         //TODO：将无法到达的基本块设为LiveOnEntry
@@ -116,6 +125,21 @@ public class MemorySSA {
         ArrayList<BasicBlock> DefiningBlocks=Pointer2Defs.get(pointer);
         if(DefiningBlocks==null) return;
         Mem2Reg.IDFCalculate(DT, DefiningBlocks, null, IDFBlocks);
+
+        if(BBNumbers.size()==0){
+            int ID=0;
+            for(BasicBlock basicBlock:DT.Parent.getBbList()){
+                BBNumbers.put(basicBlock,ID++);
+            }
+        }
+        //升序排列，便于处理
+        IDFBlocks.sort(new Comparator<BasicBlock>() {
+            @Override
+            public int compare(BasicBlock o1, BasicBlock o2) {
+                return BBNumbers.get(o1)-BBNumbers.get(o2);
+            }
+        });
+
         //插入phi
         for (BasicBlock BB : IDFBlocks) {
             MemoryPhi memPhi = new MemoryPhi(BB, ID++);
@@ -130,11 +154,13 @@ public class MemorySSA {
     }
 
     static class RenamePassData {
-        public DominatorTree.TreeNode treeNode;
+        public BasicBlock BB;
+        public BasicBlock Pred;
         HashMap<Value,MemoryAccess> Val;
 
-        public RenamePassData(DominatorTree.TreeNode BB, HashMap<Value,MemoryAccess> val) {
-            this.treeNode = BB;
+        public RenamePassData(BasicBlock BB, BasicBlock pred, HashMap<Value,MemoryAccess> val) {
+            this.BB = BB;
+            Pred = pred;
             Val = val;
         }
     }
@@ -149,15 +175,74 @@ public class MemorySSA {
             return;
         renameBlock(Root.BB, IncomingVal);
         renameSuccessorPhis(Root.BB, IncomingVal);
-        dfsRename(new RenamePassData(Root, IncomingVal),Visited);
+        dfsRename(new RenamePassData(Root.BB,null, IncomingVal),Visited);
     }
+//    public void RenamePass(BasicBlock BB,BasicBlock Pred,HashMap<Value,MemoryAccess> IncomingVals,Stack<RenamePassData> Worklist){
+//        while(true){
+//            /*
+//             * 如果块中有 φ 指令，则遍历所有先前添加的 φ（注意程序中原来可能也有 φ，这里要和原来的 φ 区分开来）：
+//             * 假设某个前驱到当前基本块有 NumEdges 条边，则为 φ 指令添加 NumEdges 个来源，值为 IncomingVals[L]，同时设置 IncomingVals[L] = Phi
+//             */
+//            if (BlockToMemDefList.get(BB)!=null && BlockToMemDefList.get(BB).getFirst() instanceof MemoryPhi) {
+//                MemoryPhi APN = (MemoryPhi) BlockToMemDefList.get(BB).getFirst();
+//                int NewPHINumOperands = APN.getNumOperands();
+//                int NumEdges = 0;
+//                for (BasicBlock suc :
+//                        Pred.getSuccessors()) {
+//                    if (suc == BB) {
+//                        NumEdges++;
+//                    }
+//                }
+//                assert NumEdges >= 1;
+//                Iterator<MemoryAccess> PNI = BlockToMemDefList.get(BB).iterator();
+//                Instruction I;
+//                do {
+//
+//                    // 则为 φ 指令添加 NumEdges 个来源
+//                    for (int i = 0; i != NumEdges; ++i)
+//                        APN.addIncoming(IncomingVals.get(APN.getPointer()), Pred);
+//
+//                    // 设置 IncomingVals[L] = Phi
+//                    IncomingVals.put(APN.getPointer(), APN);
+//                    // 处理下一个phi
+//                    I = PNI.next();
+//                    if (!(I instanceof MemoryPhi)) {
+//                        break;
+//                    }
+//                    APN = (MemoryPhi) (I);
+//                } while (APN.getNumOperands() == NewPHINumOperands);
+//
+//            }
+//
+//            if (!Visited.add(BB)) {
+//                return;
+//            }
+//            renameBlock(BB,IncomingVals);
+//
+//            if (BB.getSuccessorsNum() == 0)
+//                return;
+//
+//            BasicBlock I = BB.getSuccessor(0);
+//            Set<BasicBlock> VisitedSuccs = new HashSet<>();
+//
+//            VisitedSuccs.add(I);
+//            Pred = BB;
+//            BasicBlock oldBB=BB;
+//            BB = I;
+//
+//            for (int i = 1; i < oldBB.getSuccessorsNum(); i++) {
+//                I = oldBB.getSuccessor(i);
+//                if (VisitedSuccs.add(I))
+//                    Worklist.add(new RenamePassData(I, Pred, new HashMap<>(IncomingVals)));
+//            }
+//        }
+//    }
 
     public void dfsRename(RenamePassData RPD, Set<BasicBlock> Visited) {
-        DominatorTree.TreeNode Node = RPD.treeNode;
-        if (!Node.Children.isEmpty()) {
-            for (DominatorTree.TreeNode Child : Node.Children) {
+        BasicBlock Pred = RPD.BB;
+        if (Pred.getSuccessorsNum()!=0) {
+            for (BasicBlock BB : Pred.getSuccessors()) {
                 HashMap<Value,MemoryAccess> IncomingVal = new HashMap<>(RPD.Val);
-                BasicBlock BB = Child.BB;
                 boolean AlreadyVisited = !Visited.add(BB);
                 if (AlreadyVisited) {
                     LinkedList<MemoryAccess> BlockDefs=BlockToMemDefList.get(BB);
@@ -176,11 +261,12 @@ public class MemorySSA {
                             IncomingVal.put(MA.getPointer(),MA);
                         }
                     }
+                    continue;
                 } else{
                     renameBlock(BB, IncomingVal);
                 }
                 renameSuccessorPhis(BB, IncomingVal);
-                dfsRename(new RenamePassData(Child,IncomingVal),Visited);
+                dfsRename(new RenamePassData(BB,Pred,IncomingVal),Visited);
             }
         }
     }
@@ -231,20 +317,6 @@ public class MemorySSA {
                 Phi.addIncoming(IncomingVal.get(Phi.getPointer()), BB);
             }
         }
-    }
-
-    static class ArrayPassData {
-        public DominatorTree.TreeNode treeNode;
-        HashMap<Value,MemoryAccess> Values;
-
-        public ArrayPassData(DominatorTree.TreeNode BB, HashMap<Value,MemoryAccess> val) {
-            this.treeNode = BB;
-            Values = val;
-        }
-    }
-
-    private void specifyToArray(){
-
     }
 
     public LinkedList<MemoryAccess> getOrAddAccessList(BasicBlock BB) {
