@@ -1,9 +1,11 @@
 package backend.machineCode;
 
 import backend.machineCode.Instruction.Arithmetic;
+import backend.machineCode.Instruction.Shift;
 import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
+import backend.machineCode.Operand.Shifter;
 import ir.BasicBlock;
 import ir.Instruction;
 import ir.Type;
@@ -20,6 +22,17 @@ public abstract class MachineInstruction {
     private MachineBasicBlock parent;
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
+
+    public boolean isSetState() {
+        return setState;
+    }
+
+    public void setSetState(boolean setState) {
+        this.setState = setState;
+    }
+
+    private boolean setState;
+
 
     public boolean isforBr() {
         return forBr;
@@ -75,6 +88,23 @@ public abstract class MachineInstruction {
         this.cond = cond;
     }
 
+    public Shifter getShifter() {
+        return shifter;
+    }
+
+    public void setShifter(Shifter shifter) {
+        this.shifter = shifter;
+    }
+
+    public void setShifter(Shift.Type type, int sh) {
+        this.shifter = new Shifter(type, sh);
+    }
+
+    public boolean hasShift(){
+        return shifter != null;
+    }
+
+    private Shifter shifter = null;
 
     private Condition cond;
 
@@ -85,7 +115,8 @@ public abstract class MachineInstruction {
         GE, ///> Signed greater than or equal
         LT, ///> Signed less than
         GT, ///> Signed greater than
-        LE; ///> Signed less than or equal
+        LE, ///> Signed less than or equal
+        PL; ///> Positive or zero result
 
         static public Condition getOpposite(Condition cond) {
             return switch (cond) {
@@ -95,6 +126,7 @@ public abstract class MachineInstruction {
                 case LT -> GE;
                 case GT -> LE;
                 case LE -> GT;
+                default -> throw new RuntimeException("didn't finish" + cond);
             };
         }
 

@@ -2,10 +2,7 @@ package backend;
 
 import backend.machineCode.MachineDataBlock;
 import backend.machineCode.MachineFunction;
-import backend.pass.GraphColor;
-import backend.pass.InstructionSelector;
-import backend.pass.PhiElimination;
-import backend.pass.RegAllocator;
+import backend.pass.*;
 import frontend.SysyLexer;
 import frontend.SysyParser;
 import frontend.Visitor;
@@ -62,11 +59,15 @@ public class CodeGenManager {
     private void halfRun2() {
         var allocator = new GraphColor(funcList);
         allocator.run();
+        var clean = new Clean(funcList);
+        clean.run();
     }
 
     private void halfRun22() {
         var allocator = new RegAllocator(funcList);
         allocator.run();
+        var clean = new Clean(funcList);
+        clean.run();
     }
 
     public void run() {
