@@ -70,10 +70,11 @@ public class GraphColor {
                 var def = inst.getDef();
                 var uses = inst.getUse();
 
-                for (var d : def)
+                for (var d : def) {
                     if (!curLiveInfo.liveUse.contains(d)) {
                         curLiveInfo.liveDef.add(d);
                     }
+                }
                 for (var use : uses)
                     if (!curLiveInfo.liveDef.contains(use)) {
                         curLiveInfo.liveUse.add(use);
@@ -395,12 +396,18 @@ public class GraphColor {
 //        var m = n.get(i);
         Register m = null;
         for (var i : n) {
-           if(substitutions.contains(i))
-               continue;
-           m = i; break;
+            if (substitutions.contains(i))
+                continue;
+            m = i;
+            break;
         }
-        if(m == null)
-          m = n.get(0);
+
+
+
+
+
+        if (m == null)
+            m = n.get(0);
 
         // TODO: elected using favorite heuristic
         //Note: avoid choosing nodes that are the tiny live ranges
@@ -448,22 +455,32 @@ public class GraphColor {
                 var op1 = i.getOp1();
                 var op2 = i.getOp2();
                 if (dest instanceof VirtualRegister) {
-                    ((VirtualRegister) dest).setColorId(colorMap.get(getAlias(dest)));
+                    int color = colorMap.get(getAlias(dest));
+                    ((VirtualRegister) dest).setColorId(color);
+                    registerUsed.add(color);
                 }
                 if (op1 instanceof VirtualRegister) {
-                    ((VirtualRegister) op1).setColorId(colorMap.get(getAlias((Register) op1)));
+                    int color = colorMap.get(getAlias((Register) op1));
+                    ((VirtualRegister) op1).setColorId(color);
+                    registerUsed.add(color);
                 }
                 if (op2 instanceof VirtualRegister) {
-                    ((VirtualRegister) op2).setColorId(colorMap.get(getAlias((Register) op2)));
+                    int color = colorMap.get(getAlias((Register) op2));
+                    ((VirtualRegister) op2).setColorId(color);
+                    registerUsed.add(color);
                 } else if (op2 instanceof Address) {
                     var add = (Address) op2;
                     var reg = add.getReg();
                     var off = add.getReg();
                     if (reg instanceof VirtualRegister) {
+                        int color = colorMap.get(getAlias(reg));
                         ((VirtualRegister) reg).setColorId(colorMap.get(getAlias(reg)));
+                        registerUsed.add(color);
                     }
                     if (off instanceof VirtualRegister) {
+                        int color = colorMap.get(getAlias(off));
                         ((VirtualRegister) off).setColorId(colorMap.get(getAlias(off)));
+                        registerUsed.add(color);
                     }
                 }
             }
@@ -642,11 +659,21 @@ public class GraphColor {
                 // TODO: only save those used
 
                 for (int i = 10; i >= 4; i--) {
+                    if (!registerUsed.contains(i)) {
+                        saveOnStack--;
+                        continue;
+                    }
                     newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
                     newInst.setPrologue(true);
                     newInst.getInstNode().insertBefore(inst.getInstNode());
                 }
-//                func.addStackTop(4 * saveOnStack);
+                // will clean later
+                newInst = new Comment(firstBb, "for not on stack");
+                newInst.setPrologue(true);
+                newInst.insertBefore(inst.getInstNode());
+                newInst = new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), 4 * (7 - saveOnStack));
+                newInst.setPrologue(true);
+                newInst.getInstNode().insertBefore(inst.getInstNode());
 
                 // reserve for spilled
                 int offset = 4 * func.getSpiltNumOnStack() + 4 * paraOnStack;
@@ -673,7 +700,11 @@ public class GraphColor {
                             new ImmediateNumber(4 * (saveOnStack + 1)))
                             .getInstNode().insertBefore(inst.getInstNode());
 
+                    registerUsed.add(11);
                     for (int i = 4; i <= 11; i++) {
+                        if (!registerUsed.contains(i)) {
+                            continue;
+                        }
                         newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(Register.Content.Int, i));
                         newInst.setEpilogue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
@@ -685,12 +716,21 @@ public class GraphColor {
 
     HashSet<Register> spiltRegs = new HashSet<>();
     HashSet<Register> substitutions = new HashSet<>();
+    HashSet<Integer> registerUsed = new HashSet<>();
 
     public void run() {
         var MCdegree = new HashMap<Register, Integer>();
+        var MCUsed = new HashSet<Integer>();
         for (int i = 0; i < 20; i++) {
             MCdegree.put(new MCRegister(Register.Content.Int, i), Integer.MAX_VALUE);
         }
+        for (int i = 0; i < 4; i++) {
+            MCUsed.add(i);
+        }
+        for (int i = 11; i < 20; i++) {
+            MCUsed.add(i);
+        }
+
         for (var f : funcList) {
             if (!f.isDefined()) continue;
             int time = 0;
@@ -723,7 +763,7 @@ public class GraphColor {
                     colorMap = new HashMap<>();
 
                     liveInfoMap = new HashMap<>();
-
+                    registerUsed = new HashSet<>(MCUsed); // id of MC Register have been used
                 }
                 LivenessAnalysis(f);
                 build(f);
@@ -754,7 +794,7 @@ public class GraphColor {
                     setStack(f);
                     break;
                 }
-//                System.out.println("Rewrite");
+                System.out.println("Rewrite");
                 RewriteProgram(f);
             }
         }
