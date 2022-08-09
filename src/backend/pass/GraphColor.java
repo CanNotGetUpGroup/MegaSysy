@@ -401,6 +401,11 @@ public class GraphColor {
             m = i;
             break;
         }
+
+
+
+
+
         if (m == null)
             m = n.get(0);
 
