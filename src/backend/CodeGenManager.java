@@ -60,14 +60,14 @@ public class CodeGenManager {
         var allocator = new GraphColor(funcList);
         allocator.run();
         var clean = new Clean(funcList);
-//        clean.run();
+        clean.run();
     }
 
     private void halfRun22() {
         var allocator = new RegAllocator(funcList);
         allocator.run();
         var clean = new Clean(funcList);
-//        clean.run();
+        clean.run();
     }
 
     public void run() {
@@ -94,6 +94,8 @@ public class CodeGenManager {
 
         var allocator = new GraphColor(funcList);
         allocator.run();
+        var clean = new Clean(funcList);
+        clean.run();
     }
 
 
@@ -150,7 +152,7 @@ public class CodeGenManager {
         pw2.println(mc.toArm());
         pw2.flush();
 
-        mc.halfRun22();
+        mc.halfRun2();
 
         pw3.println(mc.toArm());
         pw3.flush();
