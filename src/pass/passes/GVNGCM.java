@@ -451,9 +451,9 @@ public class GVNGCM extends ModulePass {
     public void scheduleLate(Instruction I, Function F) {
         DominatorTree DT = F.getDominatorTree();
 
-        if(I.getName().startsWith("%190")){
-            System.out.println("");
-        }
+//        if(I.getName().startsWith("%190")){
+//            System.out.println("");
+//        }
 
         if (scheduleAble(I) && !visInsts.contains(I)) {
             visInsts.add(I);
