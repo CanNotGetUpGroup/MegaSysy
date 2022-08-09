@@ -12,7 +12,6 @@ public class LoopInfoUpdate extends FunctionPass {
 
     @Override
     public void runOnFunction(Function F) {
-        System.out.println("Running pass : LoopInfoUpdate");
         F.getLoopInfo().computeLoopInfo(F);
     }
 }

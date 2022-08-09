@@ -1,9 +1,11 @@
 package pass.passes;
 
+import java.lang.reflect.InvocationHandler;
+import java.security.DomainCombiner;
 import java.util.ArrayList;
 import java.util.HashSet;
 import util.CloneMap;
-
+import analysis.DominatorTree;
 import analysis.LoopInfo;
 import ir.Constant;
 import ir.Function;
@@ -31,6 +33,8 @@ import pass.FunctionPass;
  */
 public class LICM extends FunctionPass {
 
+    DominatorTree DT = null;
+
     @Override
     public String getName() {
         return "LICM";
@@ -38,8 +42,8 @@ public class LICM extends FunctionPass {
 
     @Override
     public void runOnFunction(Function func) {
-        System.out.println("Running pass : LICM");
         LoopInfo loopInfo = func.getLoopInfo();
+        DT = func.getAndUpdateDominatorTree();
         for (var topLoop : loopInfo.getTopLevelLoops()) {
             runOnLoop(topLoop);
         }
@@ -51,28 +55,40 @@ public class LICM extends FunctionPass {
                 runOnLoop(subLoop);
             }
         }
-        ArrayList<Instruction> Invariant = detectInvarint(loop); // 循环不变量标记
-        // 将标记的循环不变量按顺序提升到循环外部
-        CloneMap cloneMap = new CloneMap();
-        while (!Invariant.isEmpty()) {
-            for (var inst : Invariant) {
-                if (inst instanceof BinaryInstruction) { // 目前只考虑了binary instruction
-                    BinaryInstruction binInst = (BinaryInstruction) inst;
-                    // 如果它的oprand是循环不变量且在loop中，那么需要先提升它的operand，此次先跳过
-                    boolean canLift = true;
-                    for (int i = 1; i < binInst.getNumOperands(); ++i) {
-                        if (binInst.getOperand(i) instanceof Instruction) {
-                            Instruction opInst = (Instruction) binInst.getOperand(i);
-                            if (loop.getBbList().contains(opInst.getParent()) && Invariant.contains(opInst)) {
-                                canLift = false;
+        if (loop.getLoopPrehead() != null) {
+            ArrayList<Instruction> Invariant = detectInvarint(loop); // 循环不变量标记
+            ArrayList<Instruction> Invariantorder = new ArrayList<>(); // 循环不变量标记提升的顺序
+            // 获取被标记的循环不变量的提升顺序
+            CloneMap cloneMap = new CloneMap();
+            while (Invariant.size() != Invariantorder.size()) {
+                for (var inst : Invariant) {
+                    if (Invariantorder.contains(inst)) {
+                        continue;
+                    }
+                    if (inst instanceof BinaryInstruction) { // 目前只考虑了binary instruction
+                        BinaryInstruction binInst = (BinaryInstruction) inst;
+                        // 如果它的oprand是循环不变量且在loop中，那么需要先提升它的operand，此次先跳过
+                        boolean canLift = true;
+                        for (int i = 1; i < binInst.getNumOperands(); ++i) {
+                            if (binInst.getOperand(i) instanceof Instruction) {
+                                Instruction opInst = (Instruction) binInst.getOperand(i);
+                                if (loop.getBbList().contains(opInst.getParent()) && Invariant.contains(opInst)) {
+                                    canLift = false;
+                                }
                             }
                         }
+                        if (canLift) {
+                            Invariantorder.add(inst);
+                        }
                     }
-                    if (canLift) {
-                        var copyInst = binInst.copy(cloneMap);
-                        inst.remove();
-                        loop.getLoopPrehead().getInstList().insertBeforeEnd(copyInst.getInstNode());
-                    }
+                }
+            }
+            // 将标记的循环不变量按顺序提升到循环外部
+            for (var inst : Invariantorder) {
+                if (inst instanceof BinaryInstruction) {
+                    var copyInst = (BinaryInstruction) inst.copy(cloneMap);
+                    inst.remove();
+                    loop.getLoopPrehead().getInstList().insertBeforeEnd(copyInst.getInstNode());
                 }
             }
         }
@@ -80,22 +96,31 @@ public class LICM extends FunctionPass {
 
     public ArrayList<Instruction> detectInvarint(Loop loop) {
         ArrayList<Instruction> Invariant = new ArrayList<>();
-        boolean newInvariantAdded2Set = false;
+        boolean newInvariantAdded2Set;
         do {
+            newInvariantAdded2Set = false;
             for (var block : loop.getBbList()) {
                 for (Instruction inst : block.getInstList()) { // 对每一个block的每一个instruction遍历
                     if (inst instanceof BinaryInstruction) {
                         boolean isInvariant = true;
+                        if (Invariant.contains(inst)) {
+                            continue;
+                        }
                         for (var i = 1; i < inst.getOperandList().size(); i++) { // 对每一个instruction的每一个use operand遍历
-                            var op = ((BinaryInstruction) inst).getOperand(1);
-                            Instruction opInst = (Instruction) op;
-                            if (!(op instanceof Constant) && loop.getBbList().contains(opInst.getParent())
-                                    && !Invariant.contains(opInst)) {
-                                isInvariant = false;
+                            var op = inst.getOperand(i);
+                            if (!(op instanceof Constant)) {
+                                if (op instanceof Instruction) {
+                                    Instruction opInst = (Instruction) op;
+                                    if (loop.getBbList().contains(opInst.getParent()) && !Invariant.contains(opInst)) {
+                                        isInvariant = false;
+                                    }
+                                }
                             }
                         }
+
                         if (isInvariant) {
                             Invariant.add(inst);
+                            System.out.println("add invariant: " + inst);
                             newInvariantAdded2Set = true;
                         }
                     }
