@@ -53,7 +53,7 @@ public class MachineFunction implements Addressable{
     }
 
 
-    private int stackTop = 8;
+    private int stackTop = 36;
 
 
     public void setDefined(boolean defined) {
