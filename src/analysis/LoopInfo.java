@@ -91,6 +91,21 @@ public class LoopInfo {
         return loop.getBlockHeader() == bb;
     }
 
+    /**
+     * 判断一个BasicBlock是否是循环的preheader
+     *
+     * @param bb
+     * @return
+     */
+    public Boolean isLoopPreHeader(BasicBlock bb) {
+        for(var loop: allLoops){
+            if(loop.getPreHeader() == bb){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void clear(){
         bbLoopMap.clear();
         allLoops.clear();
