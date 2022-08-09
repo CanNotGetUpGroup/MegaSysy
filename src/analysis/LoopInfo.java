@@ -98,15 +98,15 @@ public class LoopInfo {
      * @return
      */
     public Boolean isLoopPreHeader(BasicBlock bb) {
-        for(var loop: allLoops){
-            if(loop.getPreHeader() == bb){
+        for (var loop : allLoops) {
+            if (loop.getPreHeader() == bb) {
                 return true;
             }
         }
         return false;
     }
 
-    public void clear(){
+    public void clear() {
         bbLoopMap.clear();
         allLoops.clear();
         topLevelLoops.clear();
@@ -352,7 +352,7 @@ public class LoopInfo {
         for (var pred : loopHeader.getPredecessors()) {
             if (loop.getBbList().contains(pred)) {
                 if (ret != null) {
-                    System.out.println("Error: loop header has multiple predecessors");
+                    System.out.println("Error: loop has multiple latchblocks");
                     return null;
                 }
                 ret = pred;
