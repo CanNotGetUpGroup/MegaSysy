@@ -220,15 +220,15 @@ public class InstructionSelector {
                 // TODO: float num cmp
                 if (ir.getNumOperands() == 1) { // unconditional branch
                     var dest = ir.getOperand(0);
-                    var mdest =mf.getBBMap().get((BasicBlock) dest);
+                    var mdest = mf.getBBMap().get((BasicBlock) dest);
                     new Branch(mbb, mdest, false, Branch.Type.Block).pushBacktoInstList();
                     mbb.addSuccessor(mdest);
                 } else { // conditional branch
                     if (ir.getOperand(0) instanceof Constants.ConstantInt) {
                         int val = ((Constants.ConstantInt) (ir.getOperand(0))).getVal();
                         if (val == 0) {
-                            var dest =  mf.getBBMap().get(ir.getOperand(1));
-                            new Branch(mbb,dest , false, Branch.Type.Block).pushBacktoInstList();
+                            var dest = mf.getBBMap().get(ir.getOperand(1));
+                            new Branch(mbb, dest, false, Branch.Type.Block).pushBacktoInstList();
                             mbb.addSuccessor(dest);
                         } else {  // must be 1
                             var dest = mf.getBBMap().get(ir.getOperand(2));
@@ -511,34 +511,107 @@ public class InstructionSelector {
                 };
                 new Arithmetic(mbb, mcType, dest, (Register) op1, op2).pushBacktoInstList();
             }
-            case Mul, SDiv -> {
+            case Mul -> {
+                var irOp1 = ir.getOperand(0);
+                var irOp2 = ir.getOperand(1);
+
+                if (irOp1 instanceof Constants.ConstantInt && irOp2 instanceof Constants.ConstantInt) {
+                    // doesn't matter, middle-end will delete this situation
+                    Register op1 = valueToReg(mbb, ir.getOperand(0)),
+                            op2 = valueToReg(mbb, ir.getOperand(1));
+
+                    Register dest = new VirtualRegister();
+                    valueMap.put(ir, dest);
+                    new Arithmetic(mbb, Arithmetic.Type.MUL, dest, op1, op2).pushBacktoInstList();
+                } else if (irOp1 instanceof Constants.ConstantInt || irOp2 instanceof Constants.ConstantInt) {
+                    Register op1;
+                    int val;
+                    var dest = new VirtualRegister();
+                    if (irOp1 instanceof Constants.ConstantInt) {
+                        op1 = valueToReg(mbb, ir.getOperand(1));
+                        val = ((Constants.ConstantInt) irOp1).getVal();
+                    } else {
+                        op1 = valueToReg(mbb, ir.getOperand(0));
+                        val = ((Constants.ConstantInt) irOp2).getVal();
+                    }
+                    if (val > 0 && isPowerOfTwo(val)) {
+                        new Arithmetic(mbb, Arithmetic.Type.LSL, dest, op1, log2(val)).pushBacktoInstList();
+                        valueMap.put(ir, dest);
+                        break;
+                    } else if(val > 0 && isPowerOfTwo(val + 1)){
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.RSB,dest, op1, op1);
+                        inst.setShifter(Shift.Type.LSL, log2(val + 1));
+                        inst.pushBacktoInstList();
+                        valueMap.put(ir, dest);
+                        break;
+                    } else if(val > 0 && isPowerOfTwo(val - 1)){
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, dest, op1, op1);
+                        inst.setShifter(Shift.Type.LSL, log2(val - 1));
+                        inst.pushBacktoInstList();
+                        valueMap.put(ir, dest);
+                        break;
+                    }
+                }
                 Register op1 = valueToReg(mbb, ir.getOperand(0)),
                         op2 = valueToReg(mbb, ir.getOperand(1));
 
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
-                new Arithmetic(mbb, switch (ir.getOp()) {
-                    case Mul -> Arithmetic.Type.MUL;
-                    case SDiv -> Arithmetic.Type.SDIV;
-                    default -> null;
-                }, dest, op1, op2).pushBacktoInstList();
+                new Arithmetic(mbb, Arithmetic.Type.MUL, dest, op1, op2).pushBacktoInstList();
+
+            }
+            case SDiv -> {
+                Register op1 = valueToReg(mbb, ir.getOperand(0)),
+                        op2 = valueToReg(mbb, ir.getOperand(1));
+
+                Register dest = new VirtualRegister();
+                valueMap.put(ir, dest);
+                new Arithmetic(mbb, Arithmetic.Type.SDIV, dest, op1, op2).pushBacktoInstList();
             }
             case SRem -> {
-                mf.setLeaf(false);
-                Register r1 = valueToReg(mbb, ir.getOperand(0)),
-                        r2 = valueToReg(mbb, ir.getOperand(1));
+//                var
+                var op2 = ir.getOperand(1);
+                int val = -1;
+                if (op2 instanceof Constants.ConstantInt)
+                    val = ((Constants.ConstantInt) op2).getVal();
+                if (op2 instanceof Constants.ConstantInt && isPowerOfTwo(val)) {
+                    if (val < 0) val = -val;
+                    var r1 = valueToMCOperand(mbb, ir.getOperand(0));
+                    var copy = new VirtualRegister();
+                    var reverse = new VirtualRegister();
+                    new Move(mbb, copy, r1).pushBacktoInstList();
+                    var inst = new Arithmetic(mbb, Arithmetic.Type.RSB, reverse, copy, 0);
+                    inst.setSetState(true);
+                    inst.pushBacktoInstList();
+                    if (ImmediateNumber.isLegalImm(val - 1)) {
+                        new Arithmetic(mbb, Arithmetic.Type.AND, copy, copy, val - 1).pushBacktoInstList();
+                        new Arithmetic(mbb, Arithmetic.Type.AND, reverse, reverse, val - 1).pushBacktoInstList();
+                    } else {
+                        new Ubfx(mbb, copy, copy, 0, log2(val)).pushBacktoInstList();
+                        new Ubfx(mbb, reverse, reverse, 0, log2(val)).pushBacktoInstList();
+                    }
+                    inst = new Arithmetic(mbb, Arithmetic.Type.RSB, copy, reverse, 0);
+                    inst.setCond(MachineInstruction.Condition.PL);
+                    inst.pushBacktoInstList();
+
+                    valueMap.put(ir, copy);
+                } else {
+                    mf.setLeaf(false);
+                    Register r1 = valueToReg(mbb, ir.getOperand(0)),
+                            r2 = valueToReg(mbb, ir.getOperand(1));
 
 
-                new Move(mbb, new MCRegister(Register.Content.Int, 0), r1).pushBacktoInstList();
-                new Move(mbb, new MCRegister(Register.Content.Int, 1), r2).pushBacktoInstList();
+                    new Move(mbb, new MCRegister(Register.Content.Int, 0), r1).pushBacktoInstList();
+                    new Move(mbb, new MCRegister(Register.Content.Int, 1), r2).pushBacktoInstList();
 
 
-                new Branch(mbb, "__aeabi_idivmod", true, Branch.Type.Call).pushBacktoInstList();
+                    new Branch(mbb, "__aeabi_idivmod", true, Branch.Type.Call).pushBacktoInstList();
 
 
-                var dest = new VirtualRegister();
-                new Move(mbb, dest, new MCRegister(MCRegister.RegName.r1)).pushBacktoInstList();
-                valueMap.put(ir, dest);
+                    var dest = new VirtualRegister();
+                    new Move(mbb, dest, new MCRegister(MCRegister.RegName.r1)).pushBacktoInstList();
+                    valueMap.put(ir, dest);
+                }
             }
 
             case FAdd, FDiv, FMul, FSub -> {
@@ -605,9 +678,12 @@ public class InstructionSelector {
         var type = val.getType();
 
         if (val instanceof GlobalVariable) {
+            if (valueMap.containsKey(val))
+                return valueMap.get(val);
             var dataBlock = globalDataHash.get(val);
             Register dest = new VirtualRegister();
             new LoadImm(parent, dest, dataBlock).insertBefore(node);
+            valueMap.put(val, dest);
             return dest;
         } else if (val instanceof Constant) {
             if (type.isInt1Ty() || type.isInt32Ty()) {
@@ -746,6 +822,27 @@ public class InstructionSelector {
 
             valueMap.put(ir, dest);
             return dest;
+        }
+    }
+
+    public static boolean isPowerOfTwo(int n) {
+        if (n < 0) n = -n;
+        return n > 0 && (n & (n - 1)) == 0;
+    }
+
+    public static int log2(int N) {
+
+        // calculate log2 N indirectly
+        // using log() method
+        int result = (int) (Math.log(N) / Math.log(2));
+
+        return result;
+    }
+
+    public static void main(String[] args) {
+        int x = 1;
+        for (int i = 0; i < 31; i++, x *= 2) {
+            System.out.println(log2(x));
         }
     }
 
