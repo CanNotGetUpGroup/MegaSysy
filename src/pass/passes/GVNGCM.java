@@ -59,7 +59,7 @@ public class GVNGCM extends ModulePass {
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
-            functionGCM(F);
+//            functionGCM(F);
             shouldContinue |= new SimplifyCFG().run(F);
         }
         Module.getInstance().rename(F);
@@ -161,12 +161,12 @@ public class GVNGCM extends ModulePass {
         } else if (replace == I) {
             return false;
         }
-//        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
-//            Instruction RI = (Instruction) replace;
-//            if (!DT.dominates(RI.getParent(), I.getParent())) {
-//                return false;
-//            }
-//        }
+        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
+            Instruction RI = (Instruction) replace;
+            if (!DT.dominates(RI.getParent(), I.getParent())) {
+                return false;
+            }
+        }
         replace(I, replace);
         addInstToDeadList(I);
 
