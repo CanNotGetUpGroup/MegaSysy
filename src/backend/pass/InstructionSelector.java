@@ -78,7 +78,7 @@ public class InstructionSelector {
             head = head.getNext();
             var f = head.getVal();
             MachineFunction mf = new MachineFunction(f.getName());
-            mf.setStackTop(optimize? 32 : 8);
+            mf.setStackTop(optimize? 36 : 8);
 
             if (f.isDefined())
                 mf.setDefined(true);
