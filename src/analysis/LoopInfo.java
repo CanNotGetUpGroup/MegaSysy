@@ -335,7 +335,7 @@ public class LoopInfo {
         BasicBlock loopHeader = loop.getLoopHeader();
         BasicBlock ret = null;
         for (var pred : loopHeader.getPredecessors()) {
-            if (!loop.getBbList().contains(pred)) {
+            if (loop.getBbList().contains(pred)) {
                 if (ret != null) {
                     System.out.println("Error: loop header has multiple predecessors");
                     return null;
