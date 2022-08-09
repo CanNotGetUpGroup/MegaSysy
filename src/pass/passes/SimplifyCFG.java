@@ -129,7 +129,7 @@ public class SimplifyCFG extends FunctionPass {
     }
 
     public boolean simplifyCFG(BasicBlock BB) {
-        if(!eliminatePreHeader&&loopInfo.isPreHeader(BB)) return false;
+        if(!eliminatePreHeader&&loopInfo.isLoopPreHeader(BB)) return false;
         boolean ret = false;
         //化简终结指令
         ret = Folder.constantFoldTerminator(BB);
