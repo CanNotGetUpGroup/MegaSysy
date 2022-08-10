@@ -291,7 +291,7 @@ public class LoopInfo {
         for (var pred : loopHeader.getPredecessors()) {
             if (!loop.getBbList().contains(pred)) {
                 if (ret != null && ret != pred) {
-                    System.out.println("Error: loop header has multiple predecessors");
+//                    System.out.println("Error: loop header has multiple predecessors");
                     return null;
                 }
                 ret = pred;
@@ -352,7 +352,7 @@ public class LoopInfo {
         for (var pred : loopHeader.getPredecessors()) {
             if (loop.getBbList().contains(pred)) {
                 if (ret != null) {
-                    System.out.println("Error: loop has multiple latchblocks");
+//                    System.out.println("Error: loop has multiple latchblocks");
                     return null;
                 }
                 ret = pred;

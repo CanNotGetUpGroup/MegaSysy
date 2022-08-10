@@ -18,6 +18,9 @@ import util.IListIterator;
 import util.MyIRBuilder;
 
 public class GVNGCM extends ModulePass {
+    public static boolean aggressive=false;//开启将alloca替换为参数的优化(需要在函数内联之后)
+    public static boolean GCMOpen=false;//暂时关闭
+
     private Set<Instruction> visInsts = new HashSet<>();
     private ArrayList<Instruction> deadInst = new ArrayList<>();
     //注意维护hashToValue和integerToValue的唯一性，对应的都是leader value
@@ -59,7 +62,8 @@ public class GVNGCM extends ModulePass {
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
-//            functionGCM(F);
+            if(GCMOpen)
+                functionGCM(F);
             shouldContinue |= new SimplifyCFG().run(F);
         }
         Module.getInstance().rename(F);
@@ -165,7 +169,7 @@ public class GVNGCM extends ModulePass {
         } else if (replace == I) {
             return false;
         }
-        else if ((replace instanceof Instruction)) {//TODO:等待GCM完成后删除
+        else if (!GCMOpen&&(replace instanceof Instruction)) {//TODO:等待GCM完成后删除
             Instruction RI = (Instruction) replace;
             if (!DT.dominates(RI.getParent(), I.getParent())) {
                 return false;
@@ -217,7 +221,7 @@ public class GVNGCM extends ModulePass {
         //判断I的hash是否存在
         if (Instruction.isBinary(I.getOp()) || Instruction.isCmp(I.getOp()) ||
                 I.getOp().equals(Ops.Load)
-//                ||I.getOp().equals(Ops.GetElementPtr)
+                ||(GCMOpen&&I.getOp().equals(Ops.GetElementPtr))
                 || I.getOp().equals(Ops.Call)
         ) {
             Pair<Integer,ArrayList<Integer>> hash = getHash(I);
@@ -338,7 +342,7 @@ public class GVNGCM extends ModulePass {
         ArrayList<Integer> array = new ArrayList<>();
         ArrayList<Value> arrayIdx = GEP.getArrayIdx();
         //需要区分argument还是它的alloca
-        if(arrayIdx.size()==1&&AliasAnalysis.isParamOrArgument(arrayIdx.get(0))){
+        if(aggressive&&arrayIdx.size()==1&&AliasAnalysis.isParamOrArgument(arrayIdx.get(0))){
             return new Pair<>(getHash(arrayIdx.get(0)).a,null_array);
         }
         for (Value v : arrayIdx) {
@@ -352,7 +356,7 @@ public class GVNGCM extends ModulePass {
 
     public Pair<Integer,ArrayList<Integer>> getHash(LoadInst LI) {
         Value Address = LI.getOperand(0);
-        if(AliasAnalysis.isParam(Address)){
+        if(aggressive&&AliasAnalysis.isParam(Address)){
             return new Pair<>(getHash(AliasAnalysis.getParam(Address)).a,null_array);
         }
         MemoryAccess MA = AliasAnalysis.MSSA.getMemoryAccess(LI);
