@@ -504,6 +504,11 @@ public class GVNGCM extends ModulePass {
             //MemPhi不在useList中
             if(AliasAnalysis.MSSA.getMemoryAccess(I)!=null){
                 MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
+                if(MA instanceof MemoryAccess.MemoryUse){
+                    MA=((MemoryAccess.MemoryUse) MA).getDefiningAccess();
+                }else{
+                    System.out.println("shouldn't be def");
+                }
                 for(Use use:MA.getUseList()){
                     User user=use.getU();
                     if(user instanceof MemoryAccess.MemoryPhi){
@@ -538,26 +543,36 @@ public class GVNGCM extends ModulePass {
             // 找当前BB最后位置(先找MemorySSA，然后选取二者中的前者)
             Instruction mayReturn=minBB.getInstList().getLast().getVal();
             if(AliasAnalysis.MSSA.getMemoryAccess(I)!=null){
+                LinkedList<MemoryAccess> memoryAccesses=new LinkedList<>();
+                if(AliasAnalysis.MSSA.BlockToMemDefList.get(minBB)!=null){
+                    for(MemoryAccess m:AliasAnalysis.MSSA.BlockToMemDefList.get(minBB)){
+                        if(!(m.getOp().equals(Ops.MemPHI))) break;
+                        memoryAccesses.add(m);
+                    }
+                }
+                for(Instruction inst:minBB.getInstList()){
+                    if(AliasAnalysis.MSSA.getMemoryAccess(inst)!=null){
+                        memoryAccesses.add(AliasAnalysis.MSSA.getMemoryAccess(inst));
+                    }
+                }
                 MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
-                LinkedList<MemoryAccess> memoryAccesses=AliasAnalysis.MSSA.BlockToMemAccList.get(minBB);
-                if(!(memoryAccesses==null||memoryAccesses.isEmpty())){
+                if(!(memoryAccesses.isEmpty())){
                     int id=MA.getID();
-                    boolean find=false;
                     if(MA instanceof MemoryAccess.MemoryUse){//use在def后
                         id=((MemoryAccess.MemoryUse)MA).getDefiningAccess().getID();
-                        if(MA.getBB()!=((MemoryAccess.MemoryUse) MA).getMemoryInstruction().getParent()){
-                            System.out.println("error~");
+                        if(MA.getBB()!=minBB){
+                            System.out.println("error BB~");
                         }
                         if(MA.getBB()==minBB||(!DT.dominates(MA.getBB(),minBB))){
-                            LinkedList<MemoryAccess> defs=AliasAnalysis.MSSA.BlockToMemDefList.get(minBB);
-                            if(defs!=null){
-                                for(MemoryAccess IMA:defs){
-                                    if(id==IMA.getID()){
-                                        find=true;//找到了MemoryDef
-                                    }else if(find&&!IMA.getOp().equals(Ops.MemPHI)){//插入在下一个def前
-                                        mayReturn=((MemoryAccess.MemoryDef)IMA).getMemoryInstruction();
-                                        break;
+                            for (MemoryAccess IMA : memoryAccesses) {
+                                if (id == IMA.getID()) {
+                                    //找到了MemoryDef
+                                    if (IMA.getOp().equals(Ops.MemPHI)) {//插入在基本块首
+                                        mayReturn = minBB.getInstList().getFirst().getNext().getVal();
+                                    } else {//插入在def后
+                                        mayReturn = ((MemoryAccess.MemoryDef) IMA).getMemoryInstruction().getInstNode().getNext().getVal();
                                     }
+                                    break;
                                 }
                             }
                         }else{

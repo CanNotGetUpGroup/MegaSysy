@@ -110,6 +110,7 @@ public class MemoryAccess extends Instruction {
     public static class MemoryUse extends MemoryDefOrUse{
         public MemoryUse(Instruction MI, MemoryAccess DMA) {
             super(Ops.MemUse,MI,DMA);
+            setID(-1);
         }
 
         @Override
