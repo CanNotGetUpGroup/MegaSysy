@@ -33,6 +33,7 @@ public class PassManager {
         passes.add(new Mem2Reg());// 处理掉新产生的alloca
         passes.add(new FuncInline());// 可能还有
         passes.add(new InterproceduralAnalysis());
+        passes.add(new LoopInfoUpdate());
         passes.add(new LICM());// 循环不变量外提
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
@@ -49,17 +50,17 @@ public class PassManager {
     /**
      * 初始化，在此处按照顺序添加MC pass
      */
-    public static void initializationMC(){
-        //MC Pass
-//        MCPasses.add(new Hello());
+    public static void initializationMC() {
+        // MC Pass
+        // MCPasses.add(new Hello());
     }
 
     /**
      * 运行所有IR pass
      */
-    public static void run(Module M){
-        for(Pass p:passes){
-//            System.out.println("IR Pass:"+p.getName());
+    public static void run(Module M) {
+        for (Pass p : passes) {
+            // System.out.println("IR Pass:"+p.getName());
             p.runOnModule(M);
             M.rename();
         }
@@ -68,9 +69,9 @@ public class PassManager {
     /**
      * 运行所有MC pass
      */
-    public static void runMC(CodeGenManager CGM){
-        for(MCPass mp:MCPasses){
-            System.out.println("MC Pass:"+mp.getName());
+    public static void runMC(CodeGenManager CGM) {
+        for (MCPass mp : MCPasses) {
+            System.out.println("MC Pass:" + mp.getName());
             mp.runOnCodeGen(CGM);
         }
     }
