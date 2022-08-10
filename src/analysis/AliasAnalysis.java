@@ -42,6 +42,29 @@ public class AliasAnalysis {
         }
         return null;
     }
+
+    public static Value getPointerOrArgumentValue(Value pointer) {
+        while(pointer instanceof GetElementPtrInst || pointer instanceof LoadInst) {
+            pointer = ((Instruction) pointer).getOperand(0);
+        }
+        if(pointer instanceof AllocaInst || pointer instanceof GlobalVariable || pointer instanceof Argument) {
+            if(pointer instanceof AllocaInst && ((AllocaInst) pointer).getAllocatedType().isPointerTy()) {
+                for(Use use : pointer.getUseList()) {
+                    if(use.getU() instanceof StoreInst) {
+                        pointer = ((StoreInst) use.getU()).getOperand(1);
+                    }
+                }
+            }else if(pointer instanceof Argument) {
+                for(Use use : pointer.getUseList()) {
+                    if(use.getU() instanceof StoreInst && use.getOperandNo()==0) {
+                        pointer = ((StoreInst) use.getU()).getOperand(1);
+                    }
+                }
+            }
+            return pointer;
+        }
+        return null;
+    }
     
     public static boolean isGlobal(Value addr) {
         return addr instanceof GlobalVariable;
@@ -52,6 +75,25 @@ public class AliasAnalysis {
             return ((AllocaInst) addr).getAllocatedType().isPointerTy();
         }
         return false;
+    }
+
+    public static boolean isParamOrArgument(Value addr) {
+        if(addr instanceof AllocaInst) {
+            return ((AllocaInst) addr).getAllocatedType().isPointerTy();
+        }
+        return addr instanceof Argument;
+    }
+
+    public static Value getParam(Value addr) {
+        if(addr instanceof AllocaInst) {
+            for(Use use : addr.getUseList()) {
+                if(use.getU() instanceof StoreInst) {
+                    addr = ((Instruction) use.getU()).getOperand(0);
+                }
+            }
+            return addr;
+        }
+        return null;
     }
 
     public static boolean isLocal(Value addr) {

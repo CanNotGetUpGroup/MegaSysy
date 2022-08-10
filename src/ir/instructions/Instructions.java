@@ -317,7 +317,7 @@ public abstract class Instructions {
                 return AliasAnalysis.gepToArrayIdx.get(this);
             }
             ArrayList<Value> ret=new ArrayList<>();
-            if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst){//a
+            if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
                 ret.add(getOperand(0));
             }else if(getOperand(0) instanceof LoadInst){//数组参数
                 LoadInst LI=(LoadInst)getOperand(0);

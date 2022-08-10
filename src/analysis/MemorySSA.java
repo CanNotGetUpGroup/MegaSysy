@@ -374,7 +374,7 @@ public class MemorySSA {
                         return null;
                     }
                     ret = new MemoryDef(I, null, ID++);
-                    Value ptr=AliasAnalysis.getPointerValue(I.getOperand(1));
+                    Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(1));
                     ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(ptr,new ArrayList<>());
                     defs.add(I.getParent());
                     Pointer2Defs.put(ptr,defs);
@@ -386,7 +386,7 @@ public class MemorySSA {
                     return null;
                 }
                 ret = new MemoryUse(I, null);
-                Value ptr=AliasAnalysis.getPointerValue(I.getOperand(0));
+                Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(0));
                 ret.setPointer(ptr);
             }
         }

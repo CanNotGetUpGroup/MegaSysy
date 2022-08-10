@@ -57,7 +57,6 @@ public class GVNGCM extends ModulePass {
         while (shouldContinue) {
             clear();
             AliasAnalysis.runMemorySSA(F);
-            AliasAnalysis.gepToArrayIdx.clear();
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().runOnModule(Module.getInstance());
 //            functionGCM(F);
@@ -71,6 +70,10 @@ public class GVNGCM extends ModulePass {
 
         //直接利用DT中的逆后序遍历信息
         DT = F.getAndUpdateDominatorTree();
+        for(var aug:F.getArguments()){
+            int num = lookUpOrAdd(aug);
+            addToLeader(num, aug);
+        }
         for (var node : DT.getReversePostOrder()) {
             ret |= basicBlockGVN(node.BB);
         }
@@ -143,7 +146,7 @@ public class GVNGCM extends ModulePass {
             if (loadGVN(LI)) {
                 return true;
             }
-        }else if(I.getOp().equals(Ops.Call)){
+        } else if(I.getOp().equals(Ops.Call)){
             if(!((CallInst)I).withoutGEP()){
                 return false;
             }
@@ -174,6 +177,9 @@ public class GVNGCM extends ModulePass {
         return true;
     }
 
+    /**
+     * 直接读取常量数组或没有被store过的数组
+     */
     public boolean loadGVN(LoadInst LI) {
         if (LI.getUseList().isEmpty()) {
             addInstToDeadList(LI);
@@ -202,6 +208,8 @@ public class GVNGCM extends ModulePass {
         if (valueToInteger.containsKey(V)) return valueToInteger.get(V);
         //只有Instruction需要通过编号判断是否等价
         if (!(V instanceof Instruction)) {
+            hashToValue.put(nextValueNumber, new ArrayList<>(){{add(V);}});
+            valueToHash.put(V, new Pair<>(nextValueNumber, null_array));
             valueToInteger.put(V, nextValueNumber);
             return nextValueNumber++;
         }
@@ -241,7 +249,7 @@ public class GVNGCM extends ModulePass {
     public boolean equal(Value v,ArrayList<Integer> array, Value leader) {
         if (v == leader) return true;
         ArrayList<Integer> leaderArr = valueToHash.get(leader).b;
-        if (array.size() != leaderArr.size()||leaderArr.size()==0) return false;
+        if (array.size() != leaderArr.size()) return false;
         for (int i = 0; i < array.size(); i++) {
             if (!Objects.equals(array.get(i), leaderArr.get(i))) {
                 return false;
@@ -277,7 +285,7 @@ public class GVNGCM extends ModulePass {
     public Pair<Integer,ArrayList<Integer>> getHash(Value V) {
         //非指令Value可直接获取Hash
         if (!(V instanceof Instruction)) {
-            return new Pair<>(lookUpOrAdd(V),new ArrayList<>());
+            return new Pair<>(lookUpOrAdd(V),null_array);
         }
         if (valueToHash.containsKey(V)) return valueToHash.get(V);
         Instruction I = (Instruction) V;
@@ -329,14 +337,24 @@ public class GVNGCM extends ModulePass {
     public Pair<Integer,ArrayList<Integer>> getHash(GetElementPtrInst GEP) {
         ArrayList<Integer> array = new ArrayList<>();
         ArrayList<Value> arrayIdx = GEP.getArrayIdx();
+        //需要区分argument还是它的alloca
+        if(arrayIdx.size()==1&&AliasAnalysis.isParamOrArgument(arrayIdx.get(0))){
+            return new Pair<>(getHash(arrayIdx.get(0)).a,null_array);
+        }
         for (Value v : arrayIdx) {
             array.add(getHash(v).a);
         }
+//        for(Value v:GEP.getOperandList()){
+//            array.add(getHash(v).a);
+//        }
         return new Pair<>(hashCombine(GEP.getOp(), GEP.getType(), array),array);
     }
 
     public Pair<Integer,ArrayList<Integer>> getHash(LoadInst LI) {
         Value Address = LI.getOperand(0);
+        if(AliasAnalysis.isParam(Address)){
+            return new Pair<>(getHash(AliasAnalysis.getParam(Address)).a,null_array);
+        }
         MemoryAccess MA = AliasAnalysis.MSSA.getMemoryAccess(LI);
         ArrayList<Integer> array = new ArrayList<>();
         array.add(getHash(Address).a);
@@ -451,9 +469,9 @@ public class GVNGCM extends ModulePass {
     public void scheduleLate(Instruction I, Function F) {
         DominatorTree DT = F.getDominatorTree();
 
-//        if(I.getName().startsWith("%190")){
-//            System.out.println("");
-//        }
+        if(I.getName().startsWith("%190")){
+            System.out.println("");
+        }
 
         if (scheduleAble(I) && !visInsts.contains(I)) {
             visInsts.add(I);

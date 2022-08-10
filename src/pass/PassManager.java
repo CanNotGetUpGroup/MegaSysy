@@ -17,23 +17,24 @@ public class PassManager {
      * 初始化，在此处按照顺序添加IR pass
      */
     public static void initialization() {
-        SimplifyCFG.eliminatePreHeader=true;//完成了循环优化，删掉preHeader
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
         passes.add(new GVNGCM());// Mem2Reg处理掉了所有local alloca
         passes.add(new LoopInfoUpdate()); // 计算循环信息
-//        passes.add(new LICM());// 循环不变量外提(暂时关掉了)
+        passes.add(new LICM());// 循环不变量外提
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
         passes.add(new Mem2Reg());// 处理掉新产生的alloca
         passes.add(new FuncInline());// 可能还有
         passes.add(new SimplifyCFG());
 
+        SimplifyCFG.eliminatePreHeader=true;//完成了循环优化，删掉preHeader
         passes.add(new InterproceduralAnalysis());
         passes.add(new GVNGCM());
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG());
+        passes.add(new EliminateAlloca());//由于GVN需要使用alloca，因此最后再删除
     }
 
     /**

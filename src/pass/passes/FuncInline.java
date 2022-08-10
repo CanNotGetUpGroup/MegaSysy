@@ -1,5 +1,6 @@
 package pass.passes;
 
+import analysis.AliasAnalysis;
 import analysis.CallGraph;
 import ir.*;
 import ir.Module;
@@ -27,6 +28,7 @@ public class FuncInline extends ModulePass {
 
     @Override
     public void runOnModule(Module M) {
+        AliasAnalysis.gepToArrayIdx.clear();
         CallGraph CG = new CallGraph(M);
         Set<Function> functions = CG.getCallNodes().keySet();
         ArrayList<CallInst> callInsts = new ArrayList<>();
