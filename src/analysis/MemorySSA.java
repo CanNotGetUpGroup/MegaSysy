@@ -16,8 +16,8 @@ import java.util.*;
 public class MemorySSA {
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
     private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToPhi;
-    private final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemAccList;//基本块中储存的MemoryAccess
-    private final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemDefList;//基本块中储存的MemoryDef和MemoryPhi
+    public final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemAccList;//基本块中储存的MemoryAccess
+    public final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemDefList;//基本块中储存的MemoryDef和MemoryPhi
     private final MemoryAccess LiveOnEntry;
     private int ID;
     private final Function F;
@@ -62,9 +62,9 @@ public class MemorySSA {
         if(isLiveOnEntry(dominated)) return false;
         if(isLiveOnEntry(dominator)) return true;
         //否则比较二者顺序，在前面的支配后面的
-        if(dominator instanceof MemoryPhi) return true;
-
-        return true;
+        BasicBlock BB=dominator.getBB();
+        LinkedList<MemoryAccess> defs=BlockToMemDefList.get(BB);
+        return defs.indexOf(dominator)<defs.indexOf(dominated);
     }
 
     public void buildMemorySSA() {

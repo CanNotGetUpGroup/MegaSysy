@@ -475,10 +475,6 @@ public class GVNGCM extends ModulePass {
     public void scheduleLate(Instruction I, Function F) {
         DominatorTree DT = F.getDominatorTree();
 
-        if(I.getName().startsWith("%190")){
-            System.out.println("");
-        }
-
         if (scheduleAble(I) && !visInsts.contains(I)) {
             visInsts.add(I);
 
@@ -539,16 +535,58 @@ public class GVNGCM extends ModulePass {
             I.getInstNode().remove();
             minBB.getInstList().insertBeforeEnd(I.getInstNode());
 
-            // 找当前BB最后位置
-            for (Instruction inst : minBB.getInstList()) {
-                if (!inst.getOp().equals(Ops.PHI)) {
-                    if (inst.getOperandList().contains(I)) {
-                        I.getInstNode().remove();
-                        minBB.getInstList().insertBefore(I.getInstNode(), inst.getInstNode());
-                        break;//此处忘了break
+            // 找当前BB最后位置(先找MemorySSA，然后选取二者中的前者)
+            Instruction mayReturn=minBB.getInstList().getLast().getVal();
+            if(AliasAnalysis.MSSA.getMemoryAccess(I)!=null){
+                MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
+                LinkedList<MemoryAccess> memoryAccesses=AliasAnalysis.MSSA.BlockToMemAccList.get(minBB);
+                if(!(memoryAccesses==null||memoryAccesses.isEmpty())){
+                    int id=MA.getID();
+                    boolean find=false;
+                    if(MA instanceof MemoryAccess.MemoryUse){//use在def后
+                        id=((MemoryAccess.MemoryUse)MA).getDefiningAccess().getID();
+                        if(MA.getBB()!=((MemoryAccess.MemoryUse) MA).getMemoryInstruction().getParent()){
+                            System.out.println("error~");
+                        }
+                        if(MA.getBB()==minBB||(!DT.dominates(MA.getBB(),minBB))){
+                            LinkedList<MemoryAccess> defs=AliasAnalysis.MSSA.BlockToMemDefList.get(minBB);
+                            if(defs!=null){
+                                for(MemoryAccess IMA:defs){
+                                    if(id==IMA.getID()){
+                                        find=true;//找到了MemoryDef
+                                    }else if(find&&!IMA.getOp().equals(Ops.MemPHI)){//插入在下一个def前
+                                        mayReturn=((MemoryAccess.MemoryDef)IMA).getMemoryInstruction();
+                                        break;
+                                    }
+                                }
+                            }
+                        }else{
+                            System.out.println("MemoryUse shouldn't dominate MemoryDef");
+                        }
+                    }else{//def在use和def前
+                        for(MemoryAccess IMA:memoryAccesses){
+                            if(IMA instanceof MemoryAccess.MemoryDefOrUse){
+                                //找到第一个，插入其之前
+                                if(((MemoryAccess.MemoryDefOrUse) IMA).getDefiningAccess().getID()==id){
+                                    mayReturn=((MemoryAccess.MemoryDefOrUse)IMA).getMemoryInstruction();
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
+            for (Instruction inst : minBB.getInstList()) {
+                if(inst.equals(mayReturn)) break;
+                if (!inst.getOp().equals(Ops.PHI)) {
+                    if (inst.getOperandList().contains(I)) {
+                        mayReturn=inst;
+                        break;//此处应该break
+                    }
+                }
+            }
+            I.getInstNode().remove();
+            minBB.getInstList().insertBefore(I.getInstNode(),mayReturn.getInstNode());
         }
     }
 
