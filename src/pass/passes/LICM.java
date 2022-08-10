@@ -118,7 +118,7 @@ public class LICM extends FunctionPass {
 
                         if (isInvariant) {
                             Invariant.add(inst);
-                            System.out.println("add invariant: " + inst);
+//                            System.out.println("add invariant: " + inst);
                             newInvariantAdded2Set = true;
                         }
                     }
