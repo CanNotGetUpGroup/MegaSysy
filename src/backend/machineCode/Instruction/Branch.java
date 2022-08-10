@@ -18,6 +18,31 @@ public class Branch extends MachineInstruction {
 
     // TODO: 这里需要改改
     private MachineBasicBlock destBB;
+
+    public boolean isStoreLR() {
+        return storeLR;
+    }
+
+    public Register getDestReg() {
+        return destReg;
+    }
+
+    public MachineBasicBlock getDestBB() {
+        return destBB;
+    }
+
+    public MachineFunction getDestf() {
+        return destf;
+    }
+
+    public String getDestStr() {
+        return destStr;
+    }
+
+    public DestType getDestType() {
+        return destType;
+    }
+
     private MachineFunction destf;
     private String destStr;
     private Type type;
@@ -84,9 +109,17 @@ public class Branch extends MachineInstruction {
         this.type = type;
     }
 
+    public Branch(MachineBasicBlock parent, Branch br) {
+        super(parent, br);
+        this.destReg = br.getDestReg();
+        this.storeLR = br.isStoreLR();
+        destType = br.getDestType();
+        this.type = br.getType();
+    }
+
     @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
-        throw  new RuntimeException("Unfinished");
+        throw new RuntimeException("Unfinished");
     }
 
     @Override

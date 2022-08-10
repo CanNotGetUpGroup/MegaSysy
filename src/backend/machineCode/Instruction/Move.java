@@ -36,6 +36,13 @@ public class Move extends MachineInstruction {
         if (op instanceof Register && ((Register) op).isFloat() || ((Register) dest).isFloat()) setForFloat(true);
     }
 
+    public Move(MachineBasicBlock parent, Move mov) {
+        super(parent, mov);
+        this.dest = mov.dest;
+        this.type = mov.type;
+        this.op = mov.op;
+    }
+
     @Override
     public Register getDest() {
         return dest;

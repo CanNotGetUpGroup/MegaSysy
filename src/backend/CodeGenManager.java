@@ -61,6 +61,8 @@ public class CodeGenManager {
     private void halfRun2() {
         var allocator = new GraphColor(funcList);
         allocator.run();
+        var peepHole = new PeepHole(funcList);
+        peepHole.run();
         var clean = new Clean(funcList);
         clean.run();
     }
@@ -96,6 +98,8 @@ public class CodeGenManager {
 
         var allocator = new GraphColor(funcList);
         allocator.run();
+        var peepHole = new PeepHole(funcList);
+        peepHole.run();
         var clean = new Clean(funcList);
         clean.run();
     }

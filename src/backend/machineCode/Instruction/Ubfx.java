@@ -32,6 +32,14 @@ public class Ubfx extends MachineInstruction {
         this.width = width;
     }
 
+    public Ubfx(MachineBasicBlock parent, Ubfx inst) {
+        super(parent, inst);
+        this.dest = inst.dest;
+        this.op = inst.op;
+        this.lsb = inst.lsb;
+        this.width = inst.width;
+    }
+
     @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
         throw new RuntimeException(">>");
@@ -62,7 +70,7 @@ public class Ubfx extends MachineInstruction {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("ubfx");
-        if (getCond() != null) sb.append(getCond());
+        sb.append(condString());
 
         sb.append("\t").append(dest.toString())
                 .append(", ").append(op)

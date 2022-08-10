@@ -505,7 +505,7 @@ public class GraphColor {
                     var prevNode = inst;
                     int offset = 4 * spillMap.get(dest) + func.getStackTop();
                     Address addr;
-                    if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                     else {
                         MachineInstruction temp;
                         var addrReg = new VirtualRegister();
@@ -529,7 +529,7 @@ public class GraphColor {
                     substitutions.add(substitution);
                     int offset = 4 * spillMap.get((VirtualRegister) op1) + func.getStackTop();
                     Address addr;
-                    if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                     else {
                         var addrReg = new VirtualRegister();
                         MachineInstruction temp;
@@ -554,7 +554,7 @@ public class GraphColor {
                     substitutions.add(substitution);
                     int offset = 4 * spillMap.get((VirtualRegister) op2) + func.getStackTop();
                     Address addr;
-                    if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                     else {
                         var addrReg = new VirtualRegister();
                         MachineInstruction temp;
@@ -578,7 +578,7 @@ public class GraphColor {
                         substitutions.add(substitution);
                         int offset = 4 * spillMap.get(((Address) op2).getReg()) + func.getStackTop();
                         Address addr;
-                        if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                        if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                         else {
                             var addrReg = new VirtualRegister();
                             MachineInstruction temp;
@@ -603,7 +603,7 @@ public class GraphColor {
                         int offset = 4 * spillMap.get(offsetReg) + func.getStackTop();
                         Address addr;
                         // TODO: 1024 for coprocessor and 4096 for arm processor
-                        if (offset < 1024) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                        if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
                         else {
                             MachineInstruction temp;
                             var addrReg = new VirtualRegister();
