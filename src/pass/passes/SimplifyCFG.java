@@ -28,7 +28,7 @@ public class SimplifyCFG extends FunctionPass {
     DominatorTree DT;
     Function F;
     LoopInfo loopInfo;
-    public static boolean eliminatePreHeader=true;//先报留preHeader信息
+    public static boolean eliminatePreHeader=false;//先报留preHeader信息
 
     @Override
     public void runOnFunction(Function F) {
