@@ -72,6 +72,11 @@ public class MemoryAccess extends Instruction {
             addOperand(DMA);
         }
 
+        @Override
+        public BasicBlock getBB(){
+            return MemoryInstruction.getParent();
+        }
+
         public void setDefiningAccess(MemoryAccess DMA){
             setOperand(0,DMA);
         }

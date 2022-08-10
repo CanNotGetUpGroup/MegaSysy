@@ -248,7 +248,8 @@ public class AliasAnalysis {
             return false;
         }
         visitedFunc.add(F);
-        if(func2gv.get(F).contains(gv)) {
+        //fix:func2gc->gv2func
+        if(gv2func.get(gv).contains(F)) {
             return true;
         }
         for(Function calleeFunc : F.getCalleeList()) {
