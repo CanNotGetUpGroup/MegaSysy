@@ -12,13 +12,14 @@ import ir.instructions.Instructions.*;
 
 import java.util.*;
 
+import pass.PassManager;
 import util.Folder;
 import util.IList;
 import util.IListIterator;
 import util.MyIRBuilder;
 
 public class GVNGCM extends ModulePass {
-    public static boolean aggressive=false;//开启将alloca替换为参数的优化(需要在函数内联之后)
+    private boolean aggressive=false;//开启将alloca替换为参数的优化(需要在函数内联之后)
     public static boolean GCMOpen=false;//暂时关闭
 
     private Set<Instruction> visInsts = new HashSet<>();
@@ -33,8 +34,9 @@ public class GVNGCM extends ModulePass {
     private static final ArrayList<Integer> null_array=new ArrayList<>();
 //    private final int[] prime=new int[]{61,43,17,13};
 
-    public GVNGCM() {
+    public GVNGCM(boolean aggressive) {
         super();
+        this.aggressive=aggressive;
     }
 
     @Override
@@ -64,7 +66,7 @@ public class GVNGCM extends ModulePass {
             new DeadCodeEmit().runOnModule(Module.getInstance());
             if(GCMOpen)
                 functionGCM(F);
-            shouldContinue |= new SimplifyCFG().run(F);
+            shouldContinue |= new SimplifyCFG(PassManager.eliminatePreHeader).run(F);
         }
         Module.getInstance().rename(F);
     }
