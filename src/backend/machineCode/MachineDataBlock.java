@@ -68,9 +68,17 @@ public class MachineDataBlock extends MCOperand implements Addressable {
         }
     }
 
+
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+
+        if(irVal != null && ((Constants.ConstantArray) irVal.getOperand(0)).isZero())
+            sb.append("\t.bss\n");
+        else
+            sb.append("\t.data\n");
+
         sb.append("\t.global\t")
                 .append(getLabel()).append("\n")
                 .append("\t.align\t2\n").append("\t.type\t").append(getLabel()).append(", %object\n")
