@@ -504,11 +504,11 @@ public class GVNGCM extends ModulePass {
             //MemPhi不在useList中
             if(AliasAnalysis.MSSA.getMemoryAccess(I)!=null){
                 MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
-                if(MA instanceof MemoryAccess.MemoryUse){
-                    MA=((MemoryAccess.MemoryUse) MA).getDefiningAccess();
-                }else{
-                    System.out.println("shouldn't be def");
-                }
+//                if(MA instanceof MemoryAccess.MemoryUse){
+//                    MA=((MemoryAccess.MemoryUse) MA).getDefiningAccess();
+//                }else{
+//                    System.out.println("shouldn't be def");
+//                }
                 for(Use use:MA.getUseList()){
                     User user=use.getU();
                     if(user instanceof MemoryAccess.MemoryPhi){
