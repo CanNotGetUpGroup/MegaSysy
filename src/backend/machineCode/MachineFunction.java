@@ -40,6 +40,18 @@ public class MachineFunction implements Addressable{
 
     private int spiltNumOnStack = 0;
 
+    public int getStoreSize() {
+        return storeSize;
+    }
+    public void addStoreSize(int inc){
+        this.storeSize += inc;
+    }
+    public void setStoreSize(int storeSize) {
+        this.storeSize = storeSize;
+    }
+
+    private int storeSize = 0; // ir的store指令存的东西
+
 
     public int getStackTop() {
         return stackTop;

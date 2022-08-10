@@ -13,6 +13,11 @@ public class Arithmetic extends MachineInstruction {
     private Register destReg;
     private MCOperand op1;
     private MCOperand op2;
+
+    public Type getType() {
+        return type;
+    }
+
     private Type type;
 
     // TODO: 取余数
