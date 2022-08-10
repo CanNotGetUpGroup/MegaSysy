@@ -27,9 +27,11 @@ public class PassManager {
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
         passes.add(new Mem2Reg());// 处理掉新产生的alloca
         passes.add(new FuncInline());// 可能还有
+        passes.add(new LoopInfoUpdate()); // 计算循环信息
+        passes.add(new LICM());// 循环不变量外提
         passes.add(new SimplifyCFG());
-
-        // SimplifyCFG.eliminatePreHeader=true;//完成了循环优化，删掉preHeader
+        SimplifyCFG.eliminatePreHeader=true;//完成了循环优化，删掉preHeader
+        passes.add(new SimplifyCFG());
         passes.add(new InterproceduralAnalysis());
         passes.add(new GVNGCM());
         passes.add(new DeadCodeEmit());
