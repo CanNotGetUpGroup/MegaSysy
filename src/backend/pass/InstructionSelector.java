@@ -79,7 +79,7 @@ public class InstructionSelector {
             var f = head.getVal();
             MachineFunction mf = new MachineFunction(f.getName());
             mf.setLoopInfo(f.getLoopInfo());
-            mf.setStackTop(optimize? 36 : 8);
+            mf.setStackTop(optimize ? 36 : 8);
 
             if (f.isDefined())
                 mf.setDefined(true);
@@ -125,7 +125,6 @@ public class InstructionSelector {
             }
         }
 
-        // 稍微处理了一下参数。。。这个不太行。目前是用Virtual Regitser又转存了一次。TODO: 在完成Phi指令的时候应该顺便修改这里
         var firstbb = mf.getBbList().getFirst().getVal();
         var paras = irFunction.getArguments();
         int floatNum = 0, intNum = 0, onStackNum = 0;
@@ -169,6 +168,20 @@ public class InstructionSelector {
         MachineInstruction newInst = new PushOrPop(mf.getBbList().getFirst().getVal(), PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
         newInst.setPrologue(true);
         newInst.pushtofront();
+
+        MachineInstruction lastPrologue = firstbb.getInstList().getFirst().getVal();
+        for (var i : firstbb.getInstList()) {
+            if (i.isPrologue())
+                lastPrologue = i;
+            else break;
+        }
+        var insertPoint = lastPrologue.getInstNode().getNext();
+        if (!ImmediateNumber.isLegalImm(mf.getStoreSize())) {
+            var reg = new VirtualRegister();
+            new LoadImm(firstbb, reg, mf.getStoreSize()).insertBefore(insertPoint);
+            new Arithmetic(firstbb,  Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), reg).insertBefore(insertPoint);
+        } else
+            new Arithmetic(firstbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), mf.getStoreSize()).insertBefore(insertPoint);
     }
 
     private void translateBB(BasicBlock bb) {
@@ -226,19 +239,25 @@ public class InstructionSelector {
                 if (ir.getNumOperands() == 1) { // unconditional branch
                     var dest = ir.getOperand(0);
                     var mdest = mf.getBBMap().get((BasicBlock) dest);
-                    new Branch(mbb, mdest, false, Branch.Type.Block).pushBacktoInstList();
+                    var inst = new Branch(mbb, mdest, false, Branch.Type.Block);
+                    inst.pushBacktoInstList();
                     mbb.addSuccessor(mdest);
+                    mdest.addPredInst(inst);
                 } else { // conditional branch
                     if (ir.getOperand(0) instanceof Constants.ConstantInt) {
                         int val = ((Constants.ConstantInt) (ir.getOperand(0))).getVal();
                         if (val == 0) {
                             var dest = mf.getBBMap().get(ir.getOperand(1));
-                            new Branch(mbb, dest, false, Branch.Type.Block).pushBacktoInstList();
+                            var inst = new Branch(mbb, dest, false, Branch.Type.Block);
+                            inst.pushBacktoInstList();
                             mbb.addSuccessor(dest);
+                            dest.addPredInst(inst);
                         } else {  // must be 1
                             var dest = mf.getBBMap().get(ir.getOperand(2));
-                            new Branch(mbb, dest, false, Branch.Type.Block).pushBacktoInstList();
+                            var inst = new Branch(mbb, dest, false, Branch.Type.Block);
+                            inst.pushBacktoInstList();
                             mbb.addSuccessor(dest);
+                            dest.addPredInst(inst);
                         }
                     } else { // cond is an instruction
                         var cond = (CmpInst) ir.getOperand(0);
@@ -263,10 +282,13 @@ public class InstructionSelector {
                         mbb.addSuccessor(dest);
                         inst.setCond(MachineInstruction.Condition.irToMCCond(op));
                         inst.pushBacktoInstList();
+                        dest.addPredInst(inst);
 
                         dest = mf.getBBMap().get(ir.getOperand(1));
-                        new Branch(mbb, dest, false, Branch.Type.Block).pushBacktoInstList();
+                        inst = new Branch(mbb, dest, false, Branch.Type.Block);
+                        inst.pushBacktoInstList();
                         mbb.addSuccessor(dest);
+                        dest.addPredInst(inst);
                     }
                 }
                 node = node.getNext();
@@ -367,7 +389,8 @@ public class InstructionSelector {
                     mf.addStackTop(size * 4);
 
                     var dest = new VirtualRegister();
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), ImmediateNumber.getLegalOperand(mbb, size * 4)).pushBacktoInstList();
+//                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), ImmediateNumber.getLegalOperand(mbb, size * 4)).pushBacktoInstList();
+                    mf.addStoreSize(size * 4);
                     new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop() - 4).pushBacktoInstList();
                     // 保存一下位置
                     valueMap.put(ir, dest);
@@ -377,7 +400,8 @@ public class InstructionSelector {
                     var dest = new VirtualRegister();
                     // 分配栈空间
 
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), 4).pushBacktoInstList();
+//                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), 4).pushBacktoInstList();
+                    mf.addStoreSize(4);
                     new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop()).pushBacktoInstList();
                     // 保存一下位置
                     valueMap.put(ir, dest);
@@ -543,13 +567,13 @@ public class InstructionSelector {
                         new Arithmetic(mbb, Arithmetic.Type.LSL, dest, op1, log2(val)).pushBacktoInstList();
                         valueMap.put(ir, dest);
                         break;
-                    } else if(val > 0 && isPowerOfTwo(val + 1)){
-                        var inst = new Arithmetic(mbb, Arithmetic.Type.RSB,dest, op1, op1);
+                    } else if (val > 0 && isPowerOfTwo(val + 1)) {
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.RSB, dest, op1, op1);
                         inst.setShifter(Shift.Type.LSL, log2(val + 1));
                         inst.pushBacktoInstList();
                         valueMap.put(ir, dest);
                         break;
-                    } else if(val > 0 && isPowerOfTwo(val - 1)){
+                    } else if (val > 0 && isPowerOfTwo(val - 1)) {
                         var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, dest, op1, op1);
                         inst.setShifter(Shift.Type.LSL, log2(val - 1));
                         inst.pushBacktoInstList();
@@ -574,8 +598,6 @@ public class InstructionSelector {
                 new Arithmetic(mbb, Arithmetic.Type.SDIV, dest, op1, op2).pushBacktoInstList();
             }
             case SRem -> {
-//                var
-                System.out.println(ir);
                 var op2 = ir.getOperand(1);
                 int val = -1;
                 if (op2 instanceof Constants.ConstantInt)

@@ -39,20 +39,27 @@ public class VirtualRegister extends Register {
         name = "v" + id;
     }
 
+
     @Override
     public boolean equals(Object obj) {
-        if(!(obj instanceof Register))
+        if (obj instanceof MCRegister) {
+            var r = (MCRegister) obj;
+            if (getColorId() == -1)
+                return false;
+            else
+                return r.getId() == getColorId() && r.getContent() == getContent();
+        }
+        if (!(obj instanceof Register))
             throw new RuntimeException("can't compare");
-        if(obj instanceof MCRegister)
-            return false;
+
         var reg = (VirtualRegister) obj;
         return reg.getType() == getType() && Objects.equals(reg.getName(), getName());
     }
 
     @Override
     public String toString() {
-        if(colorId != -1){
-            return (isFloat()? "s" : "r") + colorId;
+        if (colorId != -1) {
+            return (isFloat() ? "s" : "r") + colorId;
         }
 
         return name;

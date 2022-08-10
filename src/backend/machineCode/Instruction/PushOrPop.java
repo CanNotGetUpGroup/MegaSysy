@@ -15,6 +15,11 @@ public class PushOrPop extends MachineInstruction {
     }
 
     Register op;
+
+    public Type getType() {
+        return type;
+    }
+
     Type type;
 
     public enum Type {
