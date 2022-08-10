@@ -88,6 +88,14 @@ public class MCRegister extends Register {
 
     @Override
     public boolean equals(Object obj) {
+        if(obj instanceof VirtualRegister){
+            var r = (VirtualRegister) obj;
+            if(r.getColorId() == -1){
+                return false;
+            } else {
+                return r.getContent() == this.getContent() && r.getColorId() == this.getId();
+            }
+        }
         if (!(obj instanceof Register))
             throw new RuntimeException("can't compare");
         if (!(obj instanceof MCRegister))

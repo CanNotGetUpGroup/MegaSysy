@@ -154,7 +154,7 @@ public class CodeGenManager {
         pw2.println(mc.toArm());
         pw2.flush();
 
-        mc.halfRun22();
+        mc.halfRun2();
 
         pw3.println(mc.toArm());
         pw3.flush();

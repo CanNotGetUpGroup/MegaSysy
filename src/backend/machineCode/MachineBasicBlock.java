@@ -23,6 +23,20 @@ public class MachineBasicBlock implements Addressable{
         this.label = label;
     }
 
+    public HashSet<MachineInstruction> getPredInst() {
+        return predInst;
+    }
+
+    public void setPredInst(HashSet<MachineInstruction> predInst) {
+        this.predInst = predInst;
+    }
+
+    public void addPredInst(MachineInstruction inst){
+        this.predInst.add(inst);
+    }
+
+    private HashSet<MachineInstruction> predInst = new HashSet<>();
+
     public HashSet<MachineBasicBlock> getSuccessors() {
         return successors;
     }
