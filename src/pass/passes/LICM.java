@@ -7,6 +7,7 @@ import java.util.HashSet;
 import util.CloneMap;
 import analysis.DominatorTree;
 import analysis.LoopInfo;
+import ir.Argument;
 import ir.Constant;
 import ir.Function;
 import ir.Instruction;
@@ -14,6 +15,8 @@ import ir.Loop;
 import ir.Type;
 import ir.Instruction.Ops;
 import ir.instructions.BinaryInstruction;
+import ir.instructions.CmpInst;
+import ir.instructions.Instructions.CallInst;
 import pass.FunctionPass;
 
 /**
@@ -79,6 +82,36 @@ public class LICM extends FunctionPass {
                         if (canLift) {
                             Invariantorder.add(inst);
                         }
+                    } else if (inst instanceof CmpInst) {
+                        CmpInst cmpInst = (CmpInst) inst;
+                        // 如果它的oprand是循环不变量且在loop中，那么需要先提升它的operand，此次先跳过
+                        boolean canLift = true;
+                        for (int i = 0; i < cmpInst.getNumOperands(); ++i) {
+                            if (cmpInst.getOperand(i) instanceof Instruction) {
+                                Instruction opInst = (Instruction) cmpInst.getOperand(i);
+                                if (loop.getBbList().contains(opInst.getParent()) && !Invariantorder.contains(opInst)) {
+                                    canLift = false;
+                                }
+                            }
+                        }
+                        if (canLift) {
+                            Invariantorder.add(inst);
+                        }
+                    } else if (inst instanceof CallInst) {
+                        CallInst callInst = (CallInst) inst;
+                        // 如果它的oprand是循环不变量且在loop中，那么需要先提升它的operand，此次先跳过
+                        boolean canLift = true;
+                        for (int i = 1; i < callInst.getNumOperands(); ++i) {
+                            if (callInst.getOperand(i) instanceof Instruction) {
+                                Instruction opInst = (Instruction) callInst.getOperand(i);
+                                if (loop.getBbList().contains(opInst.getParent()) && !Invariantorder.contains(opInst)) {
+                                    canLift = false;
+                                }
+                            }
+                        }
+                        if (canLift) {
+                            Invariantorder.add(inst);
+                        }
                     }
                 }
             }
@@ -106,16 +139,69 @@ public class LICM extends FunctionPass {
                         }
                         for (var i = 0; i < inst.getOperandList().size(); i++) { // 对每一个instruction的每一个use operand遍历
                             var op = inst.getOperand(i);
-                            if (!(op instanceof Constant)) {
-                                if (op instanceof Instruction) {
-                                    Instruction opInst = (Instruction) op;
-                                    if (loop.getBbList().contains(opInst.getParent()) && !Invariant.contains(opInst)) {
-                                        isInvariant = false;
+                            if (!(op instanceof Argument)) {
+                                if (!(op instanceof Constant)) {
+                                    if (op instanceof Instruction) {
+                                        Instruction opInst = (Instruction) op;
+                                        if (loop.getBbList().contains(opInst.getParent())
+                                                && !Invariant.contains(opInst)) {
+                                            isInvariant = false;
+                                        }
                                     }
                                 }
                             }
                         }
-
+                        if (isInvariant) {
+                            Invariant.add(inst);
+                            System.out.println("add invariant: " + inst);
+                            newInvariantAdded2Set = true;
+                        }
+                    } else if (inst instanceof CmpInst) {
+                        boolean isInvariant = true;
+                        if (Invariant.contains(inst)) {
+                            continue;
+                        }
+                        for (var i = 0; i < inst.getOperandList().size(); i++) { // 对每一个instruction的每一个use operand遍历
+                            var op = inst.getOperand(i);
+                            if (!(op instanceof Argument)) {
+                                if (!(op instanceof Constant)) {
+                                    if (op instanceof Instruction) {
+                                        Instruction opInst = (Instruction) op;
+                                        if (loop.getBbList().contains(opInst.getParent())
+                                                && !Invariant.contains(opInst)) {
+                                            isInvariant = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (isInvariant) {
+                            Invariant.add(inst);
+                            System.out.println("add invariant: " + inst);
+                            newInvariantAdded2Set = true;
+                        }
+                    } else if (inst instanceof CallInst) {
+                        boolean isInvariant = true;
+                        if (Invariant.contains(inst)) {
+                            continue;
+                        }
+                        if (((CallInst) inst).getCalledFunction().hasSideEffect() == true) {
+                            isInvariant = false;
+                        }
+                        for (var i = 1; i < inst.getOperandList().size(); i++) { // 对每一个instruction的每一个use operand遍历
+                            var op = inst.getOperand(i);
+                            if (!(op instanceof Argument)) {
+                                if (!(op instanceof Constant)) {
+                                    if (op instanceof Instruction) {
+                                        Instruction opInst = (Instruction) op;
+                                        if (loop.getBbList().contains(opInst.getParent())
+                                                && !Invariant.contains(opInst)) {
+                                            isInvariant = false;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         if (isInvariant) {
                             Invariant.add(inst);
                             System.out.println("add invariant: " + inst);
