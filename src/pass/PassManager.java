@@ -19,7 +19,7 @@ public class PassManager {
      * 初始化，在此处按照顺序添加IR pass
      */
     public static void initialization() {
-        GVNGCM.GCMOpen=true;
+        GVNGCM.GCMOpen=false;
 //        eliminatePreHeader=true;//关闭LICM
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
@@ -38,8 +38,8 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         eliminatePreHeader=true;//完成了循环优化，删掉preHeader
-        aggressive=true;
-//        aggressive=false;
+//        aggressive=true;
+        aggressive=false;
         passes.add(new InterproceduralAnalysis());
         passes.add(new GVNGCM(aggressive));
         passes.add(new DeadCodeEmit());
