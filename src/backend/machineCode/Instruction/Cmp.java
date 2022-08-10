@@ -20,8 +20,13 @@ public class Cmp extends MachineInstruction {
         if (op1.isFloat())
             this.setForFloat(new ArrayList<>(List.of("F32")));
     }
+    public Cmp(MachineBasicBlock parent, Cmp cmp) {
+        super(parent, cmp);
+        this.op1 = (Register) cmp.getOp1();
+        this.op2 = cmp.getOp2();
+    }
 
-    @Override
+        @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
         setForFloat(isForFloat, new ArrayList<>(List.of("f32")));
         return this;
@@ -50,6 +55,7 @@ public class Cmp extends MachineInstruction {
 
     @Override
     public String toString() {
-        return (isForFloat()? "v": "") + "cmp" + typeInfoString() + " " + op1.toString() + " , " + op2.toString();
+        return (isForFloat()? "v": "") + "cmp" + condString()+ typeInfoString() + " " + op1.toString() + " , " + op2.toString();
+
     }
 }

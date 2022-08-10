@@ -1,22 +1,14 @@
 package backend.machineCode;
 
-import backend.machineCode.Instruction.Arithmetic;
-import backend.machineCode.Instruction.Shift;
+import backend.machineCode.Instruction.*;
 import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 import backend.machineCode.Operand.Shifter;
-import ir.BasicBlock;
-import ir.Instruction;
-import ir.Type;
 import ir.instructions.CmpInst;
-import ir.instructions.Instructions;
-import util.IList;
 import util.IListNode;
-import util.MyIRBuilder;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 public abstract class MachineInstruction {
     private MachineBasicBlock parent;
@@ -43,14 +35,14 @@ public abstract class MachineInstruction {
     }
 
     private boolean forBr;
+
     public boolean isForFloat() {
         return forFloat;
     }
 
     public MachineInstruction setForFloat(boolean forFloat, ArrayList<String> typeinfo) {
         this.forFloat = forFloat;
-        if (forFloat)
-            this.typeinfo = typeinfo;
+        if (forFloat) this.typeinfo = typeinfo;
         return this;
     }
 
@@ -100,7 +92,7 @@ public abstract class MachineInstruction {
         this.shifter = new Shifter(type, sh);
     }
 
-    public boolean hasShift(){
+    public boolean hasShift() {
         return shifter != null;
     }
 
@@ -179,8 +171,7 @@ public abstract class MachineInstruction {
         //Unary
 
         //Binary
-        Add, Sub, Rsb, Mul, Div, Mod,
-        //Memory
+        Add, Sub, Rsb, Mul, Div, Mod, //Memory
         Ldr, STR, Push, Pop
         //Cast
 
@@ -224,11 +215,30 @@ public abstract class MachineInstruction {
         this.getInstNode().insertBefore(node);
     }
 
-    public void delete(){this.getInstNode().remove();}
+    public void insertBefore(MachineInstruction node) {
+        this.getInstNode().insertBefore(node.getInstNode());
+    }
+
+    public void delete() {
+        this.getInstNode().remove();
+    }
 
     public MachineInstruction(MachineBasicBlock parent) {
         this.parent = parent;
         instNode = new IListNode<>(this, parent.getInstList());
+    }
+
+    public MachineInstruction(MachineBasicBlock parent, MachineInstruction src) {
+        this.parent = parent;
+        instNode = new IListNode<>(this, parent.getInstList());
+        this.shifter = src.getShifter();
+        this.cond = src.getCond();
+        this.op = src.getOp();
+        this.comment = src.getComment();
+        this.typeinfo = new ArrayList<>(src.getTypeinfo());
+        this.setState = src.isSetState();
+        this.forFloat = src.isForFloat();
+        this.forBr = src.isforBr();
     }
 
 
@@ -238,6 +248,12 @@ public abstract class MachineInstruction {
 
     public void setDest(Register dest) {
 
+    }
+
+    public String condString() {
+        if (cond == null)
+            return "";
+        return cond.toString();
     }
 
 
@@ -256,30 +272,53 @@ public abstract class MachineInstruction {
     public void setOp2(MCOperand op) {
     }
 
-    public  ArrayList<Register> getDef(){
+    public ArrayList<Register> getDef() {
         var ans = new ArrayList<Register>();
-        if(getDest() != null)
-            ans.add(getDest());
-       return ans;
+        if (getDest() != null) ans.add(getDest());
+        return ans;
     }
-    public  ArrayList<Register> getUse(){
+
+    public ArrayList<Register> getUse() {
         var ans = new ArrayList<Register>();
 
         var op1 = getOp1();
         var op2 = getOp2();
-        if(op1 instanceof Register)
-            ans.add((Register) op1);
-        if(op2 instanceof Register){
+        if (op1 instanceof Register) ans.add((Register) op1);
+        if (op2 instanceof Register) {
             ans.add((Register) op2);
-        } else if(op2 instanceof Address){
+        } else if (op2 instanceof Address) {
             var a1 = ((Address) op2).getReg();
             var a2 = ((Address) op2).getOffset();
-            if(a1 != null)
-                ans.add(a1);
-            if(a2 instanceof Register)
-                ans.add((Register) a2);
+            if (a1 != null) ans.add(a1);
+            if (a2 instanceof Register) ans.add((Register) a2);
         }
         return ans;
+    }
+
+    public static MachineInstruction copyMCInstruction(MachineBasicBlock parent, MachineInstruction src) {
+        if (src instanceof Arithmetic)
+            return new Arithmetic(parent, (Arithmetic) src);
+        if (src instanceof Branch)
+            return new Branch(parent, (Branch) src);
+        if (src instanceof Cmp)
+            return new Cmp(parent, (Cmp) src);
+        if (src instanceof Comment)
+            return new Comment(parent, (Comment) src);
+        if (src instanceof LoadImm)
+            return new LoadImm(parent, (LoadImm) src);
+        if (src instanceof LoadOrStore)
+            return new LoadOrStore(parent, (LoadOrStore) src);
+        if (src instanceof Move)
+            return new Move(parent, (Move) src);
+        if (src instanceof PushOrPop)
+            return new PushOrPop(parent, (PushOrPop) src);
+        if (src instanceof Ubfx)
+            return new Ubfx(parent, (Ubfx) src);
+        if (src instanceof VCVT)
+            return new VCVT(parent, (VCVT) src);
+        if (src instanceof VMRS)
+            return new VMRS(parent, (VMRS) src);
+        throw new RuntimeException("Copy failed: " + src);
     }
 
 

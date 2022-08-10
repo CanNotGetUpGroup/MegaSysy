@@ -47,6 +47,14 @@ public class Arithmetic extends MachineInstruction {
         this.op2 = op2;
         setForFloat(op1.isFloat());
     }
+    public Arithmetic(MachineBasicBlock parent, Arithmetic arithmetic) {
+        super(parent, arithmetic);
+
+        this.type = arithmetic.getType();
+        this.destReg = arithmetic.getDest();
+        this.op1 = arithmetic.getOp1();
+        this.op2 = arithmetic.getOp2();
+    }
 
     public Arithmetic(MachineBasicBlock parent, Type type, Register op1, MCOperand op2) {
 
@@ -93,8 +101,8 @@ public class Arithmetic extends MachineInstruction {
     @Override
     public String toString() {
         return (isForFloat() ? "v" : "")
-                + type.toString() + (isSetState() ? "S" : "")
-                + (getCond() != null ? getCond().toString() : "") + typeInfoString() + "\t"
+                + type.toString()  + condString()+ (isSetState() ? "S" : "")
+                 + typeInfoString() + "\t"
                 + destReg.toString() + ", " + op1.toString() + ", " + op2.toString()
                 + (hasShift()? ", " + getShifter() : "");
     }

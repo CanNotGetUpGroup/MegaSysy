@@ -26,6 +26,13 @@ public class VCVT extends MachineInstruction {
         setForFloat(true, arrayList);
     }
 
+    public VCVT(MachineBasicBlock parent, VCVT inst) {
+        super(parent, inst);
+        this.op = inst.op;
+        this.dest = inst.dest;
+    }
+
+
     @Override
     public Register getDest() {
         return dest;
@@ -48,12 +55,12 @@ public class VCVT extends MachineInstruction {
     }
 
     public MachineInstruction setForFloat(boolean ifForFloat) {
-       throw new RuntimeException("Should call this");
+        throw new RuntimeException("Should call this");
     }
 
 
     @Override
     public String toString() {
-        return "vcvt" + typeInfoString() + "\t" + dest + ", " + op;
+        return "vcvt" + condString() + typeInfoString() + "\t" + dest + ", " + op;
     }
 }

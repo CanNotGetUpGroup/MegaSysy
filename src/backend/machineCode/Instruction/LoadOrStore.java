@@ -16,7 +16,7 @@ public class LoadOrStore extends MachineInstruction {
     }
 
     private final Type type;
-    private Register dest;
+     Register dest;
     private MCOperand addr;     // could be address , or literal number
 
     public LoadOrStore(MachineBasicBlock parent, Type type, Register dest, MCOperand addr) {
@@ -25,6 +25,12 @@ public class LoadOrStore extends MachineInstruction {
         this.dest = dest;
         this.addr = addr;
         setForFloat(dest.isFloat());
+    }
+    public LoadOrStore(MachineBasicBlock parent, LoadOrStore inst) {
+        super(parent, inst);
+        this.type = inst.getType();
+        this.dest = inst.dest;
+        this.addr = inst.addr;
     }
 
     @Override
@@ -69,7 +75,7 @@ public class LoadOrStore extends MachineInstruction {
 
     @Override
     public String toString() {
-        return (isForFloat()? "v":"") + (type == Type.LOAD ? "LDR" : "STR") + typeInfoString()  + " " + dest.toString() + ", " + addr.toString();
+        return (isForFloat()? "v":"") + (type == Type.LOAD ? "LDR" : "STR") + condString() + typeInfoString()  + " " + dest.toString() + ", " + addr.toString();
     }
 
     @Override

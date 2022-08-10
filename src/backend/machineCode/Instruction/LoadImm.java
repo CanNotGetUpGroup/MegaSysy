@@ -10,6 +10,10 @@ import ir.Instruction;
 
 public class LoadImm extends MachineInstruction {
 
+    public MCOperand getSrc() {
+        return src;
+    }
+
     private MCOperand src;
     private Register dest;
 
@@ -33,6 +37,17 @@ public class LoadImm extends MachineInstruction {
     }
 
 
+    public LoadImm(MachineBasicBlock parent, LoadImm imm) {
+        super(parent, imm);
+        this.src = imm.getSrc();
+        this.dest = imm.getDest();
+    }
+
+    @Override
+    public MCOperand getOp2() {
+        return src;
+    }
+
     @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
        throw  new RuntimeException("Unfinished");
@@ -52,28 +67,28 @@ public class LoadImm extends MachineInstruction {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (src instanceof Addressable) {
-            sb.append("movw\t").append(dest)
+            sb.append("movw").append(condString()).append("\t").append(dest)
                     .append(", #:lower16:").append(((Addressable) src).getLabel()).append("\n")
-                    .append("\tmovt\t").append(dest)
+                    .append("\tmovt").append(condString()).append("\t").append(dest)
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
         } else if (src instanceof ImmediateNumber) {
             int value = ((ImmediateNumber) src).getValue();
             if (ImmediateNumber.isLegalImm(value)) {
                 if (dest.isFloat())
                     sb.append("v");
-                sb.append("mov");
+                sb.append("mov").append(condString());
                 if (dest.isFloat()) sb.append(typeInfoString());
                 sb.append("\t").append(dest).append(", ").append(value);
             } else if(ImmediateNumber.isLegalImm(~value)){
                 if (dest.isFloat())
                     sb.append("v");
-                sb.append("mvn");
+                sb.append("mvn").append(condString());
                 if (dest.isFloat()) sb.append(typeInfoString());
                 sb.append("\t").append(dest).append(", ").append(~value);
             }
             else
-                sb.append("movw\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
-                        .append("\tmovt\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16);
+                sb.append("movw").append(condString()).append("\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
+                        .append("\tmovt").append(condString()).append("\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16);
         } else {
             throw new RuntimeException("Unknown type");
         }

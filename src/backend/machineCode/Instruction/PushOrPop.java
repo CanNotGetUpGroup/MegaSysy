@@ -14,6 +14,12 @@ public class PushOrPop extends MachineInstruction {
         this.type = type;
     }
 
+    public PushOrPop(MachineBasicBlock parent, PushOrPop inst) {
+        super(parent, inst);
+        this.op = inst.op;
+        this.type = inst.type;
+    }
+
     Register op;
 
     public Type getType() {
@@ -29,7 +35,7 @@ public class PushOrPop extends MachineInstruction {
 
     @Override
     public String toString() {
-        return type.name() + " { " + op.toString() + " }";
+        return type.name() + condString() + '\t' + " { " + op.toString() + " }";
     }
 
     @Override
