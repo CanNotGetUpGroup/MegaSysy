@@ -277,14 +277,18 @@ public abstract class Instructions {
             Constants.ConstantArray CA = null;
             if (getOperand(1) instanceof Constants.ConstantInt) {
                 Constants.ConstantInt CI = (Constants.ConstantInt) getOperand(1);
-                if (CI.getVal() != 0) {//%this = gep %prev 5
+                if (getNumOperands()==2) {//%this = gep %prev 5
                     if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
                         CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
                     } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
                         CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                        if(CA==null){
+                            ((GetElementPtrInst) source).getConstantValue();
+                            CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                        }
                     }
                     assert CA != null;
-                    ConstantValue = (Constant) CA.getElement(CI.getVal());
+                    ConstantValue = CA.getElement(CI.getVal());
                     return ConstantValue;
                 }
             } else {
@@ -323,15 +327,12 @@ public abstract class Instructions {
                 LoadInst LI=(LoadInst)getOperand(0);
                 AllocaInst AI=(AllocaInst)LI.getOperand(0);
                 ret.add(AI);
-                ret.add(Constants.ConstantInt.get(0));
             }else{
                 GetElementPtrInst gep=(GetElementPtrInst)getOperand(0);
                 ret=new ArrayList<>(gep.getArrayIdx());
             }
-            if(ret.size()>1)
-                ret.set(ret.size()-1, Folder.createAdd(ret.get(ret.size()-1),getOperand(1)));
-            for(int i=2;i<getNumOperands();i++){
-                ret.add(getOperand(i));
+            if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
+                ret.add(getOperand(1));
             }
             AliasAnalysis.gepToArrayIdx.put(this,ret);
             return ret;

@@ -16,7 +16,6 @@ import java.util.*;
 public class MemorySSA {
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
     private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToPhi;
-    private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToLoadPhi;
     //指令移动后可能失效
     public final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemAccList;//基本块中储存的MemoryAccess
     public final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemDefList;//基本块中储存的MemoryDef和MemoryPhi
@@ -31,8 +30,11 @@ public class MemorySSA {
     private final HashMap<Instructions.CallInst,ArrayList<Value>> CI2Pointers=new HashMap<>();
     private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Defs=new HashMap<>();
 
+    private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> LoadToPhi;
     private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Uses=new HashMap<>();
-    private final HashSet<MemoryPhi> PhiToAllocaMap=new HashSet<>();
+    private final HashSet<MemoryPhi> LoadToPhiMap =new HashSet<>();
+    HashMap<Instructions.LoadInst,Integer> LoadLoopUp=new HashMap<>();
+    ArrayList<Instructions.LoadInst> Loads=new ArrayList<>();
 //    private final Set<BasicBlock> Visited=new HashSet<>();
 
     public MemorySSA(Function F, DominatorTree DT) {
@@ -40,7 +42,7 @@ public class MemorySSA {
         this.DT = DT;
         ValueToMemAcc = new HashMap<>();
         PointerToPhi = new HashMap<>();
-        PointerToLoadPhi = new HashMap<>();
+        LoadToPhi = new HashMap<>();
         BlockToMemAccList = new HashMap<>();
         BlockToMemDefList = new HashMap<>();
         LiveOnEntry = new MemoryAccess(Instruction.Ops.MemDef, F.getEntryBB());
@@ -93,16 +95,12 @@ public class MemorySSA {
         }
         for(GlobalVariable g:F.getParent().getGlobalVariables()){
             ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
-            placePHINodes(DT, Pointer2Defs.get(g),g, PHIBasicBlocks,PointerToPhi,false);
-//            PHIBasicBlocks=new ArrayList<>();
-//            placePHINodes(DT, Pointer2Uses.get(g),g, PHIBasicBlocks,PointerToLoadPhi,true);
+            placePHINodes(DT, Pointer2Defs.get(g),g, PHIBasicBlocks);
         }
         for(Instruction I:F.getEntryBB().getInstList()){
             if(!(I instanceof Instructions.AllocaInst)) break;
             ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
-            placePHINodes(DT, Pointer2Defs.get(I),I, PHIBasicBlocks,PointerToPhi,false);
-//            PHIBasicBlocks=new ArrayList<>();
-//            placePHINodes(DT, Pointer2Uses.get(I),I, PHIBasicBlocks,PointerToLoadPhi,true);
+            placePHINodes(DT, Pointer2Defs.get(I),I, PHIBasicBlocks);
         }
 
         Set<BasicBlock> Visited = new HashSet<>();
@@ -117,22 +115,29 @@ public class MemorySSA {
 
         RenamePass(DT, IncomingValues, Visited);
 
-//        Visited = new HashSet<>();
-//        IncomingValues=new HashMap<>();
-//        for(GlobalVariable g:F.getParent().getGlobalVariables()){
-//            IncomingValues.put(g,LiveOnEntry);
-//        }
-//        for(Instruction I:F.getEntryBB().getInstList()){
-//            if(!(I instanceof Instructions.AllocaInst)) break;
-//            IncomingValues.put(I,LiveOnEntry);
-//        }
-//
-//        Stack<RenamePassData> RenamePassWorkList=new Stack<>();
-//        RenamePassWorkList.add(new RenamePassData(DT.Parent.getEntryBB(),null,IncomingValues));
-//        do{
-//            RenamePassData RPD=RenamePassWorkList.pop();
-//            RenameLoadPass(RPD.BB,RPD.Pred,RPD.Val,RenamePassWorkList,Visited);
-//        }while(!RenamePassWorkList.isEmpty());
+        //Load MemPhi
+        for(Instructions.LoadInst LI:Loads){
+            ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
+
+            placeLoadPHINodes(DT, LI.getParent(),LI,PHIBasicBlocks);
+        }
+
+        Visited = new HashSet<>();
+        IncomingValues=new HashMap<>();
+        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+            IncomingValues.put(g,LiveOnEntry);
+        }
+        for(Instruction I:F.getEntryBB().getInstList()){
+            if(!(I instanceof Instructions.AllocaInst)) break;
+            IncomingValues.put(I,LiveOnEntry);
+        }
+
+        Stack<RenamePassData> RenamePassWorkList=new Stack<>();
+        RenamePassWorkList.add(new RenamePassData(DT.Parent.getEntryBB(),null,IncomingValues));
+        do{
+            RenamePassData RPD=RenamePassWorkList.pop();
+            RenameLoadPass(RPD.BB,RPD.Pred,RPD.Val,RenamePassWorkList,Visited);
+        }while(!RenamePassWorkList.isEmpty());
 
         //TODO：将无法到达的基本块设为LiveOnEntry
     }
@@ -141,9 +146,7 @@ public class MemorySSA {
      * 计算支配树边界，找到插入MemPhi指令的位置，参考mem2reg的IDFCalculate方法
      */
     public void placePHINodes(DominatorTree DT, ArrayList<BasicBlock> DefiningBlocks,
-                              Value pointer, ArrayList<BasicBlock> IDFBlocks,
-                              HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToPhi,
-                              boolean load) {
+                              Value pointer, ArrayList<BasicBlock> IDFBlocks) {
         if(DefiningBlocks==null) return;
         Mem2Reg.IDFCalculate(DT, DefiningBlocks, null, IDFBlocks);
 
@@ -171,8 +174,34 @@ public class MemorySSA {
             HashMap<BasicBlock,MemoryAccess> bbPhis = PointerToPhi.getOrDefault(pointer,new HashMap<>());
             bbPhis.put(BB,memPhi);
             PointerToPhi.put(pointer,bbPhis);
-            if(load)
-                PhiToAllocaMap.add(memPhi);
+        }
+    }
+
+    public void placeLoadPHINodes(DominatorTree DT, BasicBlock DefiningBlock,
+                              Value pointer, ArrayList<BasicBlock> IDFBlocks) {
+        if(DefiningBlock==null) return;
+        Mem2Reg.IDFCalculate(DT, new ArrayList<>(){{add(DefiningBlock);}}, null, IDFBlocks);
+
+        if(BBNumbers.size()==0){
+            int ID=0;
+            for(BasicBlock basicBlock:DT.Parent.getBbList()){
+                BBNumbers.put(basicBlock,ID++);
+            }
+        }
+        //升序排列，便于处理
+        IDFBlocks.sort(Comparator.comparingInt(BBNumbers::get));
+
+        //插入phi
+        for (BasicBlock BB : IDFBlocks) {
+            MemoryPhi memPhi = new MemoryPhi(BB, ID++);
+            memPhi.setPointer(pointer);
+            getOrAddAccessList(BB).addFirst(memPhi);
+            getOrAddDefList(BB).addFirst(memPhi);
+//            ValueToMemAcc.put(BB, memPhi);
+            HashMap<BasicBlock,MemoryAccess> bbPhis = PointerToPhi.getOrDefault(pointer,new HashMap<>());
+            bbPhis.put(BB,memPhi);
+            PointerToPhi.put(pointer,bbPhis);
+            LoadToPhiMap.add(memPhi);
         }
     }
 
@@ -210,7 +239,7 @@ public class MemorySSA {
              */
             if (BlockToMemDefList.get(BB)!=null && BlockToMemDefList.get(BB).getFirst() instanceof MemoryPhi) {
                 MemoryPhi APN = (MemoryPhi) BlockToMemDefList.get(BB).getFirst();
-                if(PhiToAllocaMap.contains(APN)){
+                if(LoadToPhiMap.contains(APN)){
                     int NewPHINumOperands = APN.getNumOperands();
                     int NumEdges = 0;
                     for (BasicBlock suc :
@@ -321,7 +350,7 @@ public class MemorySSA {
                         IncomingVal.put(MUD.getPointer(),MA);
                     }
                 } else if(MA instanceof MemoryPhi){
-                    if(PhiToAllocaMap.contains(MA)){
+                    if(LoadToPhiMap.contains(MA)){
                         IncomingVal.put(MA.getPointer(),MA);
                     }
                 }
@@ -445,9 +474,11 @@ public class MemorySSA {
                 }
                 ret = new MemoryUse(I, null);
                 Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(0));
-                ArrayList<BasicBlock> loads=Pointer2Uses.getOrDefault(ptr,new ArrayList<>());
-                loads.add(I.getParent());
-                Pointer2Uses.put(ptr,loads);
+//                ArrayList<BasicBlock> loads=Pointer2Uses.getOrDefault(ptr,new ArrayList<>());
+//                loads.add(I.getParent());
+//                Pointer2Uses.put(ptr,loads);
+                Loads.add((Instructions.LoadInst) I);
+                LoadLoopUp.put((Instructions.LoadInst) I,Loads.size()-1);
                 ret.setPointer(ptr);
             }
         }
