@@ -39,7 +39,7 @@ public class DominatorTree {
         for (BasicBlock BB : Parent.getBbList()) {
             if (getNode(BB) == null) {
                 ret = true;
-                BB.remove();
+                BB.removeThisAndAllInst();
             }
         }
         return ret;

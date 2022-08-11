@@ -1,5 +1,6 @@
 package pass.passes;
 
+import analysis.AliasAnalysis;
 import analysis.DominatorTree;
 import analysis.MemoryAccess;
 import ir.*;
@@ -44,6 +45,7 @@ public class Mem2Reg extends FunctionPass {
         AllocaLookup.clear();
         PhiToAllocaMap.clear();
         Visited.clear();
+        AliasAnalysis.gepToArrayIdx.clear();
 
         DominatorTree DT=F.getAndUpdateDominatorTree();
         promoteMem2Reg(F,DT);

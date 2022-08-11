@@ -1,17 +1,12 @@
 package analysis;
 
-import ir.BasicBlock;
-import ir.Function;
-import ir.Instruction;
-import ir.Value;
+import ir.*;
 import analysis.MemoryAccess.*;
-import pass.PassManager;
+import ir.instructions.Instructions;
 import pass.passes.Mem2Reg;
 import pass.test.testPass;
 
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
 
 /**
@@ -20,17 +15,34 @@ import java.util.*;
  */
 public class MemorySSA {
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
-    private final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemAccList;//基本块中储存的MemoryAccess
-    private final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemDefList;//基本块中储存的MemoryDef和MemoryPhi
+    private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToPhi;
+    //指令移动后可能失效
+    public final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemAccList;//基本块中储存的MemoryAccess
+    public final HashMap<BasicBlock, LinkedList<MemoryAccess>> BlockToMemDefList;//基本块中储存的MemoryDef和MemoryPhi
     private final MemoryAccess LiveOnEntry;
     private int ID;
     private final Function F;
     private final DominatorTree DT;
 
+    private final HashMap<Instructions.AllocaInst,Integer> AllocaLookup= new HashMap<>();
+    private ArrayList<Instructions.AllocaInst> allocaInsts;
+    private final HashMap<BasicBlock,Integer> BBNumbers= new HashMap<>();
+    private final HashMap<Instructions.CallInst,ArrayList<Value>> CI2Pointers=new HashMap<>();
+    private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Defs=new HashMap<>();
+
+    private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> LoadToPhi;
+    private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Uses=new HashMap<>();
+    private final HashSet<MemoryPhi> LoadToPhiMap =new HashSet<>();
+    HashMap<Instructions.LoadInst,Integer> LoadLoopUp=new HashMap<>();
+    ArrayList<Instructions.LoadInst> Loads=new ArrayList<>();
+//    private final Set<BasicBlock> Visited=new HashSet<>();
+
     public MemorySSA(Function F, DominatorTree DT) {
         this.F = F;
         this.DT = DT;
         ValueToMemAcc = new HashMap<>();
+        PointerToPhi = new HashMap<>();
+        LoadToPhi = new HashMap<>();
         BlockToMemAccList = new HashMap<>();
         BlockToMemDefList = new HashMap<>();
         LiveOnEntry = new MemoryAccess(Instruction.Ops.MemDef, F.getEntryBB());
@@ -57,16 +69,14 @@ public class MemorySSA {
         if(isLiveOnEntry(dominated)) return false;
         if(isLiveOnEntry(dominator)) return true;
         //否则比较二者顺序，在前面的支配后面的
-        if(dominator instanceof MemoryPhi) return true;
-
-        return true;
+        BasicBlock BB=dominator.getBB();
+        LinkedList<MemoryAccess> defs=BlockToMemDefList.get(BB);
+        return defs.indexOf(dominator)<defs.indexOf(dominated);
     }
 
     public void buildMemorySSA() {
-        ArrayList<BasicBlock> DefiningBlocks = new ArrayList<>();
         //先生成MemoryDef和MemoryUse，但不为他们指定definingAccess
         for (BasicBlock BB : F.getBbList()) {
-            boolean InsertIntoDef = false;
             LinkedList<MemoryAccess> Accesses = null;
             LinkedList<MemoryAccess> Defs = null;
             for (Instruction I : BB.getInstList()) {
@@ -77,28 +87,57 @@ public class MemorySSA {
                     Accesses = getOrAddAccessList(BB);
                 Accesses.add(MUD);
                 if ((MUD instanceof MemoryDef)) {
-                    InsertIntoDef = true;
                     if (Defs == null)
                         Defs = getOrAddDefList(BB);
                     Defs.add(MUD);
                 }
             }
-            if (InsertIntoDef)
-                DefiningBlocks.add(BB);
         }
-        ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
-        placePHINodes(DT, DefiningBlocks, PHIBasicBlocks);
-
-        //插入phi
-        for (BasicBlock BB : PHIBasicBlocks) {
-            MemoryPhi memPhi = new MemoryPhi(BB, ID++);
-            getOrAddAccessList(BB).addFirst(memPhi);
-            getOrAddDefList(BB).addFirst(memPhi);
-            ValueToMemAcc.put(BB, memPhi);
+        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+            ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
+            placePHINodes(DT, Pointer2Defs.get(g),g, PHIBasicBlocks);
+        }
+        for(Instruction I:F.getEntryBB().getInstList()){
+            if(!(I instanceof Instructions.AllocaInst)) break;
+            ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
+            placePHINodes(DT, Pointer2Defs.get(I),I, PHIBasicBlocks);
         }
 
         Set<BasicBlock> Visited = new HashSet<>();
-        RenamePass(DT, LiveOnEntry, Visited);
+        HashMap<Value,MemoryAccess> IncomingValues=new HashMap<>();
+        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+            IncomingValues.put(g,LiveOnEntry);
+        }
+        for(Instruction I:F.getEntryBB().getInstList()){
+            if(!(I instanceof Instructions.AllocaInst)) break;
+            IncomingValues.put(I,LiveOnEntry);
+        }
+
+        RenamePass(DT, IncomingValues, Visited);
+
+        //Load MemPhi
+        for(Instructions.LoadInst LI:Loads){
+            ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
+
+            placeLoadPHINodes(DT, LI.getParent(),LI,PHIBasicBlocks);
+        }
+
+        Visited = new HashSet<>();
+        IncomingValues=new HashMap<>();
+        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+            IncomingValues.put(g,LiveOnEntry);
+        }
+        for(Instruction I:F.getEntryBB().getInstList()){
+            if(!(I instanceof Instructions.AllocaInst)) break;
+            IncomingValues.put(I,LiveOnEntry);
+        }
+
+        Stack<RenamePassData> RenamePassWorkList=new Stack<>();
+        RenamePassWorkList.add(new RenamePassData(DT.Parent.getEntryBB(),null,IncomingValues));
+        do{
+            RenamePassData RPD=RenamePassWorkList.pop();
+            RenameLoadPass(RPD.BB,RPD.Pred,RPD.Val,RenamePassWorkList,Visited);
+        }while(!RenamePassWorkList.isEmpty());
 
         //TODO：将无法到达的基本块设为LiveOnEntry
     }
@@ -106,16 +145,74 @@ public class MemorySSA {
     /**
      * 计算支配树边界，找到插入MemPhi指令的位置，参考mem2reg的IDFCalculate方法
      */
-    public void placePHINodes(DominatorTree DT, ArrayList<BasicBlock> DefiningBlocks, ArrayList<BasicBlock> IDFBlocks) {
+    public void placePHINodes(DominatorTree DT, ArrayList<BasicBlock> DefiningBlocks,
+                              Value pointer, ArrayList<BasicBlock> IDFBlocks) {
+        if(DefiningBlocks==null) return;
         Mem2Reg.IDFCalculate(DT, DefiningBlocks, null, IDFBlocks);
+
+        if(BBNumbers.size()==0){
+            int ID=0;
+            for(BasicBlock basicBlock:DT.Parent.getBbList()){
+                BBNumbers.put(basicBlock,ID++);
+            }
+        }
+        //升序排列，便于处理
+        IDFBlocks.sort(new Comparator<BasicBlock>() {
+            @Override
+            public int compare(BasicBlock o1, BasicBlock o2) {
+                return BBNumbers.get(o1)-BBNumbers.get(o2);
+            }
+        });
+
+        //插入phi
+        for (BasicBlock BB : IDFBlocks) {
+            MemoryPhi memPhi = new MemoryPhi(BB, ID++);
+            memPhi.setPointer(pointer);
+            getOrAddAccessList(BB).addFirst(memPhi);
+            getOrAddDefList(BB).addFirst(memPhi);
+//            ValueToMemAcc.put(BB, memPhi);
+            HashMap<BasicBlock,MemoryAccess> bbPhis = PointerToPhi.getOrDefault(pointer,new HashMap<>());
+            bbPhis.put(BB,memPhi);
+            PointerToPhi.put(pointer,bbPhis);
+        }
+    }
+
+    public void placeLoadPHINodes(DominatorTree DT, BasicBlock DefiningBlock,
+                              Value pointer, ArrayList<BasicBlock> IDFBlocks) {
+        if(DefiningBlock==null) return;
+        Mem2Reg.IDFCalculate(DT, new ArrayList<>(){{add(DefiningBlock);}}, null, IDFBlocks);
+
+        if(BBNumbers.size()==0){
+            int ID=0;
+            for(BasicBlock basicBlock:DT.Parent.getBbList()){
+                BBNumbers.put(basicBlock,ID++);
+            }
+        }
+        //升序排列，便于处理
+        IDFBlocks.sort(Comparator.comparingInt(BBNumbers::get));
+
+        //插入phi
+        for (BasicBlock BB : IDFBlocks) {
+            MemoryPhi memPhi = new MemoryPhi(BB, ID++);
+            memPhi.setPointer(pointer);
+            getOrAddAccessList(BB).addFirst(memPhi);
+            getOrAddDefList(BB).addFirst(memPhi);
+//            ValueToMemAcc.put(BB, memPhi);
+            HashMap<BasicBlock,MemoryAccess> bbPhis = PointerToPhi.getOrDefault(pointer,new HashMap<>());
+            bbPhis.put(BB,memPhi);
+            PointerToPhi.put(pointer,bbPhis);
+            LoadToPhiMap.add(memPhi);
+        }
     }
 
     static class RenamePassData {
-        public DominatorTree.TreeNode treeNode;
-        MemoryAccess Val;
+        public BasicBlock BB;
+        public BasicBlock Pred;
+        HashMap<Value,MemoryAccess> Val;
 
-        public RenamePassData(DominatorTree.TreeNode BB, MemoryAccess val) {
-            this.treeNode = BB;
+        public RenamePassData(BasicBlock BB, BasicBlock pred, HashMap<Value,MemoryAccess> val) {
+            this.BB = BB;
+            Pred = pred;
             Val = val;
         }
     }
@@ -123,64 +220,189 @@ public class MemorySSA {
     /**
      * 添加MemPHI的IncomingVal，参考mem2reg的RenamePass
      */
-    public void RenamePass(DominatorTree DT, MemoryAccess IncomingVal, Set<BasicBlock> Visited) {
+    public void RenamePass(DominatorTree DT, HashMap<Value,MemoryAccess> IncomingVal, Set<BasicBlock> Visited) {
         DominatorTree.TreeNode Root = DT.Root;
         boolean AlreadyVisited = !Visited.add(Root.BB);
         if (AlreadyVisited)
             return;
-        IncomingVal = renameBlock(Root.BB, IncomingVal);
+        renameBlock(Root.BB, IncomingVal);
         renameSuccessorPhis(Root.BB, IncomingVal);
-        dfsRename(new RenamePassData(Root, IncomingVal),Visited);
+        dfsRename(new RenamePassData(Root.BB,null, IncomingVal),Visited);
     }
 
-    public void dfsRename(RenamePassData RPD, Set<BasicBlock> Visited) {
-        DominatorTree.TreeNode Node = RPD.treeNode;
-        if (!Node.Children.isEmpty()) {
-            for (DominatorTree.TreeNode Child : Node.Children) {
-                MemoryAccess IncomingVal = RPD.Val;
-                BasicBlock BB = Child.BB;
-                boolean AlreadyVisited = !Visited.add(BB);
-                if (AlreadyVisited) {
-                    LinkedList<MemoryAccess> BlockDefs=BlockToMemDefList.get(BB);
-                    if (BlockDefs != null) {
-                        IncomingVal =BlockDefs.getLast();
+    public void RenameLoadPass(BasicBlock BB,BasicBlock Pred,HashMap<Value,MemoryAccess> IncomingVals
+            ,Stack<RenamePassData> Worklist,Set<BasicBlock> Visited){
+        while(true){
+            /*
+             * 如果块中有 φ 指令，则遍历所有先前添加的 φ（注意程序中原来可能也有 φ，这里要和原来的 φ 区分开来）：
+             * 假设某个前驱到当前基本块有 NumEdges 条边，则为 φ 指令添加 NumEdges 个来源，值为 IncomingVals[L]，同时设置 IncomingVals[L] = Phi
+             */
+            if (BlockToMemDefList.get(BB)!=null && BlockToMemDefList.get(BB).getFirst() instanceof MemoryPhi) {
+                MemoryPhi APN = (MemoryPhi) BlockToMemDefList.get(BB).getFirst();
+                if(LoadToPhiMap.contains(APN)){
+                    int NewPHINumOperands = APN.getNumOperands();
+                    int NumEdges = 0;
+                    for (BasicBlock suc :
+                            Pred.getSuccessors()) {
+                        if (suc == BB) {
+                            NumEdges++;
+                        }
                     }
-                } else{
-                    IncomingVal = renameBlock(BB, IncomingVal);
+                    assert NumEdges >= 1;
+                    Iterator<MemoryAccess> PNI = BlockToMemDefList.get(BB).iterator();
+                    Instruction I;
+                    do {
+
+                        // 则为 φ 指令添加 NumEdges 个来源
+                        for (int i = 0; i != NumEdges; ++i)
+                            APN.addIncoming(IncomingVals.get(APN.getPointer()), Pred);
+
+                        // 设置 IncomingVals[L] = Phi
+                        IncomingVals.put(APN.getPointer(), APN);
+                        // 处理下一个phi
+                        I = PNI.next();
+                        if (!(I instanceof MemoryPhi)) {
+                            break;
+                        }
+                        APN = (MemoryPhi) (I);
+                    } while (APN.getNumOperands() == NewPHINumOperands);
                 }
-                renameSuccessorPhis(BB, IncomingVal);
-                dfsRename(new RenamePassData(Child,IncomingVal),Visited);
+            }
+
+            if (!Visited.add(BB)) {
+                return;
+            }
+            renameLoadBlock(BB,IncomingVals);
+
+            if (BB.getSuccessorsNum() == 0)
+                return;
+
+            BasicBlock I = BB.getSuccessor(0);
+            Set<BasicBlock> VisitedSuccs = new HashSet<>();
+
+            VisitedSuccs.add(I);
+            Pred = BB;
+            BasicBlock oldBB=BB;
+            BB = I;
+
+            for (int i = 1; i < oldBB.getSuccessorsNum(); i++) {
+                I = oldBB.getSuccessor(i);
+                if (VisitedSuccs.add(I))
+                    Worklist.add(new RenamePassData(I, Pred, new HashMap<>(IncomingVals)));
             }
         }
     }
 
-    private MemoryAccess renameBlock(BasicBlock BB, MemoryAccess IncomingVal) {
+    public void dfsRename(RenamePassData RPD, Set<BasicBlock> Visited) {
+        BasicBlock Pred = RPD.BB;
+        if (Pred.getSuccessorsNum()!=0) {
+            for (BasicBlock BB : Pred.getSuccessors()) {
+                HashMap<Value,MemoryAccess> IncomingVal = new HashMap<>(RPD.Val);
+                boolean AlreadyVisited = !Visited.add(BB);
+                if (AlreadyVisited) {
+                    LinkedList<MemoryAccess> BlockDefs=BlockToMemDefList.get(BB);
+                    if (BlockDefs != null) {
+                        for(MemoryAccess MA:BlockDefs){
+                            //处理callInst
+                            if(MA instanceof MemoryDef){
+                                if(((MemoryDef)MA).getMemoryInstruction() instanceof Instructions.CallInst){
+                                    Instructions.CallInst CI=(Instructions.CallInst)((MemoryDef)MA).getMemoryInstruction();
+                                    for(Value v:CI2Pointers.get(CI)){
+                                        IncomingVal.put(v,MA);
+                                    }
+                                    continue;
+                                }
+                            }
+                            IncomingVal.put(MA.getPointer(),MA);
+                        }
+                    }
+                    continue;
+                } else{
+                    renameBlock(BB, IncomingVal);
+                }
+                renameSuccessorPhis(BB, IncomingVal);
+                dfsRename(new RenamePassData(BB,Pred,IncomingVal),Visited);
+            }
+        }
+    }
+
+    private void renameLoadBlock(BasicBlock BB, HashMap<Value,MemoryAccess> IncomingVal) {
         LinkedList<MemoryAccess> accList = BlockToMemAccList.get(BB);
         if (accList != null && !accList.isEmpty()) {
             for (MemoryAccess MA : accList) {
                 if (MA instanceof MemoryDefOrUse) {
                     MemoryDefOrUse MUD = (MemoryDefOrUse) MA;
-                    if (MUD.getDefiningAccess() == null) {
-                        MUD.setDefiningAccess(IncomingVal);
+                    //call单独处理
+                    if(MUD.getMemoryInstruction() instanceof Instructions.CallInst) {
+                        Instructions.CallInst CI=(Instructions.CallInst)MUD.getMemoryInstruction();
+                        MemoryAccess newDef=LiveOnEntry;
+                        for(Value v:CI2Pointers.get(CI)){
+                            //找到call定义的pointer中版本最后的
+                            if(IncomingVal.get(v).getID()>newDef.getID()) newDef=IncomingVal.get(v);
+                            IncomingVal.put(v,MA);
+                        }
+                        if(MUD.getDefiningAccess()==null){
+                            MUD.setDefiningAccess(newDef);
+                        }
+                        continue;
                     }
-                    if (MUD instanceof MemoryDef) {
-                        IncomingVal = MA;
+                    if (MUD instanceof MemoryUse) {
+                        IncomingVal.put(MUD.getPointer(),MA);
                     }
-                } else {
-                    IncomingVal = MA;
+                } else if(MA instanceof MemoryPhi){
+                    if(LoadToPhiMap.contains(MA)){
+                        IncomingVal.put(MA.getPointer(),MA);
+                    }
                 }
             }
         }
-        return IncomingVal;
     }
 
-    private void renameSuccessorPhis(BasicBlock BB, MemoryAccess IncomingVal) {
+    private void renameBlock(BasicBlock BB, HashMap<Value,MemoryAccess> IncomingVal) {
+        LinkedList<MemoryAccess> accList = BlockToMemAccList.get(BB);
+        if (accList != null && !accList.isEmpty()) {
+            for (MemoryAccess MA : accList) {
+                if (MA instanceof MemoryDefOrUse) {
+                    MemoryDefOrUse MUD = (MemoryDefOrUse) MA;
+                    //call单独处理
+                    if(MUD.getMemoryInstruction() instanceof Instructions.CallInst) {
+                        Instructions.CallInst CI=(Instructions.CallInst)MUD.getMemoryInstruction();
+                        MemoryAccess newDef=LiveOnEntry;
+                        for(Value v:CI2Pointers.get(CI)){
+                            //找到call定义的pointer中版本最后的
+                            if(IncomingVal.get(v).getID()>newDef.getID()) newDef=IncomingVal.get(v);
+                            IncomingVal.put(v,MA);
+                        }
+                        if(MUD.getDefiningAccess()==null){
+                            MUD.setDefiningAccess(newDef);
+                        }
+                        continue;
+                    }
+                    if (MUD.getDefiningAccess() == null) {
+                        MUD.setDefiningAccess(IncomingVal.get(MUD.getPointer()));
+                    }
+                    if (MUD instanceof MemoryDef) {
+                        IncomingVal.put(MUD.getPointer(),MA);
+                    }
+                } else {
+                    IncomingVal.put(MA.getPointer(),MA);
+                }
+            }
+        }
+    }
+
+    private void renameSuccessorPhis(BasicBlock BB, HashMap<Value,MemoryAccess> IncomingVal) {
         for (BasicBlock Succ : BB.getSuccessors()) {
             LinkedList<MemoryAccess> accList = BlockToMemAccList.get(Succ);
             if (accList == null || accList.isEmpty() || !(accList.getFirst() instanceof MemoryPhi))
                 continue;
-            MemoryPhi Phi = (MemoryPhi) accList.getFirst();
-            Phi.addIncoming(IncomingVal, BB);
+            for(MemoryAccess MA:accList){
+                if(!(MA instanceof MemoryPhi)){
+                    break;
+                }
+                MemoryPhi Phi = (MemoryPhi) MA;
+                Phi.addIncoming(IncomingVal.get(Phi.getPointer()), BB);
+            }
         }
     }
 
@@ -206,16 +428,58 @@ public class MemorySSA {
         MemoryDefOrUse ret = null;
         switch (I.getOp()) {
             case Store, Call -> {
-//                if(I.getOp().equals(Instruction.Ops.Call)&&(!((Function)I.getOperand(0)).hasSideEffect())){
-//                    return null;
-//                }
-                ret = new MemoryDef(I, null, ID++);
+                if(I.getOp().equals(Instruction.Ops.Call)){
+                    if((!((Function)I.getOperand(0)).hasSideEffect())){
+                        return null;
+                    }
+                    Instructions.CallInst CI=(Instructions.CallInst)I;
+                    CI2Pointers.put(CI,new ArrayList<>());
+                    for(GlobalVariable g:F.getParent().getGlobalVariables()){
+                        if(AliasAnalysis.callAlias(g,CI)){
+                            CI2Pointers.get(CI).add(g);
+                        }
+                    }
+                    for(Instruction inst:F.getEntryBB().getInstList()){
+                        if(!(inst instanceof Instructions.AllocaInst)) break;
+                        if(AliasAnalysis.callAlias(inst,CI)){
+                            CI2Pointers.get(CI).add(inst);
+                        }
+                    }
+                    if(CI2Pointers.get(CI).isEmpty()){
+                        return null;
+                    }
+                    ret = new MemoryDef(I, null, ID++);
+                    for(Value v:CI2Pointers.get(CI)){
+                        ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(v,new ArrayList<>());
+                        defs.add(I.getParent());
+                        Pointer2Defs.put(v,defs);
+                    }
+                    break;
+                }
+                if(I.getOp().equals(Instruction.Ops.Store)){
+                    if(AliasAnalysis.isParam(I.getOperand(1))){
+                        return null;
+                    }
+                    ret = new MemoryDef(I, null, ID++);
+                    Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(1));
+                    ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(ptr,new ArrayList<>());
+                    defs.add(I.getParent());
+                    Pointer2Defs.put(ptr,defs);
+                    ret.setPointer(ptr);
+                }
             }
             case Load -> {
                 if(AliasAnalysis.isParam(I.getOperand(0))){
                     return null;
                 }
                 ret = new MemoryUse(I, null);
+                Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(0));
+//                ArrayList<BasicBlock> loads=Pointer2Uses.getOrDefault(ptr,new ArrayList<>());
+//                loads.add(I.getParent());
+//                Pointer2Uses.put(ptr,loads);
+                Loads.add((Instructions.LoadInst) I);
+                LoadLoopUp.put((Instructions.LoadInst) I,Loads.size()-1);
+                ret.setPointer(ptr);
             }
         }
         if (ret != null) {
@@ -238,8 +502,9 @@ public class MemorySSA {
     /**
      * 获得某基本块开头的MemoryPhi
      */
-    public MemoryPhi getMemoryAccess(BasicBlock BB) {
-        return (MemoryPhi) ValueToMemAcc.get(BB);
+    public MemoryPhi getMemoryAccess(BasicBlock BB,Value pointer) {
+        if(PointerToPhi.get(pointer)==null) return null;
+        return (MemoryPhi) PointerToPhi.get(pointer).get(BB);
     }
 
     public DominatorTree getDomTree() {
@@ -269,8 +534,9 @@ public class MemorySSA {
                 sb.append(BB).append("     ").append(BB.getComment() != null ? BB.getComment() : "").append("\n");
                 init = false;
             }
-            if (getMemoryAccess(BB) != null) {
-                sb.append("  ").append(getMemoryAccess(BB)).append("\n");
+            for(MemoryAccess m:BlockToMemDefList.getOrDefault(BB,new LinkedList<>())){
+                if(!(m instanceof MemoryPhi)) break;
+                sb.append("  ").append(m).append("\n");
             }
             for (Instruction I : BB.getInstList()) {
                 if (getMemoryAccess(I) != null) {

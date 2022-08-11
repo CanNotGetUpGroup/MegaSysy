@@ -13,3 +13,5 @@ testcase.*
 .DS_Store
 /src/pass/test/*.txt
 testcase.*
+/FrontedTest/
+/src/pass/test/run_1.py

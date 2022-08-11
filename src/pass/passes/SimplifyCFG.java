@@ -1,6 +1,7 @@
 package pass.passes;
 
 import analysis.DominatorTree;
+import analysis.LoopInfo;
 import ir.*;
 import ir.Module;
 import ir.instructions.Instructions.*;
@@ -26,10 +27,18 @@ import java.util.Set;
 public class SimplifyCFG extends FunctionPass {
     DominatorTree DT;
     Function F;
+    LoopInfo loopInfo;
+    private boolean eliminatePreHeader=false;//先报留preHeader信息
+
+    public SimplifyCFG(boolean eliminatePreHeader) {
+        this.eliminatePreHeader=eliminatePreHeader;
+    }
 
     @Override
     public void runOnFunction(Function F) {
         this.F=F;
+        F.getLoopInfo().computeLoopInfo(F);
+        loopInfo=F.getLoopInfo();
         DT = F.getAndUpdateDominatorTree();
         boolean changed = mergeEmptyReturnBlocks(F);
         changed|=iterativelySimplify(F);
@@ -41,6 +50,8 @@ public class SimplifyCFG extends FunctionPass {
 
     public boolean run(Function F) {
         this.F=F;
+        F.getLoopInfo().computeLoopInfo(F);
+        loopInfo=F.getLoopInfo();
         DT = F.getAndUpdateDominatorTree();
         boolean changed = mergeEmptyReturnBlocks(F);
         changed|=iterativelySimplify(F);
@@ -122,6 +133,7 @@ public class SimplifyCFG extends FunctionPass {
     }
 
     public boolean simplifyCFG(BasicBlock BB) {
+        if(!eliminatePreHeader&&loopInfo.isLoopPreHeader(BB)) return false;
         boolean ret = false;
         //化简终结指令
         ret = Folder.constantFoldTerminator(BB);
