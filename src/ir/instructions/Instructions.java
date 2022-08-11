@@ -321,16 +321,23 @@ public abstract class Instructions {
                 return AliasAnalysis.gepToArrayIdx.get(this);
             }
             ArrayList<Value> ret=new ArrayList<>();
+            int dim=0;
             if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
                 ret.add(getOperand(0));
             }else if(getOperand(0) instanceof LoadInst){//数组参数
                 LoadInst LI=(LoadInst)getOperand(0);
                 AllocaInst AI=(AllocaInst)LI.getOperand(0);
                 ret.add(AI);
+                dim=1;
             }else{
                 GetElementPtrInst gep=(GetElementPtrInst)getOperand(0);
                 ret=new ArrayList<>(gep.getArrayIdx());
+                dim=((Constants.ConstantInt)ret.get(1)).getVal();
             }
+            if(getNumOperands()==3){
+                dim++;
+            }
+            ret.add(Constants.ConstantInt.get(dim));
             if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
                 ret.add(getOperand(1));
             }

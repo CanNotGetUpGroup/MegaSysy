@@ -16,6 +16,7 @@ import java.util.*;
 /**
  * 《Engineering a compiler》8.7.1
  * 《Advanced Compiler Design and Implementation》15.2-15.3
+ * TODO:尝试内联递归函数（设置次数上限）
  */
 public class FuncInline extends ModulePass {
     int Threshold = 150;//内联的函数的行数阈值，超过该值放弃内联

@@ -19,8 +19,9 @@ public class PassManager {
      * 初始化，在此处按照顺序添加IR pass
      */
     public static void initialization() {
-        GVNGCM.GCMOpen=false;
+        GVNGCM.GCMOpen=true;
         eliminatePreHeader=true;//关闭LICM
+        //只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
@@ -33,15 +34,13 @@ public class PassManager {
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
         passes.add(new Mem2Reg());// 处理掉新产生的alloca
         passes.add(new FuncInline());// 可能还有
-        passes.add(new InterproceduralAnalysis());
         passes.add(new LoopInfoUpdate());
 //        passes.add(new LICM());// 循环不变量外提
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         eliminatePreHeader=true;//完成了循环优化，删掉preHeader
-//        aggressive=true;
-        aggressive=false;
-        passes.add(new InterproceduralAnalysis());
+        aggressive=true;
+//        aggressive=false;
         passes.add(new GVNGCM(aggressive));
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG(eliminatePreHeader));
