@@ -179,7 +179,7 @@ public class InstructionSelector {
         if (!ImmediateNumber.isLegalImm(mf.getStoreSize())) {
             var reg = new VirtualRegister();
             new LoadImm(firstbb, reg, mf.getStoreSize()).insertBefore(insertPoint);
-            new Arithmetic(firstbb,  Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), reg).insertBefore(insertPoint);
+            new Arithmetic(firstbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), reg).insertBefore(insertPoint);
         } else
             new Arithmetic(firstbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), mf.getStoreSize()).insertBefore(insertPoint);
     }
@@ -725,6 +725,9 @@ public class InstructionSelector {
                 }
             } else if (type.isFloatTy()) {
                 float value = ((Constants.ConstantFP) val).getVal();
+                if(value == 0){
+                    return new ImmediateNumber(0);
+                }
                 Register dest = new VirtualRegister();
                 new LoadImm(parent, dest, value).insertBefore(node);
                 return dest;
@@ -822,12 +825,12 @@ public class InstructionSelector {
             Register r1 = valueToReg(parent, op1);
             var r2 = valueToMCOperand(parent, op2);
             if (((CmpInst) ir).getOp() == Instruction.Ops.FCmp) {
-                if (r1.isFloat()) {
+                if (!r1.isFloat()) {
                     var rr1 = new VirtualRegister(Register.Content.Float);
                     new Move(parent, rr1, r1).setForFloat(true).pushBacktoInstList();
 
                     r1 = rr1;
-                } else if (r2 instanceof Register && ((Register) r2).isFloat()) {
+                } else if (r2 instanceof Register && !((Register) r2).isFloat()) {
                     var rr2 = new VirtualRegister(Register.Content.Float);
                     new Move(parent, rr2, r2).setForFloat(true).pushBacktoInstList();
 

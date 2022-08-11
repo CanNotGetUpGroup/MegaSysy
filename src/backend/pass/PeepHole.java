@@ -56,11 +56,10 @@ public class PeepHole {
 //                ADD r0, r6, #4
 //                LDR r0, [ r0 ]
 
-                }
-
             }
 
         }
+
     }
 
     public static boolean isPowerOfTwo(int n) {

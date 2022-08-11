@@ -15,6 +15,8 @@ public class Cmp extends MachineInstruction {
 
     public Cmp(MachineBasicBlock parent, Register op1, MCOperand op2) {
         super(parent);
+        if(op2 instanceof  Register && op1.isFloat() != ((Register) op2).isFloat())
+            throw  new RuntimeException("Unmatched operand");
         this.op1 = op1;
         this.op2 = op2;
         if (op1.isFloat())
