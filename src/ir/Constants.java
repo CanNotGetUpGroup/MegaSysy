@@ -241,11 +241,11 @@ public class Constants {
         /**
          * 获取a[i]
          */
-        public Value getElement(int i){
+        public Constant getElement(int i){
             if(i>=getNumOperands()){
                 return Constant.getNullValue(getType().getKidType());
             }
-            return getOperand(i);
+            return (Constant) getOperand(i);
         }
 
         /**
@@ -266,6 +266,15 @@ public class Constants {
 //                }
 //            }
             return get(ty,V);
+        }
+
+        public Constant getIndexConstant(int idx){
+            Type eleTy=getType().getKidType();
+            if(!eleTy.isArrayTy()){
+                return getElement(idx);
+            }
+            int eleIdx=idx/getType().getEleSize();
+            return ((ConstantArray)getElement(eleIdx)).getIndexConstant(idx%getType().getEleSize());
         }
 
         public boolean isZero() {

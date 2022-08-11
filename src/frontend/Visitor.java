@@ -1,6 +1,5 @@
 package frontend;
 
-import backend.machineCode.Instruction.Branch;
 import ir.*;
 import ir.DerivedTypes.*;
 import ir.Constants.*;
@@ -11,7 +10,6 @@ import util.IListNode;
 import util.MyIRBuilder;
 import util.SymbolTable;
 
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.logging.Logger;
@@ -70,8 +68,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
         symbolTable.addValue("putarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_array), "putarray", module, false));
         symbolTable.addValue("putfarray", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_put_farray), "putfarray", module, false));
         symbolTable.addValue("memset", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_memset), "memset", module, false));
-        symbolTable.addValue("starttime", builder.createFunction(FunctionType.get(Type.getVoidTy(),param_int), "_sysy_starttime", module, false));
-        symbolTable.addValue("stoptime", builder.createFunction(FunctionType.get(Type.getVoidTy(),param_int), "_sysy_stoptime", module, false));
+        symbolTable.addValue("starttime", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_int), "_sysy_starttime", module, false));
+        symbolTable.addValue("stoptime", builder.createFunction(FunctionType.get(Type.getVoidTy(), param_int), "_sysy_stoptime", module, false));
 
         return super.visitProgram(ctx);
     }
@@ -111,18 +109,17 @@ public class Visitor extends SysyBaseVisitor<Value> {
         } else {
             type = Type.getFloatTy();
         }
-        declType=type;
+        declType = type;
         return super.visitBType(ctx);
     }
 
-    public void castType(Type ty){
+    public void castType(Type ty) {
         if (!curVal.getType().equals(ty)) {
-            if(curVal.getType().equals(Type.getInt32Ty())){
-                curVal=builder.createSIToFP(curVal,Type.getFloatTy());
-            }else if(curVal.getType().equals(Type.getFloatTy())){
-                curVal=builder.createFPToSI(curVal,Type.getInt32Ty());
-            }
-            else{
+            if (curVal.getType().equals(Type.getInt32Ty())) {
+                curVal = builder.createSIToFP(curVal, Type.getFloatTy());
+            } else if (curVal.getType().equals(Type.getFloatTy())) {
+                curVal = builder.createFPToSI(curVal, Type.getInt32Ty());
+            } else {
                 LogError("arr can't be factor");
             }
         }
@@ -153,7 +150,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             ArrayType Aty;
             if (!symbolTable.inGlobalArea()) {
                 Instruction alloca = builder.createAlloca(arrayType);
-                alloca.setComment("const "+declType+" "+ctx.getText());
+                alloca.setComment("const " + declType + " " + ctx.getText());
                 alloca.setVarName(ctx.IDENT().getText());
                 symbolTable.addValue(name, alloca);
                 Type tmpTy = arrayType.getKidType();
@@ -163,8 +160,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     add(ConstantInt.const_0());
                     add(ConstantInt.const_0());
                 }});
-                arrInst=new ArrayList<>();
-                arrInstIdx=new ArrayList<>();
+                arrInst = new ArrayList<>();
+                arrInstIdx = new ArrayList<>();
                 arrInst.add(gep);
                 arrInstIdx.add(0);
                 while (tmpTy.isArrayTy()) {
@@ -185,7 +182,6 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //                builder.createBitCast(alloca,)
                 Value v = builder.createCall(symbolTable.getFunction("memset"), Args);
                 v.setComment(name);
-                gep=alloca;
             }
 
             typeArrayList = new ArrayList<>();
@@ -197,8 +193,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
             }
             tmpArrList = new ArrayList<>();
             tmpIdx = new ArrayList<>();
-            arr_site=0;
-            after_site=0;
+            arr_site = 0;
+            after_site = 0;
             getDimInfo = false;
             visit(ctx.constInitVal());
             getDimInfo = true;
@@ -207,7 +203,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //            while (arr_site < arrayType.getNumElements() * arrayType.getEleSize()) {
 //                tmpArrList.put(arr_site++, Constant.getNullValue(declType));
 //            }
-            curVal = changeArrType(arrayType, tmpArrList, tmpIdx,0);
+            curVal = changeArrType(arrayType, tmpArrList, tmpIdx, 0);
 
             if (symbolTable.inGlobalArea()) {
                 curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, true);
@@ -225,8 +221,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
     Instruction gep;
     ArrayList<Integer> tmpIdx = null;
     ArrayList<Value> tmpArrList = null;
-    int arr_site=0;
-    int after_site=0;
+    int arr_site = 0;
+    int after_site = 0;
     ArrayList<Instruction> arrInst; //a->a[0]->a[0][0]
     ArrayList<Integer> arrInstIdx;
 
@@ -254,9 +250,9 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 ArrayType arrTy = (ArrayType) ctx.arrayType;
                 int numEle = arrTy.getNumElements();
                 int eleSize = arrTy.getEleSize();
-                int pre=arr_site;
+                int pre = arr_site;
                 ArrayList<Value> V = new ArrayList<>();
-                ArrayList<Integer> Idx=new ArrayList<>();
+                ArrayList<Integer> Idx = new ArrayList<>();
                 for (int i = 0; i < ctx.constInitVal().size(); i++) {
                     if (ctx.constInitVal(i).children.size() == 1) {
                         visit(ctx.constInitVal(i));
@@ -277,32 +273,35 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         if (!symbolTable.inGlobalArea()) {
                             // 初始化时全赋为0，因此此处不需要再赋值
                             if (!(curVal instanceof ConstantInt && ((ConstantInt) curVal).isZero())) {
-                                Integer idx;
-                                int idx_site=arr_site;
-                                Instruction ptr = arrInst.get(arrayType.getDim()-1);
-                                boolean flag=false;
-                                for(int j=0;j<arrayType.getDim();j++){
-                                    ArrayType arrayType1=typeArrayList.get(j);
-                                    idx=idx_site/(arrayType1.getEleSize());
-                                    if(flag||!arrInstIdx.get(j).equals(idx)){
-                                        Integer finalDel = idx-arrInstIdx.get(j);
-                                        Integer finalIdx = idx;
-                                        if(!flag){
-                                            ptr=builder.createGEP(arrInst.get(j), new ArrayList<>() {{
-                                                add(ConstantInt.get(finalDel));
-                                            }});
-                                            flag=true;
-                                        }else{
-                                            ptr=builder.createGEP(ptr, new ArrayList<>() {{
-                                                add(ConstantInt.get(0));
-                                                add(ConstantInt.get(finalIdx));
-                                            }});
-                                        }
-                                        arrInstIdx.set(j,idx);
-                                        arrInst.set(j,ptr);
-                                    }
-                                    idx_site=arr_site%arrayType1.getEleSize();
-                                }
+//                                Integer idx;
+//                                int idx_site=arr_site;
+//                                Instruction ptr = arrInst.get(arrayType.getDim()-1);
+//                                boolean flag=false;
+//                                for(int j=0;j<arrayType.getDim();j++){
+//                                    ArrayType arrayType1=typeArrayList.get(j);
+//                                    idx=idx_site/(arrayType1.getEleSize());
+//                                    if(flag||!arrInstIdx.get(j).equals(idx)){
+//                                        Integer finalDel = idx-arrInstIdx.get(j);
+//                                        Integer finalIdx = idx;
+//                                        if(!flag){
+//                                            ptr=builder.createGEP(arrInst.get(j), new ArrayList<>() {{
+//                                                add(ConstantInt.get(finalDel));
+//                                            }});
+//                                            flag=true;
+//                                        }else{
+//                                            ptr=builder.createGEP(ptr, new ArrayList<>() {{
+//                                                add(ConstantInt.get(0));
+//                                                add(ConstantInt.get(finalIdx));
+//                                            }});
+//                                        }
+//                                        arrInstIdx.set(j,idx);
+//                                        arrInst.set(j,ptr);
+//                                    }
+//                                    idx_site=arr_site%arrayType1.getEleSize();
+//                                }
+                                Instruction ptr = builder.createGEP(gep, new ArrayList<>() {{
+                                    add(ConstantInt.get(arr_site));
+                                }});
                                 builder.createStore(curVal, ptr);
                             }
                         }
@@ -311,16 +310,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}
-                        if(ctx.constInitVal(i).arrayType.equals(arrTy.getKidType())){
-                            arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        if (ctx.constInitVal(i).arrayType.equals(arrTy.getKidType())) {
+                            arr_site += (eleSize - (arr_site - pre) % eleSize) % eleSize;
                         }
                         visit(ctx.constInitVal(i));
                         V.addAll(tmpArrList);
                         Idx.addAll(tmpIdx);
                     }
                 }
-                if(arr_site<numEle*eleSize+pre)
-                    arr_site=numEle * eleSize+pre;
+                if (arr_site < numEle * eleSize + pre)
+                    arr_site = numEle * eleSize + pre;
                 tmpArrList = V;
                 tmpIdx = Idx;
             }
@@ -328,23 +327,23 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
-    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V, ArrayList<Integer> Idx,int begin) {
-        if(Idx.isEmpty()) return (ConstantArray) Constant.getNullValue(target);
+    public ConstantArray changeArrType(ArrayType target, ArrayList<Value> V, ArrayList<Integer> Idx, int begin) {
+        if (Idx.isEmpty()) return (ConstantArray) Constant.getNullValue(target);
         ArrayList<Value> ret = new ArrayList<>();
         int eleSize = target.getEleSize();
         int numEle = target.getNumElements();
         if (target.getKidType().isArrayTy()) {
-            int j=0;
-            for (int i = 0; i < numEle && j<Idx.size(); i++) {
-                int start=j,end=j;
-                for(;j<Idx.size()&&Idx.get(j)>=begin+i*eleSize&&Idx.get(j)<begin+(i+1)*eleSize;j++){
-                    end=j+1;
+            int j = 0;
+            for (int i = 0; i < numEle && j < Idx.size(); i++) {
+                int start = j, end = j;
+                for (; j < Idx.size() && Idx.get(j) >= begin + i * eleSize && Idx.get(j) < begin + (i + 1) * eleSize; j++) {
+                    end = j + 1;
                 }
-                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)),new ArrayList<>(Idx.subList(start, end)),begin+i*eleSize));
+                ret.add(changeArrType((ArrayType) target.getKidType(), new ArrayList<>(V.subList(start, end)), new ArrayList<>(Idx.subList(start, end)), begin + i * eleSize));
             }
         } else {
             ret.addAll(V);
-            while(ret.size()<numEle){
+            while (ret.size() < numEle) {
                 ret.add(Constant.getNullValue(target.getKidType()));
             }
         }
@@ -398,7 +397,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 ArrayType Aty;
                 if (!symbolTable.inGlobalArea()) {
                     Instruction alloca = builder.createAlloca(arrayType);
-                    alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setComment(declType + " " + ctx.getText());
                     alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                     Type tmpTy = arrayType.getKidType();
@@ -408,8 +407,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         add(ConstantInt.const_0());
                         add(ConstantInt.const_0());
                     }});
-                    arrInst=new ArrayList<>();
-                    arrInstIdx=new ArrayList<>();
+                    arrInst = new ArrayList<>();
+                    arrInstIdx = new ArrayList<>();
                     arrInst.add(gep);
                     arrInstIdx.add(0);
                     while (tmpTy.isArrayTy()) {
@@ -426,9 +425,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     Args.add(gep);
                     Args.add(Constant.getNullValue(Type.getInt32Ty()));
                     Args.add(ConstantInt.get(arrayType.getNumElements() * arrayType.getEleSize() * 4));
-                    Value v=builder.createCall(symbolTable.getFunction("memset"), Args);
+                    Value v = builder.createCall(symbolTable.getFunction("memset"), Args);
                     v.setComment(name);
-                    gep=alloca;
                 }
 
                 typeArrayList = new ArrayList<>();
@@ -440,8 +438,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 }
                 tmpArrList = new ArrayList<>();
                 tmpIdx = new ArrayList<>();
-                arr_site=0;
-                after_site=0;
+                arr_site = 0;
+                after_site = 0;
                 getDimInfo = false;
                 visit(ctx.initVal());
                 getDimInfo = true;
@@ -451,7 +449,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //                    tmpArrList.put(arr_site++, Constant.getNullValue(declType));
 //                }
                 if (symbolTable.inGlobalArea()) {
-                    curVal = changeArrType(arrayType, tmpArrList, tmpIdx,0);//全局数组初始化一定是常量
+                    curVal = changeArrType(arrayType, tmpArrList, tmpIdx, 0);//全局数组初始化一定是常量
                     curVal = builder.createGlobalVariable("@" + name, arrayType, module, (Constant) curVal, false);
                     symbolTable.addValue(name, curVal);
                 }
@@ -461,7 +459,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     symbolTable.addValue(name, curVal);
                 } else {
                     Value alloca = builder.createAlloca(arrayType);
-                    alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setComment(declType + " " + ctx.getText());
                     alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                 }
@@ -475,13 +473,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     symbolTable.addValue(name, val);
                 } else {
                     Value alloca = builder.createAlloca(declType);
-                    alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setComment(declType + " " + ctx.getText());
                     alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                     visit(ctx.initVal());
                     castType(declType);
-                    Value v=builder.createStore(curVal, alloca);
-                    v.setComment(name+"="+curVal);
+                    Value v = builder.createStore(curVal, alloca);
+                    v.setComment(name + "=" + curVal);
                     ((Instructions.AllocaInst) alloca).setUndef(false);
                 }
             } else {
@@ -490,7 +488,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     symbolTable.addValue(name, val);
                 } else {
                     Value alloca = builder.createAlloca(declType);
-                    alloca.setComment(declType+" "+ctx.getText());
+                    alloca.setComment(declType + " " + ctx.getText());
                     alloca.setVarName(ctx.IDENT().getText());
                     symbolTable.addValue(name, alloca);
                 }
@@ -522,19 +520,12 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 ArrayType arrTy = (ArrayType) ctx.arrayType;
                 int numEle = arrTy.getNumElements();
                 int eleSize = arrTy.getEleSize();
-                int pre=arr_site;
+                int pre = arr_site;
                 ArrayList<Value> V = new ArrayList<>();
                 ArrayList<Integer> Idx = new ArrayList<>();
                 for (int i = 0; i < ctx.initVal().size(); i++) {
                     if (ctx.initVal(i).children.size() == 1) {
                         visit(ctx.initVal(i));
-//                        if (!declType.equals(curVal.getType()) && !(declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty()))) {
-//                            LogError("赋值类型与定义不符");
-//                        }
-//                        //整数转浮点数
-//                        if (declType.equals(Type.getFloatTy()) && curVal.getType().equals(Type.getInt32Ty())) {
-//                            curVal = builder.createCast(Ops.SIToFP, curVal, Type.getFloatTy());
-//                        }
                         castType(declType);
                         /*  a[4][3][2]  arr_site=23
                          arrInstIdx  new             ptr
@@ -545,32 +536,35 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         if (!symbolTable.inGlobalArea()) {
                             // 初始化时全赋为0，因此此处不需要再赋值
                             if (!(curVal instanceof ConstantInt && ((ConstantInt) curVal).isZero())) {
-                                Integer idx;
-                                int idx_site=arr_site;
-                                Instruction ptr = arrInst.get(arrayType.getDim()-1);
-                                boolean flag=false;
-                                for(int j=0;j<arrayType.getDim();j++){
-                                    ArrayType arrayType1=typeArrayList.get(j);
-                                    idx=idx_site/(arrayType1.getEleSize());
-                                    if(flag||!arrInstIdx.get(j).equals(idx)){
-                                        Integer finalDel = idx-arrInstIdx.get(j);
-                                        Integer finalIdx = idx;
-                                        if(!flag){
-                                            ptr=builder.createGEP(arrInst.get(j), new ArrayList<>() {{
-                                                add(ConstantInt.get(finalDel));
-                                            }});
-                                            flag=true;
-                                        }else{
-                                            ptr=builder.createGEP(ptr, new ArrayList<>() {{
-                                                add(ConstantInt.get(0));
-                                                add(ConstantInt.get(finalIdx));
-                                            }});
-                                        }
-                                        arrInstIdx.set(j,idx);
-                                        arrInst.set(j,ptr);
-                                    }
-                                    idx_site=arr_site%arrayType1.getEleSize();
-                                }
+//                                Integer idx;
+//                                int idx_site = arr_site;
+//                                Instruction ptr = arrInst.get(arrayType.getDim() - 1);
+//                                boolean flag = false;
+//                                for (int j = 0; j < arrayType.getDim(); j++) {
+//                                    ArrayType arrayType1 = typeArrayList.get(j);
+//                                    idx = idx_site / (arrayType1.getEleSize());
+//                                    if (flag || !arrInstIdx.get(j).equals(idx)) {
+//                                        Integer finalDel = idx - arrInstIdx.get(j);
+//                                        Integer finalIdx = idx;
+//                                        if (!flag) {
+//                                            ptr = builder.createGEP(arrInst.get(j), new ArrayList<>() {{
+//                                                add(ConstantInt.get(finalDel));
+//                                            }});
+//                                            flag = true;
+//                                        } else {
+//                                            ptr = builder.createGEP(ptr, new ArrayList<>() {{
+//                                                add(ConstantInt.get(0));
+//                                                add(ConstantInt.get(finalIdx));
+//                                            }});
+//                                        }
+//                                        arrInstIdx.set(j, idx);
+//                                        arrInst.set(j, ptr);
+//                                    }
+//                                    idx_site = arr_site % arrayType1.getEleSize();
+//                                }
+                                Instruction ptr = builder.createGEP(gep, new ArrayList<>() {{
+                                    add(ConstantInt.get(arr_site));
+                                }});
                                 builder.createStore(curVal, ptr);
                             }
                         }
@@ -579,16 +573,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     } else {
                         //a[2][2][2]={1,{2,3}}={{{1,0},{2,3}},{{0,0},{0,0}}}
                         //a[2][2][2]={1,{{2,3}}}={{{1,0},{0,0}},{{2,3},{0,0}}}
-                        if(ctx.initVal(i).arrayType.equals(arrTy.getKidType())){
-                            arr_site+=(eleSize-(arr_site-pre)%eleSize)%eleSize;
+                        if (ctx.initVal(i).arrayType.equals(arrTy.getKidType())) {
+                            arr_site += (eleSize - (arr_site - pre) % eleSize) % eleSize;
                         }
                         visit(ctx.initVal(i));
                         V.addAll(tmpArrList);
                         Idx.addAll(tmpIdx);
                     }
                 }
-                if(arr_site<numEle*eleSize+pre)
-                    arr_site=numEle * eleSize+pre;
+                if (arr_site < numEle * eleSize + pre)
+                    arr_site = numEle * eleSize + pre;
                 tmpArrList = V;
                 tmpIdx = Idx;
             }
@@ -596,8 +590,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
-    Instruction retAlloca=null;
-    Stack<Instruction> retBrStack=null;
+    Instruction retAlloca = null;
+    Stack<Instruction> retBrStack = null;
 
     /**
      * funcDef : funcType IDENT LPAREN (funcFParams)? RPAREN  block;
@@ -621,13 +615,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
         BasicBlock BB = builder.createBasicBlock("entry", curF);
         curF.setEntryBB(BB);
         builder.setInsertPoint(BB);
-        retAlloca=null;
-        if(!FT.getReturnType().isVoidTy()){
-            retAlloca=builder.createAlloca(FT.getReturnType());
+        retAlloca = null;
+        if (!FT.getReturnType().isVoidTy()) {
+            retAlloca = builder.createAlloca(FT.getReturnType());
             retAlloca.setName("%ret");
             retAlloca.setVarName("ret");
         }
-        retBrStack=new Stack<>();
+        retBrStack = new Stack<>();
         enterBlock = true;
         if (ctx.funcFParams() != null) {
             visit(ctx.funcFParams());
@@ -638,15 +632,15 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (endInst == null || !(endInst.getVal() instanceof Instructions.ReturnInst)) {
             retBrStack.push(builder.createBr(null));
         }
-        BasicBlock retBB=builder.createBasicBlock("retBB",curF);
-        while(!retBrStack.isEmpty()){
-            ((Instructions.BranchInst)retBrStack.pop()).setBr(retBB);
+        BasicBlock retBB = builder.createBasicBlock("retBB", curF);
+        while (!retBrStack.isEmpty()) {
+            ((Instructions.BranchInst) retBrStack.pop()).setBr(retBB);
         }
         builder.setInsertPoint(retBB);
-        if(retAlloca!=null) {
-            var loadRet=builder.createLoad(retAlloca);
+        if (retAlloca != null) {
+            var loadRet = builder.createLoad(retAlloca);
             builder.createRet(loadRet);
-        }else{
+        } else {
             builder.createRet(null);
         }
         return null;
@@ -693,17 +687,18 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitFuncFParam(SysyParser.FuncFParamContext ctx) {
         visit(ctx.bType());
         if (!ctx.LBRACKET().isEmpty()) {
-            for (int i = 0; i < ctx.exp().size(); i++) {
+            Type tmpType = type;
+            for (int i = ctx.exp().size() - 1; i >= 0; i--) {
                 visit(ctx.exp(i));
-                type = ArrayType.get(type, ((ConstantInt) curVal).getVal());
+                tmpType = ArrayType.get(tmpType, ((ConstantInt) curVal).getVal());
             }
-            type = PointerType.get(type);
+            type = PointerType.get(tmpType);
         }
         if (enterBlock) {
             String name = ctx.IDENT().getText();
             curVal = new Argument(type, curF, 0);
             Value alloc = builder.createAlloca(type);
-            alloc.setComment(type+" "+name);
+            alloc.setComment(type + " " + name);
             alloc.setVarName(ctx.IDENT().getText());
             builder.createStore(curVal, alloc);
             symbolTable.addValue(name, alloc);
@@ -752,7 +747,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 Value lhs = curVal;
                 visit(ctx.exp());
                 Value rhs = curVal;
-                builder.createStore(rhs, lhs).setComment(ctx.lVal().getText()+"="+ctx.exp().getText());
+                builder.createStore(rhs, lhs).setComment(ctx.lVal().getText() + "=" + ctx.exp().getText());
                 break;
             case 1:
                 if (ctx.block() != null) {
@@ -769,7 +764,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     assert continueStk.peek() != null;
                     continueStk.peek().add((Instructions.BranchInst) builder.createBr(null));
                 } else {//return ';'
-                    Instruction brRetBB=builder.createBr(null);
+                    Instruction brRetBB = builder.createBr(null);
                     retBrStack.push(brRetBB);
                 }
                 break;
@@ -783,7 +778,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     stmt0Block = builder.createBasicBlock(curF);
                     stmt0Block.setComment("if Body");
                     CondBr = builder.createCondBr(curVal, stmt0Block, null);
-                    CondBr.setComment("judge "+ctx.cond().getText());
+                    CondBr.setComment("judge " + ctx.cond().getText());
                     builder.setInsertPoint(stmt0Block);
                     visit(ctx.stmt(0));
                     Stmt0Br = builder.createBr(null);
@@ -799,7 +794,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         ((Instructions.BranchInst) Stmt0Br).setBr(stmtBlock);
                         ((Instructions.BranchInst) Stmt1Br).setBr(stmtBlock);
                         builder.setInsertPoint(stmtBlock);
-                        for(Instructions.BranchInst br:ctx.cond().falseBrs) {
+                        for (Instructions.BranchInst br : ctx.cond().falseBrs) {
                             br.setIfFalse(stmt1Block);
                         }
                     } else {
@@ -807,11 +802,11 @@ public class Visitor extends SysyBaseVisitor<Value> {
                         ((Instructions.BranchInst) CondBr).setIfFalse(stmtBlock);
                         ((Instructions.BranchInst) Stmt0Br).setBr(stmtBlock);
                         builder.setInsertPoint(stmtBlock);
-                        for(Instructions.BranchInst br:ctx.cond().falseBrs) {
+                        for (Instructions.BranchInst br : ctx.cond().falseBrs) {
                             br.setIfFalse(stmtBlock);
                         }
                     }
-                    for(Instructions.BranchInst br:ctx.cond().trueBrs) {
+                    for (Instructions.BranchInst br : ctx.cond().trueBrs) {
                         br.setIfTrue(stmt0Block);
                     }
                 } else {//WHILE LPAREN  cond RPAREN  stmt
@@ -823,7 +818,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
 
                     //判断
                     BasicBlock condBlock = builder.createBasicBlock(curF);
-                    condBlock.setComment("judge "+ctx.cond().getText());
+                    condBlock.setComment("judge " + ctx.cond().getText());
                     builder.createBr(condBlock);
                     builder.setInsertPoint(condBlock);
                     visit(ctx.cond());
@@ -833,7 +828,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     //循环
                     builder.setInsertPoint(trueBlock);
                     visit(ctx.stmt(0));
-                    BasicBlock cycBB=builder.createBasicBlock(curF);
+                    BasicBlock cycBB = builder.createBasicBlock(curF);
                     cycBB.setComment("jump to head");
                     cycBr = builder.createBr(cycBB);
                     builder.setInsertPoint(cycBB);
@@ -853,10 +848,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     breakStk.pop();
                     continueStk.pop();
 
-                    for(Instructions.BranchInst br:ctx.cond().trueBrs) {
+                    for (Instructions.BranchInst br : ctx.cond().trueBrs) {
                         br.setIfTrue(trueBlock);
                     }
-                    for(Instructions.BranchInst br:ctx.cond().falseBrs) {
+                    for (Instructions.BranchInst br : ctx.cond().falseBrs) {
                         br.setIfFalse(falseBlock);
                     }
                 }
@@ -864,8 +859,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
             case 3://'return' Exp ';'
                 visit(ctx.exp());
                 castType(curF.getRetType());
-                if(retAlloca!=null) builder.createStore(curVal,retAlloca);
-                Instruction brRetBB=builder.createBr(null);
+                if (retAlloca != null) builder.createStore(curVal, retAlloca);
+                Instruction brRetBB = builder.createBr(null);
                 retBrStack.push(brRetBB);
                 break;
         }
@@ -911,21 +906,21 @@ public class Visitor extends SysyBaseVisitor<Value> {
 
     public Value getLVal(Value V, SysyParser.LValContext ctx) {
         Type ty = V.getType();
-        if(V instanceof GlobalVariable){
-            GlobalVariable gv=(GlobalVariable)V;
-            if(gv.isConstantGlobal()&&gv.getOperand(0).getType().isArrayTy()){
-                ConstantArray CA=(ConstantArray)gv.getOperand(0);
-                Value tmp=CA;
-                int i=0;
+        if (V instanceof GlobalVariable) {
+            GlobalVariable gv = (GlobalVariable) V;
+            if (gv.isConstantGlobal() && gv.getOperand(0).getType().isArrayTy()) {
+                ConstantArray CA = (ConstantArray) gv.getOperand(0);
+                Value tmp = CA;
+                int i = 0;
                 for (i = 0; i < ctx.exp().size(); i++) {
                     visit(ctx.exp(i));
-                    if(curVal instanceof ConstantInt){
-                        tmp = ((ConstantArray)tmp).getElement(((ConstantInt)curVal).getVal());
-                    }else{
+                    if (curVal instanceof ConstantInt) {
+                        tmp = ((ConstantArray) tmp).getElement(((ConstantInt) curVal).getVal());
+                    } else {
                         break;
                     }
                 }
-                if(i==ctx.exp().size()){
+                if (i == ctx.exp().size()) {
                     return tmp;
                 }
             }
@@ -934,27 +929,70 @@ public class Visitor extends SysyBaseVisitor<Value> {
             PointerType pty = (PointerType) ty;
             if (pty.getElementType().isPointerTy() && ctx.exp().size() != 0) {
                 V = builder.createLoad(V);
+                PointerType pointerTy = (PointerType) V.getType();
+                Type arrTy=pointerTy.getElementType();
                 visit(ctx.exp(0));
-                V = builder.createGEP(V, new ArrayList<>() {{
-                    add(curVal);
-                }});
+                Value idx = curVal;
+                if(pointerTy.getElementType().isArrayTy())
+                    idx = builder.createMul(idx,
+                            ConstantInt.get(((ArrayType) pointerTy.getElementType()).getNumElements()));
                 for (int i = 1; i < ctx.exp().size(); i++) {
                     visit(ctx.exp(i));
+                    idx = builder.createAdd(idx, curVal);
+                    if (pointerTy.getElementType().isArrayTy()) {
+                        pointerTy = PointerType.get(((ArrayType) pointerTy.getElementType()).getKidType());
+                    }
+                    if(pointerTy.getElementType().isArrayTy())
+                        idx = builder.createMul(idx,
+                                ConstantInt.get(((ArrayType) pointerTy.getElementType()).getNumElements()));
                     V = builder.createGEP(V, new ArrayList<>() {{
                         add(ConstantInt.const_0());
-                        add(curVal);
+                        add(ConstantInt.const_0());
+                    }});
+                }
+                if(arrTy.isArrayTy()&&((ArrayType)arrTy).getDim()>ctx.exp().size()){
+                    needPointer=true;
+                    V = builder.createGEP(V, new ArrayList<>() {{
+                        add(ConstantInt.const_0());
+                        add(ConstantInt.const_0());
+                    }});
+                }
+                Value finalIdx = idx;
+                if (!(finalIdx instanceof ConstantInt && ((ConstantInt) finalIdx).getVal() == 0)) {
+                    V = builder.createGEP(V, new ArrayList<>() {{
+                        add(finalIdx);
                     }});
                 }
             } else if (pty.getElementType().isArrayTy()) {
+                Value idx = ConstantInt.get(0);
+                PointerType pointerTy = pty;
                 for (int i = 0; i < ctx.exp().size(); i++) {
                     visit(ctx.exp(i));
-
+                    idx = builder.createAdd(idx, curVal);
+                    if (pointerTy.getElementType().isArrayTy()) {
+                        pointerTy = PointerType.get(((ArrayType) pointerTy.getElementType()).getKidType());
+                    }
+                    if(pointerTy.getElementType().isArrayTy())
+                        idx = builder.createMul(idx,
+                            ConstantInt.get(((ArrayType) pointerTy.getElementType()).getNumElements()));
                     V = builder.createGEP(V, new ArrayList<>() {{
                         add(ConstantInt.const_0());
-                        add(curVal);
+                        add(ConstantInt.const_0());
                     }});
                 }
-//                V = getLVal(V, ctx);
+                if(((ArrayType)pty.getElementType()).getDim()>ctx.exp().size()){
+                    needPointer=true;
+                    V = builder.createGEP(V, new ArrayList<>() {{
+                        add(ConstantInt.const_0());
+                        add(ConstantInt.const_0());
+                    }});
+                }
+                Value finalIdx = idx;
+                if (!(finalIdx instanceof ConstantInt && ((ConstantInt) finalIdx).getVal() == 0)) {
+                    V = builder.createGEP(V, new ArrayList<>() {{
+                        add(finalIdx);
+                    }});
+                }
             } else if (pty.getElementType().isFloatTy() || pty.getElementType().isIntegerTy()) {
                 if (ctx.exp().size() > 1) {
                     LogError("维数不对");
@@ -973,6 +1011,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return V;
     }
 
+    private boolean needPointer =false;
+
     /**
      * primaryExp : LPAREN exp RPAREN | lVal | number ;
      */
@@ -981,15 +1021,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (ctx.exp() != null) {
             visit(ctx.exp());
         } else if (ctx.lVal() != null) {
+            needPointer =false;
             visit(ctx.lVal());
             if (curVal.getType().isPointerTy()) {
                 PointerType pty = (PointerType) curVal.getType();
-                if (pty.getElementType().isArrayTy()) {
-                    curVal = builder.createGEP(curVal, new ArrayList<>() {{
-                        add(ConstantInt.const_0());
-                        add(ConstantInt.const_0());
-                    }});
-                } else curVal = builder.createLoad(curVal);
+                if (!needPointer) {
+                    curVal = builder.createLoad(curVal);
+                }
             }
         } else {
             visit(ctx.number());
@@ -997,7 +1035,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return curVal;
     }
 
-    public int state=0;//用于表示UnaryOp的状态
+    public int state = 0;//用于表示UnaryOp的状态
 
     /**
      * unaryExp  : primaryExp | IDENT LPAREN(funcRParams)?RPAREN | unaryOp unaryExp;
@@ -1013,16 +1051,15 @@ public class Visitor extends SysyBaseVisitor<Value> {
 //                curVal=builder.createZExt(tmp,Type.getInt32Ty());
 //            }
             if (ctx.unaryOp().SUB() != null) {
-                if(state==0) state=1;//-a
-                else if(state==1) state=0;//--a
-                else{//-!a
-                    addUnaryOpInst(state,tmp,1);
+                if (state == 0) state = 1;//-a
+                else if (state == 1) state = 0;//--a
+                else {//-!a
+                    addUnaryOpInst(state, tmp, 1);
                 }
             } else if (ctx.unaryOp().EXC() != null) {
-                if(state==0||state==1){
-                    addUnaryOpInst(state,tmp,2);
-                }
-                else if(state==2) state=0;//!!a
+                if (state == 0 || state == 1) {
+                    addUnaryOpInst(state, tmp, 2);
+                } else if (state == 2) state = 0;//!!a
             }
             curVal.setComment(ctx.getText());
         } else {//Ident '('[FuncRParams]')'
@@ -1032,12 +1069,12 @@ public class Visitor extends SysyBaseVisitor<Value> {
             if (F == null) {
                 LogError("未找到名为" + name + "的函数");
             }
-            FunctionType FT =  F.getType();
+            FunctionType FT = F.getType();
             int argNum = 0;
             if (ctx.funcRParams() != null) {
                 argNum = ctx.funcRParams().exp().size();
             }
-            if(ctx.IDENT().getText().equals("starttime")||ctx.IDENT().getText().equals("stoptime")){
+            if (ctx.IDENT().getText().equals("starttime") || ctx.IDENT().getText().equals("stoptime")) {
                 argNum = 1;
             }
             if (FT.getContainedTys().size() - 1 != argNum) {//参数数量不对
@@ -1049,11 +1086,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 visit(ctx.funcRParams());
             }
             fType.pop();
-            if(ctx.IDENT().getText().equals("starttime")||ctx.IDENT().getText().equals("stoptime")){
-                paramList.add(new ArrayList<>(){{add(ConstantInt.get(0));}});
+            if (ctx.IDENT().getText().equals("starttime") || ctx.IDENT().getText().equals("stoptime")) {
+                paramList.add(new ArrayList<>() {{
+                    add(ConstantInt.get(0));
+                }});
             }
             curVal = builder.createCall(F, paramList.pop());
-            curVal.setComment("call "+ctx.getText());
+            curVal.setComment("call " + ctx.getText());
         }
         return curVal;
     }
@@ -1080,8 +1119,8 @@ public class Visitor extends SysyBaseVisitor<Value> {
         return null;
     }
 
-    public Value addUnaryOpInst(int state,Value L,int after_site){
-        if(state==1){
+    public Value addUnaryOpInst(int state, Value L, int after_site) {
+        if (state == 1) {
             if (L.getType().isInt1Ty()) {
                 L = builder.createZExt(L, Type.getInt32Ty());
             }
@@ -1090,7 +1129,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
             } else if (L.getType().isFloatTy()) {
                 curVal = builder.createFSub(ConstantFP.const_0(), L);
             }
-        }else if(state==2){
+        } else if (state == 2) {
             if (L.getType().isInt32Ty()) {
                 curVal = builder.createICmpEQ(L, ConstantInt.const_0());
             } else if (L.getType().isFloatTy()) {
@@ -1099,7 +1138,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 curVal = builder.createNot(L);
             }
         }
-        this.state=after_site;
+        this.state = after_site;
         return curVal;
     }
 
@@ -1109,13 +1148,13 @@ public class Visitor extends SysyBaseVisitor<Value> {
     @Override
     public Value visitMulExp(SysyParser.MulExpContext ctx) {
         Value L = visit(ctx.unaryExp(0)), R;
-        L=addUnaryOpInst(state,L,0);
+        L = addUnaryOpInst(state, L, 0);
         String comment;
-        comment=ctx.unaryExp(0).getText();
+        comment = ctx.unaryExp(0).getText();
         for (int i = 1; i < ctx.unaryExp().size(); i++) {
             R = visit(ctx.unaryExp(i));
-            R=addUnaryOpInst(state,R,0);
-            comment+=ctx.mulOp(i-1).getText()+ctx.unaryExp(i).getText();
+            R = addUnaryOpInst(state, R, 0);
+            comment += ctx.mulOp(i - 1).getText() + ctx.unaryExp(i).getText();
             if (ctx.mulOp(i - 1).MUL() != null) {
                 L = builder.createBinary(Ops.Mul, L, R);
             } else if (ctx.mulOp(i - 1).DIV() != null) {
@@ -1137,10 +1176,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitAddExp(SysyParser.AddExpContext ctx) {
         Value L = visit(ctx.mulExp(0)), R;
         String comment;
-        comment=ctx.mulExp(0).getText();
+        comment = ctx.mulExp(0).getText();
         for (int i = 1; i < ctx.mulExp().size(); i++) {
             R = visit(ctx.mulExp(i));
-            comment+=ctx.addOp(i-1).getText()+ctx.mulExp(i).getText();
+            comment += ctx.addOp(i - 1).getText() + ctx.mulExp(i).getText();
             if (ctx.addOp(i - 1).ADD() != null) {
                 L = builder.createBinary(Ops.Add, L, R);
             } else if (ctx.addOp(i - 1).SUB() != null) {
@@ -1159,10 +1198,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitRelExp(SysyParser.RelExpContext ctx) {
         Value L = visit(ctx.addExp(0)), R;
         String comment;
-        comment=ctx.addExp(0).getText();
+        comment = ctx.addExp(0).getText();
         for (int i = 1; i < ctx.addExp().size(); i++) {
             R = visit(ctx.addExp(i));
-            comment+=ctx.relOp(i-1).getText()+ctx.addExp(i).getText();
+            comment += ctx.relOp(i - 1).getText() + ctx.addExp(i).getText();
             if (ctx.relOp(i - 1).SLT() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_SLT, L, R);
             } else if (ctx.relOp(i - 1).SGT() != null) {
@@ -1185,10 +1224,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitEqExp(SysyParser.EqExpContext ctx) {
         Value L = visit(ctx.relExp(0)), R;
         String comment;
-        comment=ctx.relExp(0).getText();
+        comment = ctx.relExp(0).getText();
         for (int i = 1; i < ctx.relExp().size(); i++) {
             R = visit(ctx.relExp(i));
-            comment+=ctx.eqOp(i-1).getText()+ctx.relExp(i).getText();
+            comment += ctx.eqOp(i - 1).getText() + ctx.relExp(i).getText();
             if (ctx.eqOp(i - 1).EEQ() != null) {
                 L = builder.createCmp(CmpInst.Predicate.ICMP_EQ, L, R);
             } else if (ctx.eqOp(i - 1).UEQ() != null) {
@@ -1207,19 +1246,19 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitLAndExp(SysyParser.LAndExpContext ctx) {
         Value L = visit(ctx.eqExp(0)), R;
         String comment;
-        comment=ctx.eqExp(0).getText();
-        ctx.trueBrs=new ArrayList<>();
-        ctx.falseBrs=new ArrayList<>();
+        comment = ctx.eqExp(0).getText();
+        ctx.trueBrs = new ArrayList<>();
+        ctx.falseBrs = new ArrayList<>();
         for (int i = 1; i < ctx.eqExp().size(); i++) {
-            BasicBlock LB=builder.createBasicBlock(curF);
-            if(!L.getType().isInt1Ty()){
-                L=builder.createCmp(CmpInst.Predicate.ICMP_NE,L, Constants.ConstantInt.const_0());
+            BasicBlock LB = builder.createBasicBlock(curF);
+            if (!L.getType().isInt1Ty()) {
+                L = builder.createCmp(CmpInst.Predicate.ICMP_NE, L, Constants.ConstantInt.const_0());
             }
-            Instruction lBr=builder.createCondBr(L,LB,null);
+            Instruction lBr = builder.createCondBr(L, LB, null);
             ctx.falseBrs.add((Instructions.BranchInst) lBr);
             builder.setInsertPoint(LB);
             L = visit(ctx.eqExp(i));
-            comment+=" && "+ctx.eqExp(i).getText();
+            comment += " && " + ctx.eqExp(i).getText();
 //            if(!R.getType().isInt1Ty()){
 //                R=builder.createCmp(CmpInst.Predicate.ICMP_NE,R, Constants.ConstantInt.const_0());
 //            }
@@ -1236,23 +1275,23 @@ public class Visitor extends SysyBaseVisitor<Value> {
     public Value visitLOrExp(SysyParser.LOrExpContext ctx) {
         Value L = visit(ctx.lAndExp(0)), R;
         String comment;
-        comment=ctx.lAndExp(0).getText();
-        ctx.trueBrs=new ArrayList<>();
-        ctx.falseBrs=ctx.lAndExp(0).falseBrs;
+        comment = ctx.lAndExp(0).getText();
+        ctx.trueBrs = new ArrayList<>();
+        ctx.falseBrs = ctx.lAndExp(0).falseBrs;
         for (int i = 1; i < ctx.lAndExp().size(); i++) {
-            BasicBlock LB=builder.createBasicBlock(curF);
-            if(!L.getType().isInt1Ty()){
-                L=builder.createCmp(CmpInst.Predicate.ICMP_NE,L, Constants.ConstantInt.const_0());
+            BasicBlock LB = builder.createBasicBlock(curF);
+            if (!L.getType().isInt1Ty()) {
+                L = builder.createCmp(CmpInst.Predicate.ICMP_NE, L, Constants.ConstantInt.const_0());
             }
-            Instruction lBr=builder.createCondBr(L,null,LB);
+            Instruction lBr = builder.createCondBr(L, null, LB);
             ctx.trueBrs.add((Instructions.BranchInst) lBr);
-            for(Instructions.BranchInst br:ctx.falseBrs){
+            for (Instructions.BranchInst br : ctx.falseBrs) {
                 br.setIfFalse(LB);
             }
             builder.setInsertPoint(LB);
             L = visit(ctx.lAndExp(i));
-            ctx.falseBrs=ctx.lAndExp(i).falseBrs;
-            comment+=" || "+ctx.lAndExp(i).getText();
+            ctx.falseBrs = ctx.lAndExp(i).falseBrs;
+            comment += " || " + ctx.lAndExp(i).getText();
 //            if(!R.getType().isInt1Ty()){
 //                R=builder.createCmp(CmpInst.Predicate.ICMP_NE,R, Constants.ConstantInt.const_0());
 //            }

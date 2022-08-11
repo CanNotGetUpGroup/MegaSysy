@@ -24,6 +24,7 @@ public class PassManager {
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new Mem2Reg());
+//        passes.add(new GlobalVariableOpt());
         passes.add(new GVNGCM(aggressive));// Mem2Reg处理掉了所有local alloca
         passes.add(new LoopInfoUpdate()); // 计算循环信息
 //        passes.add(new LICM());// 循环不变量外提
@@ -33,7 +34,7 @@ public class PassManager {
         passes.add(new Mem2Reg());// 处理掉新产生的alloca
         passes.add(new FuncInline());// 可能还有
         passes.add(new InterproceduralAnalysis());
-//        passes.add(new LoopInfoUpdate());
+        passes.add(new LoopInfoUpdate());
 //        passes.add(new LICM());// 循环不变量外提
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
