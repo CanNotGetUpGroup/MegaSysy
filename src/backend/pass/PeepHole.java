@@ -2,6 +2,7 @@ package backend.pass;
 
 import backend.machineCode.Instruction.*;
 import backend.machineCode.MachineFunction;
+import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.Register;
 
@@ -51,17 +52,10 @@ public class PeepHole {
                     }
                 }
             }
-            for(var bb: f.getBbList()){
-//                ADD	r0, r6, #4
+            for (var bb : f.getBbList()) {
+//                ADD r0, r6, #4
 //                LDR r0, [ r0 ]
-                for (var next : bb.getInstList()) {
-                    var iNode = next.getInstNode().getPrev();
-                    if (iNode == null) continue;
-                    var i = iNode.getVal();
-                    if(! (next instanceof LoadOrStore) || !(i instanceof Arithmetic))
-                        continue;
-//                    if(! (((Arithmetic) i).getType() != Arithmetic.Type.ADD)
-//                        || ! (((Arithmetic) i).getType() != Arithmetic.Type.SUB))
+
                 }
 
             }
