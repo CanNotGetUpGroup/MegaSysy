@@ -61,10 +61,12 @@ public class CodeGenManager {
     private void halfRun2() {
         var allocator = new GraphColor(funcList);
         allocator.run();
-        var peepHole = new PeepHole(funcList);
-        peepHole.run();
+
         var clean = new Clean(funcList);
         clean.run();
+
+        var peepHole = new PeepHole(funcList);
+        peepHole.run();
     }
 
     private void halfRun22() {
@@ -98,10 +100,11 @@ public class CodeGenManager {
 
         var allocator = new GraphColor(funcList);
         allocator.run();
-        var peepHole = new PeepHole(funcList);
-        peepHole.run();
         var clean = new Clean(funcList);
         clean.run();
+        var peepHole = new PeepHole(funcList);
+        peepHole.run();
+
     }
 
 
