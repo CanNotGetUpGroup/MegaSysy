@@ -17,7 +17,7 @@ public class DominatorTree {
     private final ArrayList<TreeNode> PostOrder;// 后序遍历CFG
     private final ArrayList<TreeNode> ReversePostOrder;// 逆后序遍历CFG
     private final ArrayList<TreeNode> DTPostOrder;// 后序遍历DT
-    public HashMap<TreeNode, Set<TreeNode>> DominanceFrontier;
+    public HashMap<TreeNode, ArrayList<TreeNode>> DominanceFrontier;
     private final ArrayList<TreeNode> JoinNodes;// CFG中拥有多个前驱的节点
 
     public DominatorTree(Function F) {
@@ -218,7 +218,7 @@ public class DominatorTree {
                 runner = pred;
                 while (runner != node.IDom) {
                     if (!DominanceFrontier.containsKey(runner)) {
-                        DominanceFrontier.put(runner, new HashSet<>());
+                        DominanceFrontier.put(runner, new ArrayList<>());
                     }
                     DominanceFrontier.get(runner).add(node);
                     runner = runner.IDom;

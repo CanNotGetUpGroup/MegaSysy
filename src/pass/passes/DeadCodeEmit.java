@@ -69,7 +69,7 @@ public class DeadCodeEmit extends ModulePass {
     public boolean isUsefulInst(Instruction I) {
         return switch (I.getOp()) {
             case Br,Ret,Store -> true;
-            case Call -> I.getFunction().hasSideEffect();
+            case Call -> ((Function)I.getOperand(0)).hasSideEffect();
             default -> false;
         };
     }
