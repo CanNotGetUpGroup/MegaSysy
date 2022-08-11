@@ -22,7 +22,7 @@ public class AliasAnalysis {
     private static Module M;
     private static HashMap<GlobalVariable, ArrayList<Function>> gv2func;
     private static HashMap<Function, ArrayList<GlobalVariable>> func2gv;
-    //获取gep在数组中的索引信息，如a[2][i][4]->(a,2,i,4),调用gepInst的getArrayIdx()方法可获得
+    //获取gep在数组中的索引信息，如a[2][i][4]->(a,idx),调用gepInst的getArrayIdx()方法可获得
     public static HashMap<GetElementPtrInst, ArrayList<Value>> gepToArrayIdx=new HashMap<>();
     public static MemorySSA MSSA;
 
@@ -42,6 +42,29 @@ public class AliasAnalysis {
         }
         return null;
     }
+
+    public static Value getPointerOrArgumentValue(Value pointer) {
+        while(pointer instanceof GetElementPtrInst || pointer instanceof LoadInst) {
+            pointer = ((Instruction) pointer).getOperand(0);
+        }
+        if(pointer instanceof AllocaInst || pointer instanceof GlobalVariable || pointer instanceof Argument) {
+            if(pointer instanceof AllocaInst && ((AllocaInst) pointer).getAllocatedType().isPointerTy()) {
+                for(Use use : pointer.getUseList()) {
+                    if(use.getU() instanceof StoreInst) {
+                        pointer = ((StoreInst) use.getU()).getOperand(1);
+                    }
+                }
+            }else if(pointer instanceof Argument) {
+                for(Use use : pointer.getUseList()) {
+                    if(use.getU() instanceof StoreInst && use.getOperandNo()==0) {
+                        pointer = ((StoreInst) use.getU()).getOperand(1);
+                    }
+                }
+            }
+            return pointer;
+        }
+        return null;
+    }
     
     public static boolean isGlobal(Value addr) {
         return addr instanceof GlobalVariable;
@@ -52,6 +75,25 @@ public class AliasAnalysis {
             return ((AllocaInst) addr).getAllocatedType().isPointerTy();
         }
         return false;
+    }
+
+    public static boolean isParamOrArgument(Value addr) {
+        if(addr instanceof AllocaInst) {
+            return ((AllocaInst) addr).getAllocatedType().isPointerTy();
+        }
+        return addr instanceof Argument;
+    }
+
+    public static Value getParam(Value addr) {
+        if(addr instanceof AllocaInst) {
+            for(Use use : addr.getUseList()) {
+                if(use.getU() instanceof StoreInst) {
+                    addr = ((Instruction) use.getU()).getOperand(0);
+                }
+            }
+            return addr;
+        }
+        return null;
     }
 
     public static boolean isLocal(Value addr) {
@@ -206,7 +248,8 @@ public class AliasAnalysis {
             return false;
         }
         visitedFunc.add(F);
-        if(func2gv.get(F).contains(gv)) {
+        //fix:func2gc->gv2func
+        if(gv2func.get(gv).contains(F)) {
             return true;
         }
         for(Function calleeFunc : F.getCalleeList()) {

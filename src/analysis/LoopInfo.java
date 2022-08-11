@@ -91,7 +91,22 @@ public class LoopInfo {
         return loop.getBlockHeader() == bb;
     }
 
-    public void clear(){
+    /**
+     * 判断一个BasicBlock是否是循环的preheader
+     *
+     * @param bb
+     * @return
+     */
+    public Boolean isLoopPreHeader(BasicBlock bb) {
+        for (var loop : allLoops) {
+            if (loop.getPreHeader() == bb) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void clear() {
         bbLoopMap.clear();
         allLoops.clear();
         topLevelLoops.clear();
@@ -276,7 +291,7 @@ public class LoopInfo {
         for (var pred : loopHeader.getPredecessors()) {
             if (!loop.getBbList().contains(pred)) {
                 if (ret != null && ret != pred) {
-                    System.out.println("Error: loop header has multiple predecessors");
+//                    System.out.println("Error: loop header has multiple predecessors");
                     return null;
                 }
                 ret = pred;
@@ -335,9 +350,9 @@ public class LoopInfo {
         BasicBlock loopHeader = loop.getLoopHeader();
         BasicBlock ret = null;
         for (var pred : loopHeader.getPredecessors()) {
-            if (!loop.getBbList().contains(pred)) {
+            if (loop.getBbList().contains(pred)) {
                 if (ret != null) {
-                    System.out.println("Error: loop header has multiple predecessors");
+//                    System.out.println("Error: loop has multiple latchblocks");
                     return null;
                 }
                 ret = pred;

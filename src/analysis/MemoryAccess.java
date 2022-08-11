@@ -17,6 +17,7 @@ import java.util.ArrayList;
 public class MemoryAccess extends Instruction {
     private BasicBlock BB;//不使用Instruction的getParent，因为需要将其插入ilist
     private int ID;
+    private Value pointer;//对应的alloca或global variable（callInst没有单独的pointer，而是通过MemorySSA中的CI2Pointers获取）
 
     public MemoryAccess(Ops op, BasicBlock BB) {
         super(Type.getVoidTy(), op);
@@ -44,6 +45,14 @@ public class MemoryAccess extends Instruction {
         return null;
     }
 
+    public Value getPointer() {
+        return pointer;
+    }
+
+    public void setPointer(Value pointer) {
+        this.pointer = pointer;
+    }
+
     /**
      * Def和Use的基类，对应的指令存在MemoryInstruction，来源memorySSA存在Operand(0)，
      * 使用setDefiningAccess和getDefiningAccess得到
@@ -61,6 +70,11 @@ public class MemoryAccess extends Instruction {
             super(op, MI.getParent());
             MemoryInstruction=MI;
             addOperand(DMA);
+        }
+
+        @Override
+        public BasicBlock getBB(){
+            return MemoryInstruction.getParent();
         }
 
         public void setDefiningAccess(MemoryAccess DMA){
@@ -96,6 +110,7 @@ public class MemoryAccess extends Instruction {
     public static class MemoryUse extends MemoryDefOrUse{
         public MemoryUse(Instruction MI, MemoryAccess DMA) {
             super(Ops.MemUse,MI,DMA);
+            setID(-1);
         }
 
         @Override
@@ -156,6 +171,7 @@ public class MemoryAccess extends Instruction {
                 }
             }
             sb.append(")");
+            sb.append(" ").append(getPointer().getName());
             return sb.toString();
         }
     }
