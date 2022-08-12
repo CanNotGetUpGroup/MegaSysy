@@ -7,6 +7,7 @@ import pass.passes.Mem2Reg;
 import pass.test.testPass;
 
 import java.io.IOException;
+import java.security.PublicKey;
 import java.util.*;
 
 /**
@@ -54,6 +55,10 @@ public class MemorySSA {
         BlockToMemAccList.forEach((bb,accesses)->{
             accesses.forEach(MemoryAccess::remove);
         });
+    }
+
+    public boolean callAlias(Instructions.CallInst CI, Value Pointer){
+        return CI2Pointers.getOrDefault(CI,new ArrayList<>()).contains(Pointer);
     }
 
     /**

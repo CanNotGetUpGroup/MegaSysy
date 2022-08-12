@@ -22,9 +22,9 @@ public class PassManager {
         GVNGCM.GCMOpen=true;
         eliminatePreHeader=true;//关闭LICM
         //只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
+        passes.add(new Mem2Reg());//消除掉local int(or float)的alloca，确保DCE消除store的正确
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
-        passes.add(new Mem2Reg());
 //        passes.add(new GlobalVariableOpt());
         passes.add(new GVNGCM(aggressive));// Mem2Reg处理掉了所有local alloca
         passes.add(new LoopInfoUpdate()); // 计算循环信息
@@ -39,7 +39,7 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         eliminatePreHeader=true;//完成了循环优化，删掉preHeader
-        aggressive=true;
+        aggressive=true;//激进的GVN，消除掉数组参数的alloca
 //        aggressive=false;
         passes.add(new GVNGCM(aggressive));
         passes.add(new DeadCodeEmit());

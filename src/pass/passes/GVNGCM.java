@@ -61,7 +61,7 @@ public class GVNGCM extends ModulePass {
             clear();
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
-            new DeadCodeEmit().runOnModule(Module.getInstance());
+            new DeadCodeEmit().functionDCE(F);
             if(GCMOpen)
                 functionGCM(F);
             shouldContinue |= new SimplifyCFG(PassManager.eliminatePreHeader).run(F);
