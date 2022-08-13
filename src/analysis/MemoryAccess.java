@@ -1,6 +1,7 @@
 package analysis;
 
 import ir.*;
+import ir.instructions.Instructions;
 import pass.PassManager;
 import pass.test.testPass;
 import util.CloneMap;
@@ -24,8 +25,16 @@ public class MemoryAccess extends Instruction {
         this.BB=BB;
     }
 
-    public BasicBlock getBB(){
+    public BasicBlock getParent(){
         return BB;
+    }
+
+    /**
+     * 不在BasicBlock的ilist中
+     */
+    public void remove(){
+        dropUsesAsUser();
+        dropUsesAsValue();
     }
 
     public void setBB(BasicBlock BB) {
@@ -73,7 +82,7 @@ public class MemoryAccess extends Instruction {
         }
 
         @Override
-        public BasicBlock getBB(){
+        public BasicBlock getParent(){
             return MemoryInstruction.getParent();
         }
 
@@ -103,7 +112,12 @@ public class MemoryAccess extends Instruction {
         @Override
         public String toString(){
             int id=getDefiningAccess().getID();
-            return "; "+getID()+" = MemoryDef("+((id==0)?"liveOnEntry":id)+")";
+            StringBuilder sb = new StringBuilder("; "+getID()+" = MemoryDef("+((id==0)?"liveOnEntry":id)+")");
+            sb.append(" load end here: ");
+            for(int i=1;i<getNumOperands();i++){
+                sb.append(getOperand(i)).append(" ");
+            }
+            return sb.toString();
         }
     }
 
@@ -164,14 +178,17 @@ public class MemoryAccess extends Instruction {
             StringBuilder sb=new StringBuilder();
             sb.append("; ").append(getID()).append(" = MemoryPhi(");
             for (int i = 0; i < getNumOperands(); i++) {
-                int id=((MemoryAccess)getOperand(i)).getID();
-                sb.append("{ ").append(id==0?"liveOnEntry":id).append(", ").append("block ").append(getBlocks().get(i).getName()).append(" } ");
+                int id=-1;
+                if(getOperand(i) instanceof MemoryAccess){
+                    id=((MemoryAccess)getOperand(i)).getID();
+                }
+                sb.append("{ ").append(id==0?"liveOnEntry":(id==-1?getOperand(i).toString(): String.valueOf(id))).append(", ").append("block ").append(getBlocks().get(i).getName()).append(" } ");
                 if (i != getNumOperands() - 1) {
                     sb.append(", ");
                 }
             }
             sb.append(")");
-            sb.append(" ").append(getPointer().getName());
+            sb.append(" ").append(getPointer().toString());
             return sb.toString();
         }
     }

@@ -828,17 +828,18 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     //循环
                     builder.setInsertPoint(trueBlock);
                     visit(ctx.stmt(0));
-                    BasicBlock cycBB = builder.createBasicBlock(curF);
-                    cycBB.setComment("jump to head");
-                    cycBr = builder.createBr(cycBB);
-                    builder.setInsertPoint(cycBB);
+//                    BasicBlock cycBB = builder.createBasicBlock(curF);
+//                    cycBB.setComment("jump to head");
+//                    cycBr = builder.createBr(cycBB);
+//                    builder.setInsertPoint(cycBB);
                     builder.createBr(condBlock);
                     //退出循环
                     falseBlock = builder.createBasicBlock(curF);
                     falseBlock.setComment("exit while");
                     ((Instructions.BranchInst) CondBr).setIfFalse(falseBlock);
                     while (!continueStk.peek().isEmpty()) {
-                        continueStk.peek().pop().setBr(cycBB);
+//                        continueStk.peek().pop().setBr(cycBB);
+                        continueStk.peek().pop().setBr(condBlock);
                     }
                     while (!breakStk.peek().isEmpty()) {
                         breakStk.peek().pop().setBr(falseBlock);
