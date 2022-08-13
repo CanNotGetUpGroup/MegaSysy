@@ -1,5 +1,8 @@
 package ir;
 
+import ir.instructions.CmpInst;
+import ir.instructions.Instructions;
+
 import java.util.ArrayList;
 
 public class Loop {
@@ -14,20 +17,20 @@ public class Loop {
     private ArrayList<BasicBlock> exitBlocks; // 循环推出后第一个到达的block
     private ArrayList<BasicBlock> latchBlocks; // 跳转回到头部的基本块
 
-    // // Canonical loop 中才计算
-    // // loop header 有两个pred，只有一个 exiting block，只有一个 latch block
-    // private MemInst.Phi indVar; // 索引 phi
-    // private Value indVarInit; // 索引初值
-    // private Value indVarEnd; // 索引边界（可不可以等于边界，自己判断）
-    // private Instruction stepInst; // 索引迭代指令
-    // private Instruction indVarCondInst; // icmp 中携带 indVar 的操作数（在 while (i < n)
-    // 的情况下等于 stepInst）
-    // private Value step; // 迭代长度
-    // private Integer tripCount; // 迭代次数（只考虑 init/end/step 都是常量的情况）
+    // Canonical loop 中才计算
+    // loop header 有两个pred，只有一个 exiting block，只有一个 latch block
+    private Instructions.PHIInst indVar; // 索引 phi
+    private Value indVarInit; // 索引初值
+    private Value indVarEnd; // 索引边界（可不可以等于边界，自己判断）
+    private Instruction stepInst; // 索引迭代指令
+    private Instruction indVarCondInst; // icmp 中携带 indVar 的操作数（在 while (i < n)
+    //的情况下等于 stepInst）
+    private Value step; // 迭代长度
+    private Integer tripCount; // 迭代次数（只考虑 init/end/step 都是常量的情况）
 
     /**
      * 根据父循环生成loop对象
-     * 
+     *
      * @param parentLoop 父循环
      */
     public Loop(Loop parentLoop) {
@@ -42,7 +45,7 @@ public class Loop {
 
     /**
      * 根据loop头基本块生成loop对象
-     * 
+     *
      * @param loopHeader loop头基本块
      */
     public Loop(BasicBlock loopHeader) {
@@ -55,6 +58,16 @@ public class Loop {
         this.latchBlocks = new ArrayList<>();
         this.loopHeader = loopHeader;
         this.bbList.add(loopHeader);
+    }
+
+    public void clear() {
+        indVarInit = null;
+        indVar = null;
+        indVarEnd = null;
+        stepInst = null;
+        step = null;
+        exitingBlocks.clear();
+        exitBlocks.clear();
     }
 
     // getter and setter
@@ -106,17 +119,21 @@ public class Loop {
     }
 
     // 获取循环结束icmp指令
-    public Instruction getLatchCmpInst() {
+    public CmpInst getLatchCmpInst() {
         if (getSingleLatchBlock() == null) {
             return null;
         }
-        return getSingleLatchBlock().getTerminator().getInstNode().getVal();
+        Instruction ret = getSingleLatchBlock().getTerminator();
+        if(!(ret.getOperand(0) instanceof Instruction)){
+            return null;
+        }
+        return (CmpInst) ret.getOperand(0);
     }
 
     /**
      * 只用于规范化的loop
      * 有多个preheader的loop返回值为null
-     * 
+     *
      * @return the Predecessor of loop header
      */
     public BasicBlock getPreHeader() {
@@ -189,5 +206,16 @@ public class Loop {
     public void removeSubLoop(Loop subLoop) {
         this.subLoops.remove(subLoop);
         subLoop.setParentLoop(null);
+    }
+
+    public boolean isSafeToCopy(){
+        for(BasicBlock BB:getBbList()){
+            for(Instruction I:BB.getInstList()){
+                if(I instanceof Instructions.CallInst){
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

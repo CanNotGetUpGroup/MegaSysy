@@ -1,6 +1,7 @@
 package analysis;
 
 import ir.*;
+import ir.instructions.Instructions;
 import pass.PassManager;
 import pass.test.testPass;
 import util.CloneMap;
@@ -177,7 +178,10 @@ public class MemoryAccess extends Instruction {
             StringBuilder sb=new StringBuilder();
             sb.append("; ").append(getID()).append(" = MemoryPhi(");
             for (int i = 0; i < getNumOperands(); i++) {
-                int id=((MemoryAccess)getOperand(i)).getID();
+                int id=-1;
+                if(getOperand(i) instanceof MemoryAccess){
+                    id=((MemoryAccess)getOperand(i)).getID();
+                }
                 sb.append("{ ").append(id==0?"liveOnEntry":(id==-1?getOperand(i).toString(): String.valueOf(id))).append(", ").append("block ").append(getBlocks().get(i).getName()).append(" } ");
                 if (i != getNumOperands() - 1) {
                     sb.append(", ");

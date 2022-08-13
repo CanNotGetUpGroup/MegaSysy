@@ -1,4 +1,5 @@
 import os
+import sys
 
 # testcase="D:/JavaProject/MegaSysy/oldtestcases"
 abspath=os.path.abspath(os.path.join(os.getcwd(), "..")) # D:/JavaProject/MegaSysy
@@ -6,7 +7,7 @@ testcase=abspath+"/testcase"
 out_directory=abspath+"/MC"
 classpath=abspath+"/out/production/MegaSysy;"+abspath+"/lib/antlr-4.8-complete.jar"
 arg=0
-if len(sys.argv) == 1:
+if len(sys.argv) == 2:
     arg=int(sys.argv[1])
 
 functional_testcase=testcase+"/functional/"
