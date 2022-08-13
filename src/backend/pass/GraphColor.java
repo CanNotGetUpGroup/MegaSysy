@@ -5,6 +5,7 @@ import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.*;
+import ir.Function;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -394,16 +395,15 @@ public class GraphColor {
         Register m = spillWorklist.iterator().next();
         for (var i : spillWorklist) {
             double curScore;
-             curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(1.4, loopDepth.getOrDefault(i, 0));
+            curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(1.4, loopDepth.getOrDefault(i, 0));
             if (substitutions.contains(i)) {
                 curScore = -1;
             }
-            if(curScore >= maxScore){
+            if (curScore >= maxScore) {
                 maxScore = curScore;
                 m = i;
             }
         }
-
 
 
         // TODO: elected using favorite heuristic
@@ -503,23 +503,16 @@ public class GraphColor {
                     var substitution = new VirtualRegister((dest).getContent());
                     substitutions.add(substitution);
                     var prevNode = inst;
-                    int offset = 4 * spillMap.get(dest) + func.getStackTop();
+                    int offset = 4 * spillMap.get(dest) + func.getStackSize();
                     Address addr;
-                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                    if (offset < 4096)
+                        addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
                     else {
-                        MachineInstruction temp;
                         var addrReg = new VirtualRegister();
-                        if (ImmediateNumber.isLegalImm(offset))
-                            temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                        else {
-                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                            iii.getInstNode().insertAfter(prevNode.getInstNode());
-                            prevNode = iii;
-                            temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                        }
-                        temp.getInstNode().insertAfter(prevNode.getInstNode());
-                        prevNode = temp;
-                        addr = new Address(addrReg);
+                        var iii = new LoadImm(inst.getParent(), addrReg, offset);
+                        iii.getInstNode().insertAfter(prevNode.getInstNode());
+                        prevNode = iii;
+                        addr = new Address(new MCRegister(MCRegister.RegName.SP), addrReg);
                     }
                     inst.setDest(substitution);
                     new LoadOrStore(bb, LoadOrStore.Type.STORE, substitution, addr).setForFloat(dest.isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertAfter(prevNode.getInstNode());
@@ -527,21 +520,15 @@ public class GraphColor {
                 if (op1 instanceof VirtualRegister && spillMap.containsKey(op1)) {
                     var substitution = new VirtualRegister(((VirtualRegister) op1).getContent());
                     substitutions.add(substitution);
-                    int offset = 4 * spillMap.get((VirtualRegister) op1) + func.getStackTop();
+                    int offset = 4 * spillMap.get((VirtualRegister) op1) + func.getStackSize();
                     Address addr;
-                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                    if (offset < 4096)
+                        addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
                     else {
                         var addrReg = new VirtualRegister();
-                        MachineInstruction temp;
-                        if (ImmediateNumber.isLegalImm(offset))
-                            temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                        else {
-                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                            iii.getInstNode().insertBefore(inst.getInstNode());
-                            temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                        }
-                        temp.getInstNode().insertBefore(inst.getInstNode());
-                        addr = new Address(addrReg);
+                        var iii = new LoadImm(inst.getParent(), addrReg, offset);
+                        iii.getInstNode().insertBefore(inst.getInstNode());
+                        addr = new Address(new MCRegister(MCRegister.RegName.SP), addrReg);
                     }
 
                     inst.setOp1(substitution);
@@ -552,21 +539,15 @@ public class GraphColor {
                 if (op2 instanceof VirtualRegister && spillMap.containsKey(op2)) {
                     var substitution = new VirtualRegister(((VirtualRegister) op2).getContent());
                     substitutions.add(substitution);
-                    int offset = 4 * spillMap.get((VirtualRegister) op2) + func.getStackTop();
+                    int offset = 4 * spillMap.get((VirtualRegister) op2) + func.getStackSize();
                     Address addr;
-                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                    if (offset < 4096)
+                        addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
                     else {
                         var addrReg = new VirtualRegister();
-                        MachineInstruction temp;
-                        if (ImmediateNumber.isLegalImm(offset))
-                            temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                        else {
-                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                            iii.getInstNode().insertBefore(inst.getInstNode());
-                            temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                        }
-                        temp.getInstNode().insertBefore(inst.getInstNode());
-                        addr = new Address(addrReg);
+                        var iii = new LoadImm(inst.getParent(), addrReg, offset);
+                        iii.getInstNode().insertBefore(inst.getInstNode());
+                        addr = new Address(new MCRegister(MCRegister.RegName.SP), addrReg);
                     }
                     inst.setOp2(substitution);
                     new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertBefore(inst.getInstNode());
@@ -576,21 +557,15 @@ public class GraphColor {
                     if (reg instanceof VirtualRegister && spillMap.containsKey(reg)) {
                         var substitution = new VirtualRegister(reg.getContent());
                         substitutions.add(substitution);
-                        int offset = 4 * spillMap.get(((Address) op2).getReg()) + func.getStackTop();
+                        int offset = 4 * spillMap.get(((Address) op2).getReg()) + func.getStackSize();
                         Address addr;
-                        if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
+                        if (offset < 4096)
+                            addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
                         else {
                             var addrReg = new VirtualRegister();
-                            MachineInstruction temp;
-                            if (ImmediateNumber.isLegalImm(offset))
-                                temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                            else {
-                                var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                                iii.getInstNode().insertBefore(inst.getInstNode());
-                                temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                            }
-                            temp.getInstNode().insertBefore(inst.getInstNode());
-                            addr = new Address(addrReg);
+                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
+                            iii.getInstNode().insertBefore(inst.getInstNode());
+                            addr = new Address(new MCRegister(MCRegister.RegName.SP), addrReg);
                         }
                         ((Address) op2).setReg(substitution);
                         new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).getInstNode().insertBefore(inst.getInstNode());
@@ -600,33 +575,28 @@ public class GraphColor {
                     if (offsetReg instanceof VirtualRegister && spillMap.containsKey(offsetReg)) {
                         var substitution = new VirtualRegister(((VirtualRegister) offsetReg).getContent());
                         substitutions.add(substitution);
-                        int offset = 4 * spillMap.get(offsetReg) + func.getStackTop();
+                        int offset = 4 * spillMap.get(offsetReg) + func.getStackSize();
                         Address addr;
+
                         // TODO: 1024 for coprocessor and 4096 for arm processor
-                        if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
-                        else {
-                            MachineInstruction temp;
+                        if (offset < 4096) {
+                            addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
+                        } else {
                             var addrReg = new VirtualRegister();
-                            if (ImmediateNumber.isLegalImm(offset))
-                                temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                            else {
-                                var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                                iii.getInstNode().insertBefore(inst.getInstNode());
-                                temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                            }
-                            temp.getInstNode().insertBefore(inst.getInstNode());
-                            addr = new Address(addrReg);
+                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
+                            iii.getInstNode().insertBefore(inst.getInstNode());
+                            addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
                         }
                         ((Address) op2).setOffset(substitution);
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, (VirtualRegister) substitution, addr).getInstNode().insertBefore(inst.getInstNode());
+                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).getInstNode().insertBefore(inst.getInstNode());
                     }
                 } // end of if op2 is address
             }
         }
 
-        func.addStackTop(4 * spilledNum);
+        func.addStackSize(4 * spilledNum);
+//        System.out.println("<spill>" + func.getStackSize());
         spilledNodes = new HashSet<>();
-//        initial := coloredNodes ∪ coalescedNodes ∪ newTemps coloredNodes := {}
         coalescedNodes = new HashSet<>();
     }
 
@@ -635,73 +605,56 @@ public class GraphColor {
 
         MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
         MachineInstruction newInst;
-        int saveOnStack = 7;
+        // TODO:
+        int saveOnStack = 9;
 
         // reserve space for temp variable on stack
-        for (var inst : firstBb.getInstList()) {
-            if (!inst.isPrologue()) {
-                int paraOnStack = func.getMaxParaNumOnStack();
-                // Push FP
-                newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.r11));
-                newInst.setPrologue(true);
-                newInst.getInstNode().insertBefore(inst.getInstNode());
+        int paraOnStack = func.getMaxParaNumOnStack();
 
-
-                // set Frame Pointer -> Fp = sp + 4
-                newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
-                newInst.setPrologue(true);
-                newInst.getInstNode().insertBefore(inst.getInstNode());
-
-                // push callee save register
-                // TODO: only save those used
-
-                for (int i = 10; i >= 4; i--) {
-                    if (!registerUsed.contains(i)) {
-                        saveOnStack--;
-                        continue;
-                    }
-                    newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
-                    newInst.setPrologue(true);
-                    newInst.getInstNode().insertBefore(inst.getInstNode());
-                }
-                // will clean later
-                newInst = new Comment(firstBb, "for not on stack");
-                newInst.setPrologue(true);
-                newInst.insertBefore(inst.getInstNode());
-                newInst = new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), 4 * (7 - saveOnStack));
-                newInst.setPrologue(true);
-                newInst.getInstNode().insertBefore(inst.getInstNode());
-
-                // reserve for spilled
-                int offset = 4 * func.getSpiltNumOnStack() + 4 * paraOnStack;
-                if ((offset + func.getStackTop()) % 8 != 0) offset += 4;
-                MCOperand c;
-                if (ImmediateNumber.isLegalImm(offset)) c = new ImmediateNumber(offset);
-                else {
-                    c = new MCRegister(Register.Content.Int, 9);
-                    new LoadImm(firstBb, (Register) c, offset).getInstNode().insertBefore(inst.getInstNode());
-                }
-                new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), c).getInstNode().insertBefore(inst.getInstNode());
-                break;
+        // push callee save register
+        // TODO: only save those used
+        newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
+        newInst.setPrologue(true);
+        newInst.insertBefore(firstBb.getInstList().getFirst());
+        var insertPoint = newInst;
+        for (int i = 11; i >= 4; i--) {
+            if (!registerUsed.contains(i)) {
+                saveOnStack--;
+                continue;
             }
+            newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
+            newInst.setPrologue(true);
+            newInst.insertAfter(insertPoint);
+            insertPoint = newInst;
         }
 
-        // release stack
+        // reserve for spilled
+        if ((func.getStackSize() + saveOnStack * 4) % 8 != 0)
+            func.addStackSize(4);
+        func.addStoredRegisterNum(saveOnStack);
+
+        // TODO: release stack
         for (var bb : func.getBbList()) {
             for (var inst : bb.getInstList()) {
                 if (inst.isEpilogue()) {
 
-                    new Arithmetic(firstBb, SUB,
-                            new MCRegister(MCRegister.RegName.SP),
-                            new MCRegister(MCRegister.RegName.r11),
-                            new ImmediateNumber(4 * (saveOnStack + 1)))
-                            .getInstNode().insertBefore(inst.getInstNode());
+                    new LoadImm(inst.getParent(),
+                            new MCRegister(Register.Content.Int, 3),
+                            func.getStackSize()).insertBefore(inst);
 
-                    registerUsed.add(11);
+                    // TODO: modify
+                    new Arithmetic(firstBb, ADD,
+                            new MCRegister(MCRegister.RegName.SP),
+                            new MCRegister(MCRegister.RegName.SP),
+                            new MCRegister(Register.Content.Int, 3))
+                            .insertBefore(inst);
+
+
                     for (int i = 4; i <= 11; i++) {
                         if (!registerUsed.contains(i)) {
                             continue;
                         }
+                        // TODO: leaf function
                         newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(Register.Content.Int, i));
                         newInst.setEpilogue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
@@ -725,7 +678,7 @@ public class GraphColor {
         for (int i = 0; i < 4; i++) {
             MCUsed.add(i);
         }
-        for (int i = 11; i < 20; i++) {
+        for (int i = 12; i < 20; i++) {
             MCUsed.add(i);
         }
 
@@ -773,11 +726,11 @@ public class GraphColor {
                     for (var i : bb.getInstList()) {
                         init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
                         init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
-                        for(var u : i.getUse()){
+                        for (var u : i.getUse()) {
                             var depth = loopDepth.getOrDefault(u, 0);
-                            if(bbDepth > depth)
+                            if (bbDepth > depth)
                                 depth = bbDepth;
-                            loopDepth.put(u , depth);
+                            loopDepth.put(u, depth);
                         }
                     }
                 }
@@ -798,10 +751,22 @@ public class GraphColor {
                 if (spilledNodes.isEmpty()) {
                     substituteAllRegister(f);
                     setStack(f);
+                    setUnknownStackSize(f);
                     break;
                 }
                 System.out.println("Rewrite");
                 RewriteProgram(f);
+            }
+        }
+    }
+
+    void setUnknownStackSize(MachineFunction f) {
+        for (var bb : f.getBbList()) {
+            for (var i : bb.getInstList()) {
+
+                if (i instanceof LoadImm && i.getOp2() instanceof StackOffsetNumber) {
+                    i.setOp2(new ImmediateNumber(((StackOffsetNumber) i.getOp2()).getValue()));
+                }
             }
         }
     }
