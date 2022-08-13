@@ -59,14 +59,15 @@ public class CodeGenManager {
     }
 
     private void halfRun2() {
+        System.out.println("aa");
         var allocator = new GraphColor(funcList);
         allocator.run();
 
         var clean = new Clean(funcList);
-        clean.run();
+//        clean.run();
 
         var peepHole = new PeepHole(funcList);
-        peepHole.run();
+//        peepHole.run();
     }
 
     private void halfRun22() {
@@ -85,8 +86,9 @@ public class CodeGenManager {
         var phiEliminate = new PhiElimination(funcList);
         phiEliminate.run();
 
-        var allocator = new RegAllocator(funcList);
-        allocator.run();
+        throw new RuntimeException("deprecated");
+//        var allocator = new RegAllocator(funcList);
+//        allocator.run();
     }
 
     public void performanceRun() {
@@ -101,9 +103,9 @@ public class CodeGenManager {
         var allocator = new GraphColor(funcList);
         allocator.run();
         var clean = new Clean(funcList);
-        clean.run();
-        var peepHole = new PeepHole(funcList);
-        peepHole.run();
+//        clean.run();
+//        var peepHole = new PeepHole(funcList);
+//        peepHole.run();
 
     }
 
@@ -111,7 +113,6 @@ public class CodeGenManager {
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
-//        sb.append("\t.data\n");
         for (var block : dataBlockArrayList) {
             sb.append(block);
         }
@@ -156,12 +157,12 @@ public class CodeGenManager {
         // back-end
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
-        mc.halfRun1(false);
+        mc.halfRun1(true);
 
         pw2.println(mc.toArm());
         pw2.flush();
 
-        mc.halfRun22();
+        mc.halfRun2();
 
         pw3.println(mc.toArm());
         pw3.flush();

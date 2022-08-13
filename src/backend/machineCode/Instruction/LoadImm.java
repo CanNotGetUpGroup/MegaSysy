@@ -6,6 +6,7 @@ import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
+import backend.machineCode.Operand.StackOffsetNumber;
 import ir.Instruction;
 
 public class LoadImm extends MachineInstruction {
@@ -19,6 +20,7 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, MCOperand src) {
         super(parent);
+        parent.getParent().getRegDefineMap().put(dest, this);
         this.src = src;
         this.dest = dest;
     }
@@ -26,6 +28,7 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, int src) {
         super(parent);
+        parent.getParent().getRegDefineMap().put(dest, this);
         this.src = new ImmediateNumber(src);
         this.dest = dest;
     }
@@ -39,6 +42,7 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, LoadImm imm) {
         super(parent, imm);
+        parent.getParent().getRegDefineMap().put(dest, this);
         this.src = imm.getSrc();
         this.dest = imm.getDest();
     }
@@ -49,8 +53,13 @@ public class LoadImm extends MachineInstruction {
     }
 
     @Override
+    public void setOp2(MCOperand op) {
+        this.src = op;
+    }
+
+    @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
-       throw  new RuntimeException("Unfinished");
+        throw new RuntimeException("Unfinished");
     }
 
     @Override
@@ -73,23 +82,25 @@ public class LoadImm extends MachineInstruction {
                     .append(", #:upper16:").append(((Addressable) src).getLabel()).append("\n");
         } else if (src instanceof ImmediateNumber) {
             int value = ((ImmediateNumber) src).getValue();
-            if (ImmediateNumber.isLegalImm(value)) {
+            if (value <= 65535 && value >= 0 || ImmediateNumber.isLegalImm(value)) {
                 if (dest.isFloat())
                     sb.append("v");
                 sb.append("mov").append(condString());
                 if (dest.isFloat()) sb.append(typeInfoString());
                 sb.append("\t").append(dest).append(", ").append(value);
-            } else if(ImmediateNumber.isLegalImm(~value)){
+            } else if (ImmediateNumber.isLegalImm(~value)) {
                 if (dest.isFloat())
                     sb.append("v");
                 sb.append("mvn").append(condString());
                 if (dest.isFloat()) sb.append(typeInfoString());
                 sb.append("\t").append(dest).append(", ").append(~value);
-            }
-            else
+            } else
                 sb.append("movw").append(condString()).append("\t").append(dest).append(", ").append(value & 0xFFFF).append("\n")
                         .append("\tmovt").append(condString()).append("\t").append(dest).append(", ").append((value & 0xFFFF0000) >>> 16);
-        } else {
+        } else if(src instanceof StackOffsetNumber){
+            return "LoadImm\tstack" + ((StackOffsetNumber) src).getOffset();
+        }
+        else {
             throw new RuntimeException("Unknown type");
         }
 
