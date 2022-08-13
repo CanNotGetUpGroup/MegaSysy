@@ -3,7 +3,9 @@ package analysis;
 import ir.*;
 import analysis.MemoryAccess.*;
 import ir.instructions.Instructions;
+import pass.PassManager;
 import pass.passes.Mem2Reg;
+import pass.passes.SimplifyCFG;
 import pass.test.testPass;
 
 import java.io.IOException;
@@ -603,6 +605,8 @@ public class MemorySSA {
 //        PassManager.run(module);
 //        pw.println(module.toLL());
 //        pw.flush();
+        new Mem2Reg().runOnModule(module);
+        new SimplifyCFG(false).runOnModule(module);
         for(Function F:module.getFuncList()){
             if(!F.isDefined()) continue;
             MemorySSA MSSA=new MemorySSA(F,F.getDominatorTree());

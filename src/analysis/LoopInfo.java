@@ -170,10 +170,12 @@ public class LoopInfo {
         InitTravelMap(travelMap, function.getEntryBB());
         PopulateLoopsDFS(travelMap, function.getEntryBB());
         computeAllLoops();
+        for(Loop loop:allLoops) loop.clear();
         computeExitingBlocks();
         computeExitBlocks();
         computeLoopPreheader();
         computeLatchBlocks();
+
     }
 
     /**
@@ -371,6 +373,18 @@ public class LoopInfo {
             if (latchBlock != null) {
                 loop.getLatchBlocks().add(latchBlock);
             }
+        }
+    }
+
+    private void computeIndVarInfo(){
+        for(Loop L:allLoops){
+            var latchCmp=L.getLatchCmpInst();
+            if(!L.isSimpleForLoop()||latchCmp==null){
+                return;
+            }
+            var lhs=latchCmp.getOperand(0);
+            var rhs=latchCmp.getOperand(1);
+
         }
     }
 
