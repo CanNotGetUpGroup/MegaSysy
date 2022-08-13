@@ -33,9 +33,8 @@ public class LCSSA extends FunctionPass {
 
     @Override
     public void runOnFunction(Function func) {
-        System.out.println("Running pass : LCSSA");
         LoopInfo loopInfo = func.getLoopInfo();
-        dominatorTree = new DominatorTree(func);
+        dominatorTree = func.getAndUpdateDominatorTree();
         for (var topLoop : loopInfo.getTopLevelLoops()) {
             runOnLoop(topLoop);
         }
@@ -110,7 +109,7 @@ public class LCSSA extends FunctionPass {
         // 在循环出口的基本块开头放置 phi，参数为 inst，即循环内定义的变量 PHI添加到exitBB的最前面
         for (var exitBB : loop.getExitBlocks()) {
             if (!bbToPhiMap.containsKey(exitBB) && dominatorTree.dominates(exitBB, bb)) {
-                PHIInst phi = PHIInst.create(inst.getType(), exitBB.getPredecessorsNum());
+                PHIInst phi = PHIInst.create(inst.getType(), exitBB.getPredecessorsNum(),"",exitBB);
                 bbToPhiMap.put(exitBB, phi);
                 for (int i = 0; i < exitBB.getPredecessors().size(); i++) {
                     phi.addOperand(inst); // todo phi初始化的时候有没有numop?
@@ -169,7 +168,7 @@ public class LCSSA extends FunctionPass {
             return value;
         }
 
-        var phi = PHIInst.create(Type.getInt32Ty(), bb.getPredecessors().size());
+        var phi = PHIInst.create(Type.getInt32Ty(), bb.getPredecessors().size(),"name",bb);
         bb.getInstList().insertAtHead(phi.getInstNode()); // 将phi指令插入bb的开头
         bbToPhiMap.put(bb, phi);
         for (int i = 0; i < bb.getPredecessors().size(); i++) {

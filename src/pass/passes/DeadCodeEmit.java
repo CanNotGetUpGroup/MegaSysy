@@ -1,9 +1,12 @@
 package pass.passes;
 
+import analysis.MemoryAccess;
 import ir.*;
 import ir.Module;
+import ir.Instruction.Ops;
 import pass.ModulePass;
 import ir.instructions.Instructions.*;
+import analysis.AliasAnalysis;
 import analysis.DominatorTree.TreeNode;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +32,8 @@ public class DeadCodeEmit extends ModulePass {
         for(Function F:M.getFuncList()){
             // 非Builtin函数
             if(F.isDefined()) {
+                // TODO: 暂时先在这里初始化func-gv映射 StoreDel要用
+                AliasAnalysis.runMemorySSA(F);
                 functionDCE(F);
             }
 
@@ -43,6 +48,44 @@ public class DeadCodeEmit extends ModulePass {
     }
 
     public void functionDCE(Function F) {
+        for(BasicBlock BB : F.getBbList()) {
+            for(Instruction I : BB.getInstList()) {
+                MemoryAccess MA=AliasAnalysis.MSSA.getMemoryAccess(I);
+                if(MA instanceof MemoryAccess.MemoryDef){
+                    MemoryAccess.MemoryDef MD=(MemoryAccess.MemoryDef)MA;
+                    boolean delete=false;
+                    if((AliasAnalysis.isLocal(MD.getPointer()))){//不删除对global和param的定义
+                        for (Use u : MD.getUseList()) {
+                            User user = u.getU();
+                            if (user instanceof MemoryAccess.MemoryUse) {
+                                break;
+                            } else if (user instanceof MemoryAccess.MemoryDef) {
+                                if (((MemoryAccess.MemoryDef) user).getMemoryInstruction() instanceof CallInst) {
+                                    CallInst CI = (CallInst) ((MemoryAccess.MemoryDef) user).getMemoryInstruction();
+                                    if (AliasAnalysis.MSSA.callAlias(CI, AliasAnalysis.getArrayValue(MD.getPointer()))) {
+                                        break;
+                                    }
+                                } else {//被store覆盖
+                                    if ((MD.getMemoryInstruction() instanceof StoreInst) &&
+                                            ((MemoryAccess.MemoryDef) user).getMemoryInstruction().getOperand(1).equals(
+                                                    MD.getMemoryInstruction().getOperand(1)
+                                            )) {//对数组的不同位置进行的store，不可覆盖
+                                        delete=true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if(delete){
+                        I.remove();
+                        MA.replaceAllUsesWith(((MemoryAccess.MemoryDef) MA).getDefiningAccess());
+                        MA.remove();
+                    }
+                }
+            }
+        }
+
         usefulInstSet.clear();
         for(BasicBlock BB : F.getBbList()){
             for(Instruction I:BB.getInstList()) {
@@ -69,7 +112,7 @@ public class DeadCodeEmit extends ModulePass {
     public boolean isUsefulInst(Instruction I) {
         return switch (I.getOp()) {
             case Br,Ret,Store -> true;
-            case Call -> I.getFunction().hasSideEffect();
+            case Call -> ((Function)I.getOperand(0)).hasSideEffect();
             default -> false;
         };
     }

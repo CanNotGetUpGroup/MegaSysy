@@ -19,6 +19,7 @@ public class EliminateAlloca extends FunctionPass {
                 }
             }
         }while (ret);
+        new DeadCodeEmit().functionDCE(F);
     }
 
     /**
