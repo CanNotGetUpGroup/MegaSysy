@@ -54,7 +54,7 @@ public class LCSSA extends FunctionPass {
 
         ArrayList<BasicBlock> exitBlocks = loop.getExitBlocks(); // 循环退出后第一个到达的block
         if (exitBlocks == null || exitBlocks.isEmpty()) {
-            System.out.println("exit block is empty");
+            System.out.println("exit block is empty so LCSSA failed");
             return;
         }
 
@@ -74,12 +74,14 @@ public class LCSSA extends FunctionPass {
 
         for (var bb : loop.getBbList()) {
             for (var inst : bb.getInstList()) {
-                for (var use : inst.getUseList()) { // 遍历loop的use
+                // 遍历inst的use, 如果use是loop外的，则加入set
+                for (var use : inst.getUseList()) {
                     var user = use.getU();
                     assert user instanceof Instruction;
                     var userInst = (Instruction) user;
                     var userBB = userInst.getParent();
-                    if (userInst instanceof PHIInst) { // userInst是phi指令需要特判,userBB取值是phi指令的IncomingBlock
+                    // userInst是phi指令需要特判,userBB取值是phi指令的IncomingBlock
+                    if (userInst instanceof PHIInst) {
                         var phi = (PHIInst) userInst;
                         int idx = 0;
                         for (var value : phi.getIncomingValues()) {
@@ -89,15 +91,14 @@ public class LCSSA extends FunctionPass {
                             idx++;
                         }
                     }
-
-                    if (!loop.getBbList().contains(userBB)) { // the user of inst is out of loop
+                    // the user of inst is out of loop
+                    if (!loop.getBbList().contains(userBB) && !set.contains(userBB)) {
                         set.add(inst);
                         break;
                     }
                 }
             }
         }
-
         return set;
     }
 
@@ -109,7 +110,7 @@ public class LCSSA extends FunctionPass {
         // 在循环出口的基本块开头放置 phi，参数为 inst，即循环内定义的变量 PHI添加到exitBB的最前面
         for (var exitBB : loop.getExitBlocks()) {
             if (!bbToPhiMap.containsKey(exitBB) && dominatorTree.dominates(exitBB, bb)) {
-                PHIInst phi = PHIInst.create(inst.getType(), exitBB.getPredecessorsNum(),"",exitBB);
+                PHIInst phi = PHIInst.create(inst.getType(), exitBB.getPredecessorsNum(), "", exitBB);
                 bbToPhiMap.put(exitBB, phi);
                 for (int i = 0; i < exitBB.getPredecessors().size(); i++) {
                     phi.addOperand(inst); // todo phi初始化的时候有没有numop?
@@ -168,7 +169,7 @@ public class LCSSA extends FunctionPass {
             return value;
         }
 
-        var phi = PHIInst.create(Type.getInt32Ty(), bb.getPredecessors().size(),"name",bb);
+        var phi = PHIInst.create(Type.getInt32Ty(), bb.getPredecessors().size(), "name", bb);
         bb.getInstList().insertAtHead(phi.getInstNode()); // 将phi指令插入bb的开头
         bbToPhiMap.put(bb, phi);
         for (int i = 0; i < bb.getPredecessors().size(); i++) {
@@ -176,5 +177,4 @@ public class LCSSA extends FunctionPass {
         }
         return phi;
     }
-
 }

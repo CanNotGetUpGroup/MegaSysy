@@ -27,66 +27,71 @@ retBB:
 
 define dso_local i32 @deepWhileBr(i32 %0,i32 %1){
 entry:     
-  %2 = alloca i32     ; i32 d
-  %3 = alloca i32     ; i32 c
-  %4 = alloca i32     ; i32 b
-  %5 = alloca i32     ; i32 a
+  %2 = alloca i32     ; i32 e
+  %3 = alloca i32     ; i32 d
+  %4 = alloca i32     ; i32 c
+  %5 = alloca i32     ; i32 b
+  %6 = alloca i32     ; i32 a
   %ret = alloca i32     
-  store i32 %0, i32* %5     
-  store i32 %1, i32* %4     
-  %6 = load i32, i32* %5     
-  %7 = load i32, i32* %4     
-  %8 = add i32 %6, %7     ; a+b
-  store i32 %8, i32* %3     ; c=a+b
-  br label %9     
+  store i32 %0, i32* %6     
+  store i32 %1, i32* %5     
+  %7 = load i32, i32* %6     
+  %8 = load i32, i32* %5     
+  %9 = add i32 %7, %8     ; a+b
+  store i32 %9, i32* %4     ; c=a+b
+  br label %10     
 
-9:     ; judge c<75
-  %10 = load i32, i32* %3     
-  %11= icmp slt i32 %10, 75     ; c<75
-  br i1 %11, label %12, label %29     
+10:     ; judge c<75
+  %11 = load i32, i32* %4     
+  %12= icmp slt i32 %11, 75     ; c<75
+  br i1 %12, label %13, label %33     
 
-12:     ; while Body
-  store i32 2, i32* %2     ; d=2
-  %13 = load i32, i32* %3     
-  %14= icmp slt i32 %13, 100     ; c<100
-  br i1 %14, label %15, label %27     ; judge c<100
+13:     ; while Body
+  store i32 42, i32* %3     ; d=42
+  %14 = load i32, i32* %4     
+  %15= icmp slt i32 %14, 100     ; c<100
+  br i1 %15, label %16, label %32     ; judge c<100
 
-15:     ; if Body
-  %16 = load i32, i32* %3     
-  %17 = load i32, i32* %2     
-  %18 = add i32 %16, %17     ; c+d
-  store i32 %18, i32* %3     ; c=c+d
-  %19 = load i32, i32* %3     
-  %20= icmp sgt i32 %19, 60     ; c>60
-  br i1 %20, label %21, label %22     ; judge c>60
+16:     ; if Body
+  %17 = load i32, i32* %4     
+  %18 = load i32, i32* %3     
+  %19 = add i32 %17, %18     ; c+d
+  store i32 %19, i32* %4     ; c=c+d
+  %20 = load i32, i32* %4     
+  %21= icmp sgt i32 %20, 99     ; c>99
+  br i1 %21, label %22, label %31     ; judge c>99
 
-21:     ; if Body
-  br label %28     
-
-22:     ; else Body
+22:     ; if Body
   %23 = load i32, i32* %3     
-  %24 = load i32, i32* %2     
-  %25 = add i32 %23, %24     ; c+d
-  store i32 %25, i32* %3     ; c=c+d
-  br label %26     
+  %24 = mul i32 %23, 2     ; d*2
+  store i32 %24, i32* %2     ; e=d*2
+  %25 = call i32 @get_one(i32 0)     ; call get_one(0)
+  %26= icmp eq i32 %25, 1     ; get_one(0)==1
+  br i1 %26, label %27, label %30     ; judge get_one(0)==1
 
-26:     
-  br label %27     
+27:     ; if Body
+  %28 = load i32, i32* %2     
+  %29 = mul i32 %28, 2     ; e*2
+  store i32 %29, i32* %4     ; c=e*2
+  br label %30     
 
-27:     
-  br label %28     
+30:     
+  br label %31     
 
-28:     ; jump to head
-  br label %9     
+31:     
+  br label %32     
 
-29:     ; exit while
-  %30 = load i32, i32* %3     
-  store i32 %30, i32* %ret     
+32:     
+  br label %10     
+
+33:     ; exit while
+  %34 = load i32, i32* %4     
+  store i32 %34, i32* %ret     
   br label %retBB     
 
 retBB:     
-  %31 = load i32, i32* %ret     
-  ret i32 %31     
+  %35 = load i32, i32* %ret     
+  ret i32 %35     
 }
 
 define dso_local i32 @main(){
