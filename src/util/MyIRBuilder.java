@@ -152,8 +152,8 @@ public class MyIRBuilder {
         return insert(PHIInst.create(ty,block_num,Name,InsertBefore));
     }
 
-    public Instruction createPHI(Type ty, int block_num,String Name, BasicBlock InsertAtEnd){
-        return insert(PHIInst.create(ty,block_num,Name,InsertAtEnd));
+    public Instruction createPHI(Type ty, int block_num,String Name, BasicBlock InsertAtHead){
+        return insert(PHIInst.create(ty,block_num,Name,InsertAtHead));
     }
 
     //===--------------------------------------------------------------------===//

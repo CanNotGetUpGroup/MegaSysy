@@ -14,7 +14,7 @@ import java.util.*;
 
 /**
  * 粒度不够细，没有精确到具体的array（如对b[i]赋值后，导致无法识别a[i]的版本）
- * TODO:1.精确到数组2.精确到数组元素
+ * TODO:精确到数组元素
  */
 public class MemorySSA {
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
