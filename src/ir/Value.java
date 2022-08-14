@@ -156,5 +156,8 @@ public abstract class Value {
 
     }
 
+    /**
+     * 深拷贝
+     */
     public abstract Value copy(CloneMap cloneMap);
 }

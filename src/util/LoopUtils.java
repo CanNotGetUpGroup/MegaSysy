@@ -1,11 +1,10 @@
 package util;
 
-import ir.BasicBlock;
-import ir.Instruction;
-import ir.Loop;
+import ir.*;
 import ir.instructions.BinaryInstruction;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Queue;
 
@@ -48,6 +47,25 @@ public class LoopUtils {
                 if (Visited.add(bb)) {
                     rearrangeDFS(bb, loop, tmp, Visited);
                 }
+            }
+        }
+    }
+
+    public static BasicBlock cloneBasicBlock(BasicBlock BB, HashMap<Value,Value> valMap){
+        BasicBlock ret=new BasicBlock(BB.getParent());
+        MyIRBuilder.getInstance().setInsertPoint(ret);
+        for(Instruction I:BB.getInstList()){
+            var copyInst=I.shallowCopy();
+            valMap.put(I,copyInst);
+        }
+        return ret;
+    }
+
+    public static void remapInst(Instruction I,HashMap<Value,Value> LastValMap){
+        for(int i=0;i<I.getNumOperands();i++){
+            Value op=I.getOperand(i);
+            if(LastValMap.containsKey(op)&&!(op instanceof Function)){
+                I.CoReplaceOperandByIndex(i,LastValMap.get(op));
             }
         }
     }
