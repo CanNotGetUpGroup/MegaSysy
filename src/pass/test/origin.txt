@@ -1,0 +1,115 @@
+declare i32 @getint()
+declare float @getfloat()
+declare i32 @getarray(i32*)
+declare i32 @getfarray(float*)
+declare i32 @getch()
+declare void @putint(i32)
+declare void @putch(i32)
+declare void @putfloat(float)
+declare void @putarray(i32,i32*)
+declare void @putfarray(i32,float*)
+declare void @memset(i32*,i32,i32)
+declare void @_sysy_starttime(i32)
+declare void @_sysy_stoptime(i32)
+
+define dso_local i32 @get_one(i32 %0){
+entry:     
+  %1 = alloca i32     ; i32 a
+  %ret = alloca i32     
+  store i32 %0, i32* %1     
+  store i32 1, i32* %ret     
+  br label %retBB     
+
+retBB:     
+  %2 = load i32, i32* %ret     
+  ret i32 %2     
+}
+
+define dso_local i32 @deepWhileBr(i32 %0,i32 %1){
+entry:     
+  %2 = alloca i32     ; i32 e
+  %3 = alloca i32     ; i32 d
+  %4 = alloca i32     ; i32 c
+  %5 = alloca i32     ; i32 b
+  %6 = alloca i32     ; i32 a
+  %ret = alloca i32     
+  store i32 %0, i32* %6     
+  store i32 %1, i32* %5     
+  %7 = load i32, i32* %6     
+  %8 = load i32, i32* %5     
+  %9 = add i32 %7, %8     ; a+b
+  store i32 %9, i32* %4     ; c=a+b
+  br label %10     
+
+10:     ; judge c<75
+  %11 = load i32, i32* %4     
+  %12= icmp slt i32 %11, 75     ; c<75
+  br i1 %12, label %13, label %33     
+
+13:     ; while Body
+  store i32 42, i32* %3     ; d=42
+  %14 = load i32, i32* %4     
+  %15= icmp slt i32 %14, 100     ; c<100
+  br i1 %15, label %16, label %32     ; judge c<100
+
+16:     ; if Body
+  %17 = load i32, i32* %4     
+  %18 = load i32, i32* %3     
+  %19 = add i32 %17, %18     ; c+d
+  store i32 %19, i32* %4     ; c=c+d
+  %20 = load i32, i32* %4     
+  %21= icmp sgt i32 %20, 99     ; c>99
+  br i1 %21, label %22, label %31     ; judge c>99
+
+22:     ; if Body
+  %23 = load i32, i32* %3     
+  %24 = mul i32 %23, 2     ; d*2
+  store i32 %24, i32* %2     ; e=d*2
+  %25 = call i32 @get_one(i32 0)     ; call get_one(0)
+  %26= icmp eq i32 %25, 1     ; get_one(0)==1
+  br i1 %26, label %27, label %30     ; judge get_one(0)==1
+
+27:     ; if Body
+  %28 = load i32, i32* %2     
+  %29 = mul i32 %28, 2     ; e*2
+  store i32 %29, i32* %4     ; c=e*2
+  br label %30     
+
+30:     
+  br label %31     
+
+31:     
+  br label %32     
+
+32:     
+  br label %10     
+
+33:     ; exit while
+  %34 = load i32, i32* %4     
+  store i32 %34, i32* %ret     
+  br label %retBB     
+
+retBB:     
+  %35 = load i32, i32* %ret     
+  ret i32 %35     
+}
+
+define dso_local i32 @main(){
+entry:     
+  %0 = alloca i32     ; i32 p
+  %ret = alloca i32     
+  store i32 2, i32* %0     ; p=2
+  %1 = load i32, i32* %0     
+  %2 = load i32, i32* %0     
+  %3 = call i32 @deepWhileBr(i32 %1,i32 %2)     ; call deepWhileBr(p,p)
+  store i32 %3, i32* %0     ; p=deepWhileBr(p,p)
+  %4 = load i32, i32* %0     
+  call void @putint(i32 %4)     ; call putint(p)
+  store i32 0, i32* %ret     
+  br label %retBB     
+
+retBB:     
+  %5 = load i32, i32* %ret     
+  ret i32 %5     
+}
+
