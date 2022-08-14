@@ -97,7 +97,7 @@ public class FuncInline extends ModulePass {
                     System.out.println(callee + " didn't inline into " + caller);
                     continue;
                 }else{
-                    System.out.println(callee + " inline into " + caller);
+//                    System.out.println(callee + " inline into " + caller);
                     localChanged=true;
                     CG.getNode(callee).getCalledFunctions().forEach(calleeEE->{
                         CG.getNode(caller).addCalledFunction(calleeEE.a.copy(cloneMap),calleeEE.b);

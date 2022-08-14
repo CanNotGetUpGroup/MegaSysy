@@ -9,6 +9,7 @@ import org.antlr.v4.runtime.misc.Pair;
 import util.CloneMap;
 import util.Folder;
 
+import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -287,7 +288,11 @@ public abstract class Instructions {
                             CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
                         }
                     }
-                    assert CA != null;
+//                    assert CA != null;
+                    if(CA== null){
+//                        System.out.println("error!");
+                        return null;
+                    }
                     ConstantValue = CA.getElement(CI.getVal());
                     return ConstantValue;
                 }

@@ -384,18 +384,18 @@ public class LoopInfo {
     private void computeIndVarInfo(){
         for(Loop L:allLoops){
             var latchCmp=L.getLatchCmpInst();
-//            System.out.println(L.getSingleLatchBlock());
-//            System.out.println(latchCmp);
             if(!L.isSimpleForLoop()||latchCmp==null){
                 return;
             }
+//            System.out.println(L.getSingleLatchBlock());
+//            System.out.println(latchCmp);
             var lhs=latchCmp.getOperand(0);
             var rhs=latchCmp.getOperand(1);
 
         }
     }
 
-    public void getIndVariable(){
+    public void getIndVariable(Loop loop){
 
     }
 
