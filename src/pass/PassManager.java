@@ -19,22 +19,18 @@ public class PassManager {
      * 初始化，在此处按照顺序添加IR pass
      */
     public static void initialization() {
+        passes.clear();
+        GVNGCM.GCMOpen=true;
+//        eliminatePreHeader=true;//关闭LICM
+        passes.add(new AddCondPreBlock());
+        passes.add(new SimplifyCFG(eliminatePreHeader));
+        passes.add(new Mem2Reg());//消除掉local int(or float)的alloca，确保DCE消除store的正确
+        //只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
         passes.add(new InterproceduralAnalysis());
+        passes.add(new DeadCodeEmit());
         passes.add(new GlobalVariableOpt());
-        passes.add(new Mem2Reg());
-        passes.add(new GVNGCM(false));
+        passes.add(new GVNGCM(aggressive));// Mem2Reg处理掉了所有local alloca
         passes.add(new LCSSA());
-//        passes.clear();
-//        GVNGCM.GCMOpen=true;
-////        eliminatePreHeader=true;//关闭LICM
-//        passes.add(new AddCondPreBlock());
-//        passes.add(new SimplifyCFG(eliminatePreHeader));
-//        passes.add(new Mem2Reg());//消除掉local int(or float)的alloca，确保DCE消除store的正确
-//        //只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
-//        passes.add(new InterproceduralAnalysis());
-//        passes.add(new DeadCodeEmit());
-//        passes.add(new GlobalVariableOpt());
-//        passes.add(new GVNGCM(aggressive));// Mem2Reg处理掉了所有local alloca
 //        passes.add(new LoopInfoUpdate()); // 计算循环信息
 //        passes.add(new LICM());// 循环不变量外提
 //
