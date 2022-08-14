@@ -180,7 +180,8 @@ public class InstructionSelector {
                     // TODO: don't know size now ???  cur solution: Load a stackOffset number, and change it after reg allocation
                     var reg = new VirtualRegister();
                     new LoadImm(firstbb, reg, new StackOffsetNumber(onStackNum * 4, mf, true)).pushBacktoInstList();
-                    new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(new MCRegister(MCRegister.RegName.SP), reg)).setForFloat(true).pushBacktoInstList();
+                    new Arithmetic(firstbb, Arithmetic.Type.ADD, reg,new MCRegister(MCRegister.RegName.SP)).pushBacktoInstList();
+                    new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(reg)).setForFloat(true).pushBacktoInstList();
                     onStackNum++;
                 }
             } else { // para is not float, can be array or int
@@ -776,7 +777,7 @@ public class InstructionSelector {
     }
 
     public static Register valueToRegInsertBefore(MachineBasicBlock parent, Value val, IListNode<MachineInstruction, MachineBasicBlock> node) {
-        MCOperand res = valueToMCOperand(parent, val);
+        MCOperand res = valueToMCOperandInsertBefore(parent, val, node);
         if (res instanceof Register)
             return (Register) res;
         if (res instanceof ImmediateNumber) {

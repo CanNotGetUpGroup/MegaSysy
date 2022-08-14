@@ -103,7 +103,7 @@ public class LoadImm extends MachineInstruction {
         else {
             throw new RuntimeException("Unknown type");
         }
-
+        sb.append("  @LoadImm");
         return sb.toString();
     }
 
