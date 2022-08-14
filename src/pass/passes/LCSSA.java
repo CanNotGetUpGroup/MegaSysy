@@ -105,15 +105,15 @@ public class LCSSA extends FunctionPass {
     // 删掉 inst 在循环外的 use，用 phi 代替
     public void generateLoopClosedPhi(Instruction inst, Loop loop) {
         var bb = inst.getParent();
-        HashMap<BasicBlock, Value> bbToPhiMap = new HashMap<>();
+        PHIInst phi = null;
 
         // 在循环出口的基本块开头放置 phi，参数为 inst，即循环内定义的变量 PHI添加到exitBB的最前面
         for (var exitBB : loop.getExitBlocks()) {
-            if (!bbToPhiMap.containsKey(exitBB) && dominatorTree.dominates(exitBB, bb)) {
-                PHIInst phi = PHIInst.create(inst.getType(), exitBB.getPredecessorsNum(), "", exitBB);
-                bbToPhiMap.put(exitBB, phi);
+            // bb 支配exitBB才放置 phi，否则改变了作用域
+            if (dominatorTree.dominates(bb, exitBB)) {
+                phi = PHIInst.create(inst.getType(), exitBB.getPredecessorsNum());
                 for (int i = 0; i < exitBB.getPredecessors().size(); i++) {
-                    phi.addOperand(inst); // todo phi初始化的时候有没有numop?
+                    phi.addIncoming(inst, exitBB.getPredecessor(i));
                 }
                 exitBB.getInstList().insertAtHead(phi.getInstNode()); // 插入phi指令到exitBB的最前面
             }
@@ -124,28 +124,27 @@ public class LCSSA extends FunctionPass {
         for (var use : usesList) {
             var userInst = (Instruction) use.getU();
             var userBB = userInst.getParent();
-            if (userInst instanceof PHIInst) { // 循环外的use为PHI时
-                var phi = (PHIInst) userInst;
-                int idx = 0;
-                for (var value : phi.getIncomingValues()) {
-                    if (value.getUseList().contains(use)) {// userInst是phi指令需要取对应的IncomingBlock
-                        userBB = phi.getIncomingBlock(idx);
-                    }
-                    idx++;
-                }
+            if (userInst instanceof PHIInst) { // 循环外的use为PHI时，直接跳过
+                // var phi = (PHIInst) userInst;
+                // int idx = 0;
+                // for (var value : phi.getIncomingValues()) {
+                // if (value.getUseList().contains(use)) {// userInst是phi指令需要取对应的IncomingBlock
+                // userBB = phi.getIncomingBlock(idx);
+                // }
+                // idx++;
+                // }
+                continue;
             }
-
             if (userBB == bb || loop.getBbList().contains(userBB)) { // userBB在循环内无需维护
                 continue;
             }
-
             // 维护循环外的 use
-            var value = getValueForBB(userBB, inst, bbToPhiMap, loop);
-            userInst.COReplaceOperand(inst, value); // 替换
+            userInst.COReplaceOperand(inst, phi); // 替换userInst的inst为value
         }
     }
 
     /**
+     * ayame的写的函数，感觉没用，现已废弃
      * inst 在到达 bb 时的值
      */
     public Value getValueForBB(BasicBlock bb, Instruction inst,
@@ -153,7 +152,7 @@ public class LCSSA extends FunctionPass {
         if (bb == null) { // bb为空，返回undef
             return new UndefValue(inst.getType());
         }
-        if (bbToPhiMap.get(bb) != null) { // bb已经在bb2phimap里，返回phi
+        if (bbToPhiMap.get(bb) != null) { // bb已经在bb2phimap里，返回对应的value即可
             return bbToPhiMap.get(bb);
         }
         BasicBlock idom = null;
@@ -169,7 +168,7 @@ public class LCSSA extends FunctionPass {
             return value;
         }
 
-        var phi = PHIInst.create(Type.getInt32Ty(), bb.getPredecessors().size(), "name", bb);
+        var phi = PHIInst.create(Type.getInt32Ty(), bb.getPredecessors().size());
         bb.getInstList().insertAtHead(phi.getInstNode()); // 将phi指令插入bb的开头
         bbToPhiMap.put(bb, phi);
         for (int i = 0; i < bb.getPredecessors().size(); i++) {
