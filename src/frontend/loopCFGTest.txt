@@ -1,0 +1,32 @@
+// to hava a look of loop structure
+int doWhile() {
+  int a = 20;
+  a = a + 1;
+  int b;
+  b=-10;
+  while(b>1){
+ while(a>0){
+    a=a-1;
+    if(a==1){
+        break;
+    }else if(a==18){
+      a=a-2;
+      continue;
+    }else if(a==3){
+      continue;
+    }else if(a==7){
+      a = a-1;
+      break;
+    }
+   }
+   b = b+1;
+  }
+ 
+
+  return a;
+}
+
+int main(){
+  putint(doWhile());
+  return 0;
+}

@@ -1,6 +1,7 @@
 package ir.instructions;
 
 import ir.*;
+import util.CloneMap;
 
 import static ir.Instruction.Ops;
 
@@ -17,9 +18,20 @@ public class BinaryInstruction extends Instruction {
         addOperand(S2);
     }
 
+    public BinaryInstruction(Type type, Ops op, Value S1,Value S2,Instruction InsertBefore) {
+        super(type,op, 2,InsertBefore);
+        addOperand(S1);
+        addOperand(S2);
+    }
+
     public static BinaryInstruction create(Ops op,Value S1,Value S2){
         assert S1.getType().equals(S2.getType());
         return new BinaryInstruction(S1.getType(),op,S1,S2);
+    }
+
+    public static BinaryInstruction create(Ops op,Value S1,Value S2,Instruction InsertBefore){
+        assert S1.getType().equals(S2.getType());
+        return new BinaryInstruction(S1.getType(),op,S1,S2,InsertBefore);
     }
 
     // %14 = xor i1 %13, true
@@ -80,5 +92,15 @@ public class BinaryInstruction extends Instruction {
         sb.append(getOperand(1).getName());
 
         return sb.toString();
+    }
+
+    @Override
+    public BinaryInstruction copy(CloneMap cloneMap) {
+        if (cloneMap.get(this) != null) {
+            return (BinaryInstruction) cloneMap.get(this);
+        }
+        BinaryInstruction ret = new BinaryInstruction(getType(),getOp(),getOperand(0).copy(cloneMap),getOperand(1).copy(cloneMap));
+        cloneMap.put(this, ret);
+        return ret;
     }
 }

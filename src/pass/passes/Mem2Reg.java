@@ -1,6 +1,8 @@
 package pass.passes;
 
+import analysis.AliasAnalysis;
 import analysis.DominatorTree;
+import analysis.MemoryAccess;
 import ir.*;
 import ir.Module;
 import org.antlr.v4.runtime.misc.Pair;
@@ -10,6 +12,13 @@ import analysis.DominatorTree.TreeNode;
 
 import java.util.*;
 
+/**
+ * 对于指向非数组元素的alloca指令：
+ * 删除未被使用的alloca
+ * 直接处理掉只store过一次，或所有store和load在一个基本块的alloca指令
+ * 计算插入phi指令的位置
+ * 分析CFG，为phi指令设置incomingValue以及对应基本块
+ */
 public class Mem2Reg extends FunctionPass {
     private final HashMap<BasicBlock,Integer> BBNumbers= new HashMap<>();
     private final HashMap<Pair<Integer,Integer>,PHIInst> PhiNodes=new HashMap<>();
@@ -36,10 +45,11 @@ public class Mem2Reg extends FunctionPass {
         AllocaLookup.clear();
         PhiToAllocaMap.clear();
         Visited.clear();
+        AliasAnalysis.gepToArrayIdx.clear();
 
-        DominatorTree DT=new DominatorTree(F);
+        DominatorTree DT=F.getAndUpdateDominatorTree();
         promoteMem2Reg(F,DT);
-        Module.getInstance().rename();
+        Module.getInstance().rename(F);
     }
 
     public static FunctionPass createMem2Reg(){
@@ -247,7 +257,7 @@ public class Mem2Reg extends FunctionPass {
 
         // Otherwise, if the instruction is in the entry block and is not an invoke,
         // then it obviously dominates all phi nodes.
-        return I.getParent().isEntryBlock() && !(I instanceof CallBrInst);
+        return I.getParent().isEntryBlock();
     }
 
     /**
@@ -382,7 +392,7 @@ public class Mem2Reg extends FunctionPass {
      * IDF（iterated Dominator Frontier），时间复杂度O(n)
      * 参考：https://blog.csdn.net/dashuniuniu/article/details/103389157
      */
-    public void IDFCalculate(DominatorTree DT,ArrayList<BasicBlock> DefBlocks,Set<BasicBlock> LiveBB,ArrayList<BasicBlock> IDFBlocks){
+    public static void IDFCalculate(DominatorTree DT,ArrayList<BasicBlock> DefBlocks,Set<BasicBlock> LiveBB,ArrayList<BasicBlock> IDFBlocks){
         PriorityQueue<Pair<TreeNode,Pair<Integer,Integer>>> PQ=new PriorityQueue<>((o1, o2) -> o2.b.b-o1.b.b);
         DT.updateDFSNumbers();
         Stack<TreeNode> WorkList=new Stack<>();
@@ -414,7 +424,7 @@ public class Mem2Reg extends FunctionPass {
                         continue;
                     }
                     visitedPQ.add(childNode);
-                    if(!LiveBB.contains(child)){
+                    if(LiveBB!=null&&!LiveBB.contains(child)){
                         continue;
                     }
                     IDFBlocks.add(child);
@@ -432,11 +442,18 @@ public class Mem2Reg extends FunctionPass {
         }
     }
 
+    /**
+     * 由于存在alloca指令，不算严格形式的SSA，不能直接用alloca的def-use链计算存活基本块，需要找到alloca所有在
+     * store前使用的load(因为store相当于一次定义覆盖，store之后的load就是store的存活基本块了)，
+     * 这些load所在的基本块就是存活基本块，然后再把它的前驱加入进来（前驱当然也是存活的，alloca总是在根基本块）
+     */
     public void computeLiveBB(AllocaInst AI,Set<BasicBlock> LiveBB){
         ArrayList<BasicBlock> copyUsing = new ArrayList<>(AI.usingBlocks);
 
+        //检查load前是否store过
         for(int i=0,e=copyUsing.size();i!=e;i++){
             BasicBlock basicBlock=copyUsing.get(i);
+            //若当前基本块无定义，说明alloca能在此处存活
             if(!AI.definingBlocks.contains(basicBlock)){
                 continue;
             }
@@ -460,6 +477,7 @@ public class Mem2Reg extends FunctionPass {
             }
         }
 
+        //将前驱加入进来
         while(!copyUsing.isEmpty()){
             BasicBlock basicBlock=copyUsing.get(copyUsing.size()-1);
             copyUsing.remove(copyUsing.size()-1);

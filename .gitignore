@@ -2,5 +2,16 @@
 /out/
 /testcase/
 /.idea/
+/src/backend/test/*
+/MC/
+/1.zip
+/src/testcase.s
+/src/testcase.sy
+/src/windows_run.py
+/src/run.py
+testcase.*
+.DS_Store
+/src/pass/test/*.txt
+testcase.*
 /FrontedTest/
-src/pass/test/run_1.py
+/src/pass/test/run_1.py

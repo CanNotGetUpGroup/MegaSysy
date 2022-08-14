@@ -1,5 +1,6 @@
 package ir;
 
+import util.CloneMap;
 import util.IListNode;
 import util.MyIRBuilder;
 
@@ -12,20 +13,23 @@ public abstract class Instruction extends User {
 
     public enum Ops {
         //Term
-        Ret, Br ,CallBr,
+        Ret, Br,
         //Unary
         //Binary
         Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem,And,Or,Xor,
         //Memory
         Alloca, Load, Store, GetElementPtr, Fence,
         //Cast
-        ZExt, FPExt, SIToFP, FPToSI, PtrToInt, IntToPtr, BitCast,
+        ZExt, SIToFP, FPToSI, BitCast,
         //Other
         ICmp, FCmp, Call, Select, PHI,
+        //MemSSA
+        MemDef,MemUse,MemPHI
     }
 
     public BasicBlock getParent() {
 //        return Parent;
+        if(instNode.getParent()==null) return null;
         return instNode.getParent().getVal();
     }
 
@@ -53,6 +57,11 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         instNode = new IListNode<>(this, MyIRBuilder.getInstance().BB.getInstList());
+    }
+
+    public Instruction(Type type,Ops op){
+        super(type,0);
+        this.op=op;
     }
 
     public Instruction(Type type, Ops op, String name, int numOperands) {
@@ -103,12 +112,23 @@ public abstract class Instruction extends User {
 
     public boolean isTerminator(){
         return switch (getOp()) {
-            case Ret, Br, CallBr -> true;
+            case Ret, Br -> true;
             default -> false;
         };
     }
 
-    //从基本块中删除
+    public static boolean isBinary(Ops op){
+        return op.ordinal() >= Ops.Add.ordinal()
+            && op.ordinal() <= Ops.Xor.ordinal();
+    }
+
+    public static boolean isCmp(Ops op){
+        return op.equals(Ops.ICmp)||op.equals(Ops.FCmp);
+    }
+
+    /**
+     * 从基本块中删除
+     */
     public void remove(){
         instNode.remove();
         dropUsesAsValue();
@@ -131,6 +151,7 @@ public abstract class Instruction extends User {
     }
 
     public Function getFunction(){
+        if(getParent()==null) return null;
         return getParent().getParent();
     }
 }

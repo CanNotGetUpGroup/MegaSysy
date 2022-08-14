@@ -1,9 +1,17 @@
 package ir.instructions;
 
+import analysis.AliasAnalysis;
+import analysis.PointerInfo;
+import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
+import org.antlr.v4.runtime.misc.Pair;
+import util.CloneMap;
+import util.Folder;
 
+import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public abstract class Instructions {
     //===----------------------------------------------------------------------===//
@@ -15,8 +23,8 @@ public abstract class Instructions {
         private Type AllocatedType;
         private boolean undef = true;
 
-        public ArrayList<BasicBlock> definingBlocks=new ArrayList<>(); //store的基本块
-        public ArrayList<BasicBlock> usingBlocks=new ArrayList<>(); //load的基本块
+        public ArrayList<BasicBlock> definingBlocks = new ArrayList<>(); //store的基本块
+        public ArrayList<BasicBlock> usingBlocks = new ArrayList<>(); //load的基本块
         public StoreInst onlyStore;
         public boolean onlyUsedInOne;
         public BasicBlock onlyBlock;
@@ -31,12 +39,12 @@ public abstract class Instructions {
             AllocatedType = type;
         }
 
-        public void resetAnalyzeInfo(){
+        public void resetAnalyzeInfo() {
             definingBlocks.clear();
             usingBlocks.clear();
-            onlyStore=null;
-            onlyUsedInOne=true;
-            onlyBlock=null;
+            onlyStore = null;
+            onlyUsedInOne = true;
+            onlyBlock = null;
         }
 
         @Override
@@ -64,6 +72,16 @@ public abstract class Instructions {
         public void setAllocatedType(Type allocatedType) {
             AllocatedType = allocatedType;
         }
+
+        @Override
+        public AllocaInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (AllocaInst) cloneMap.get(this);
+            }
+            AllocaInst ret = new AllocaInst(getAllocatedType());
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -87,6 +105,16 @@ public abstract class Instructions {
         public String toString() {
             return getName() + " = load " + getType() + ", " +
                     getOperand(0).getType() + " " + getOperand(0).getName();
+        }
+
+        @Override
+        public LoadInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (LoadInst) cloneMap.get(this);
+            }
+            LoadInst ret = new LoadInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -113,20 +141,15 @@ public abstract class Instructions {
             return "store " + getOperand(0).getType().toString() + " " + getOperand(0).getName() + ", " +
                     getOperand(1).getType().toString() + " " + getOperand(1).getName();
         }
-    }
 
-    //===----------------------------------------------------------------------===//
-    //                                FenceInst Class
-    //===----------------------------------------------------------------------===//
-
-    /// An instruction for ordering other memory operations.
-    public static class FenceInst extends Instruction {
-        public FenceInst(Type type, String name, int numOperands) {
-            super(type, Ops.Fence, name, numOperands);
-        }
-
-        public FenceInst(Type type, int numOperands) {
-            super(type, Ops.Fence, numOperands);
+        @Override
+        public StoreInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (StoreInst) cloneMap.get(this);
+            }
+            StoreInst ret = new StoreInst(getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -135,18 +158,19 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
 
     public static class GetElementPtrInst extends Instruction {
-        private Type SourceElementType;
-        private Type ResultElementType;
+        private Type SourceElementType;//来源指针指向的类型
+        private Type ResultElementType;//取址后得到的类型
+        private Constant Init, ConstantValue;
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
         }
 
         /**
-         * e.g. %elem_ptr = getelementptr [6 x i8], [6 x i8]* @a_gv, i32 0, i32 1
+         * e.g. %elem_ptr = getelementptr [6 x i32], [6 x i32]* @a_gv, i32 0, i32 1
          *
-         * @param PointeeType [6 x i8] 指向的类型
-         * @param Ptr         [6 x i8]* @a_gv
+         * @param PointeeType [6 x i32] 指向的类型
+         * @param Ptr         [6 x i32]* @a_gv
          * @param IdxList     {i32 0, i32 1}
          * @param numOperands 3
          */
@@ -172,6 +196,14 @@ public abstract class Instructions {
             for (var i = 1; i < getOperandList().size(); i++) {
                 sb.append(", ").append(getOperand(i).getType()).append(" ").append(getOperand(i).getName());
             }
+//            StringBuilder comment=new StringBuilder();
+//            for(Value v:getArrayIdx()){
+//                comment.append("[");
+//                if(v instanceof AllocaInst) comment.append(v.getVarName());
+//                else comment.append(v.getName());
+//                comment.append("]");
+//            }
+//            setComment(comment.toString());
             return sb.toString();
         }
 
@@ -179,7 +211,7 @@ public abstract class Instructions {
             if (IdxList.isEmpty()) {
                 return Type;
             }
-            for (Value V : IdxList.subList(1,IdxList.size())) {
+            for (Value V : IdxList.subList(1, IdxList.size())) {
                 if (!(V.getType().isIntegerTy())) {
                     Type = null;
                 }
@@ -223,17 +255,113 @@ public abstract class Instructions {
             ResultElementType = resultElementType;
         }
 
-        public boolean allIndicesZero(){
-            for(int i=1;i<getNumOperands();i++){
-                if(getOperand(i) instanceof Constants.ConstantInt){
-                    if(!((Constants.ConstantInt)getOperand(i)).isZero()){
+        public boolean allIndicesZero() {
+            for (int i = 1; i < getNumOperands(); i++) {
+                if (getOperand(i) instanceof Constants.ConstantInt) {
+                    if (!((Constants.ConstantInt) getOperand(i)).isZero()) {
                         return false;
                     }
-                }else{
+                } else {
                     return false;
                 }
             }
             return true;
+        }
+
+        /**
+         * 根据gep的IdxList，计算gep的值
+         * 返回值为null时，表示当前不可求出Constant
+         */
+        public Constant getConstantValue() {
+            if (ConstantValue != null) return ConstantValue;
+            Value source = getOperand(0);
+            Constants.ConstantArray CA = null;
+            if (getOperand(1) instanceof Constants.ConstantInt) {
+                Constants.ConstantInt CI = (Constants.ConstantInt) getOperand(1);
+                if (getNumOperands()==2) {//%this = gep %prev 5
+                    if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
+                        CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+                    } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
+                        CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                        if(CA==null){
+                            ((GetElementPtrInst) source).getConstantValue();
+                            CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                        }
+                    }
+//                    assert CA != null;
+                    if(CA== null){
+//                        System.out.println("error!");
+                        return null;
+                    }
+                    ConstantValue = CA.getElement(CI.getVal());
+                    return ConstantValue;
+                }
+            } else {
+                return null;
+            }
+            if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
+                CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+            } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
+                CA = (Constants.ConstantArray) ((GetElementPtrInst) source).getConstantValue();
+            }
+            Init = CA;
+            Constant tmp=CA;
+            if (CA == null) return null;
+            for (int i = 2; i < getNumOperands(); i++) {
+                Value V = getOperand(i);
+                if (V instanceof Constants.ConstantInt) {
+                    Constants.ConstantInt CI = (Constants.ConstantInt) V;
+                    int idx = CI.getVal();
+                    tmp = (Constant) ((Constants.ConstantArray) tmp).getElement(idx);
+                } else {
+                    return null;
+                }
+            }
+            ConstantValue = tmp;
+            return ConstantValue;
+        }
+
+        public ArrayList<Value> getArrayIdx(){
+            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
+                return AliasAnalysis.gepToArrayIdx.get(this);
+            }
+            ArrayList<Value> ret=new ArrayList<>();
+            int dim=0;
+            if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
+                ret.add(getOperand(0));
+            }else if(getOperand(0) instanceof LoadInst){//数组参数
+                LoadInst LI=(LoadInst)getOperand(0);
+                AllocaInst AI=(AllocaInst)LI.getOperand(0);
+                ret.add(AI);
+                dim=1;
+            }else{
+                GetElementPtrInst gep=(GetElementPtrInst)getOperand(0);
+                ret=new ArrayList<>(gep.getArrayIdx());
+                dim=((Constants.ConstantInt)ret.get(1)).getVal();
+            }
+            if(getNumOperands()==3){
+                dim++;
+            }
+            ret.add(Constants.ConstantInt.get(dim));
+            if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
+                ret.add(getOperand(1));
+            }
+            AliasAnalysis.gepToArrayIdx.put(this,ret);
+            return ret;
+        }
+
+        @Override
+        public GetElementPtrInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (GetElementPtrInst) cloneMap.get(this);
+            }
+            ArrayList<Value> Idx = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                Idx.add(getOperand(i).copy(cloneMap));
+            }
+            GetElementPtrInst ret = new GetElementPtrInst(getSourceElementType(), getOperand(0).copy(cloneMap), Idx, getNumOperands());
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -241,10 +369,6 @@ public abstract class Instructions {
     //                               ICmpInst Class
     //===----------------------------------------------------------------------===//
 
-    /// This instruction compares its operands according to the predicate given
-    /// to the constructor. It only operates on integers or pointers. The operands
-    /// must be identical types.
-    /// Represent an integer comparison operator.
     public static class ICmpInst extends CmpInst {
         public ICmpInst(String name, Predicate pred, Value LHS, Value RHS) {
             super(Type.getInt1Ty(), Ops.ICmp, name, pred, LHS, RHS);
@@ -271,15 +395,22 @@ public abstract class Instructions {
             sb.append(getOperand(1).getName());
             return sb.toString();
         }
+
+        @Override
+        public ICmpInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (ICmpInst) cloneMap.get(this);
+            }
+            ICmpInst ret = new ICmpInst(getPredicate(), getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               FCmpInst Class
     //===----------------------------------------------------------------------===//
-    /// This instruction compares its operands according to the predicate given
-    /// to the constructor. It only operates on floating point values or packed
-    /// vectors of floating point values. The operands must be identical types.
-    /// Represents a floating point comparison operator.
+
     public static class FCmpInst extends CmpInst {
         public FCmpInst(String name, Predicate pred, Value LHS, Value RHS) {
             super(Type.getInt1Ty(), Ops.FCmp, name, pred, LHS, RHS);
@@ -306,17 +437,22 @@ public abstract class Instructions {
             sb.append(getOperand(1).getName());
             return sb.toString();
         }
+
+        @Override
+        public FCmpInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (FCmpInst) cloneMap.get(this);
+            }
+            FCmpInst ret = new FCmpInst(getPredicate(), getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               CallInst Class
     //===----------------------------------------------------------------------===//
-    //===----------------------------------------------------------------------===//
-    /// This class represents a function call, abstracting a target
-    /// machine's calling convention.  This class uses low bit of the SubClassData
-    /// field to indicate whether or not this is a tail call.  The rest of the bits
-    /// hold the calling convention of the call.
-    ///
+
     public static class CallInst extends Instruction {
         private FunctionType FTy;
         private ArrayList<Value> Attrs;
@@ -338,11 +474,17 @@ public abstract class Instructions {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
+            String funcName = getOperand(0).getName();
+//            if (funcName.equals("_sysy_stoptime")) {
+//                funcName = "stoptime";
+//            } else if (funcName.equals("_sysy_starttime")) {
+//                funcName = "starttime";
+//            }
             if (((FunctionType) getOperand(0).getType()).getReturnType().isVoidTy()) {
-                sb.append("call ").append(this.getType()).append(" @").append(getOperand(0).getName());
+                sb.append("call ").append(this.getType()).append(" @").append(funcName);
             } else {
                 sb.append(this.getName()).append(" = call ").append(this.getType()).append(" @")
-                        .append(getOperand(0).getName());
+                        .append(funcName);
             }
 
             sb.append("(");
@@ -363,40 +505,51 @@ public abstract class Instructions {
             return new CallInst(Func.getType(), Func, Args);
         }
 
-        public Function getCalledFunction(){
-            return (Function)getOperand(0);
+        public Function getCalledFunction() {
+            return (Function) getOperand(0);
         }
 
-        public ArrayList<Value> getArgs(){
-            return new ArrayList<>(getOperandList().subList(1,getNumOperands()-1));
-        }
-    }
-
-    //===----------------------------------------------------------------------===//
-    //                              CallBrInst Class
-    //===----------------------------------------------------------------------===//
-    /// CallBr instruction, tracking function calls that may not return control but
-    /// instead transfer it to a third location. The SubclassData field is used to
-    /// hold the calling convention of the call.
-    ///
-    public static class CallBrInst extends Instruction {
-        public CallBrInst(Type type, String name, int numOperands) {
-            super(type, Ops.CallBr, name, numOperands);
+        public ArrayList<Value> getArgs() {
+            return new ArrayList<>(getOperandList().subList(1, getNumOperands()));
         }
 
-        public CallBrInst(Type type, int numOperands) {
-            super(type, Ops.CallBr, numOperands);
+        @Override
+        public CallInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (CallInst) cloneMap.get(this);
+            }
+            ArrayList<Value> args = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                args.add(getOperand(i).copy(cloneMap));
+            }
+            CallInst ret = new CallInst(FTy, getOperand(0).copy(cloneMap), args);
+            cloneMap.put(this, ret);
+            return ret;
+        }
+
+        public boolean withoutGEP() {
+            Function F = (Function) this.getOperand(0);
+            if (F.hasSideEffect()||F.useGlobalVars()) {
+                return false;
+            }
+            for (Value val : this.getOperandList()) {
+                if (val instanceof GetElementPtrInst ||
+                        (val instanceof LoadInst && !val.getType().isInt32Ty() && !val.getType().isFloatTy())) {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 
     //===----------------------------------------------------------------------===//
     //                                 ZExtInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents zero extension of integer types.
+
     public static class ZExtInst extends CastInst {
         /**
          * @param type 指令类型
-         * @param V 目标类型
+         * @param V    目标类型
          */
         public ZExtInst(Type type, Value V) {
             super(type, Ops.ZExt, V);
@@ -407,16 +560,26 @@ public abstract class Instructions {
             return getName() + " = zext " + getOperand(0).getType() + " "
                     + getOperand(0).getName() + " to " + getType();
         }
+
+        @Override
+        public ZExtInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (ZExtInst) cloneMap.get(this);
+            }
+            ZExtInst ret = new ZExtInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                                 SIToFPInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents a cast from signed integer to floating point.
+
     public static class SIToFPInst extends CastInst {
         /**
          * @param type 指令类型
-         * @param V 目标类型
+         * @param V    目标类型
          */
         public SIToFPInst(Type type, Value V) {
             super(type, Ops.SIToFP, V);
@@ -427,16 +590,26 @@ public abstract class Instructions {
             return getName() + " = sitofp " + getOperand(0).getType() + " "
                     + getOperand(0).getName() + " to " + getType();
         }
+
+        @Override
+        public SIToFPInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (SIToFPInst) cloneMap.get(this);
+            }
+            SIToFPInst ret = new SIToFPInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                                 FPToSIInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents a cast from floating point to signed integer.
+
     public static class FPToSIInst extends CastInst {
         /**
          * @param type 指令类型
-         * @param V 目标类型
+         * @param V    目标类型
          */
         public FPToSIInst(Type type, Value V) {
             super(type, Ops.FPToSI, V);
@@ -447,6 +620,16 @@ public abstract class Instructions {
             return getName() + " = fptosi " + getOperand(0).getType() + " "
                     + getOperand(0).getName() + " to " + getType();
         }
+
+        @Override
+        public FPToSIInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (FPToSIInst) cloneMap.get(this);
+            }
+            FPToSIInst ret = new FPToSIInst(getType(), getOperand(0).copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -456,71 +639,241 @@ public abstract class Instructions {
     // Value存在OperandList中，BasicBlock存在blocks对应位置
     //
     public static class PHIInst extends Instruction {
-        private final ArrayList<BasicBlock> blocks=new ArrayList<>();
-        private int ReservedSpace;
+        private final ArrayList<BasicBlock> blocks = new ArrayList<>();
 
-        public PHIInst(Type ty,int block_number) {
+        public PHIInst(Type ty, int block_number) {
             super(ty, Ops.PHI, 0);
-            ReservedSpace=block_number;
         }
 
-        public PHIInst(Type ty,int block_number,String Name, Instruction InsertBefore) {
-            super(ty, Ops.PHI, 0,InsertBefore);
-            ReservedSpace=block_number;
+        public PHIInst(Type ty, int block_number, String Name, Instruction InsertBefore) {
+            super(ty, Ops.PHI, 0, InsertBefore);
             setName(Name);
         }
 
-        public PHIInst(Type ty,int block_number,String Name, BasicBlock InsertAtEnd) {
-            super(ty, Ops.PHI, 0,InsertAtEnd);
-            ReservedSpace=block_number;
+        public PHIInst(Type ty, int block_number, String Name, BasicBlock InsertAtEnd) {
+            super(ty, Ops.PHI, 0, InsertAtEnd);
             setName(Name);
         }
 
         @Override
         public String toString() {
-            StringBuilder sb=new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             sb.append(getName()).append(" = phi ").append(getType()).append(" ");
-            for(int i=0;i<getNumOperands();i++){
+            for (int i = 0; i < getNumOperands(); i++) {
                 sb.append("[ ").append(getOperand(i).getName()).append(", %").append(getBlocks().get(i).getName()).append(" ] ");
-                if(i!=getNumOperands()-1){
+                if (i != getNumOperands() - 1) {
                     sb.append(", ");
                 }
             }
             return sb.toString();
         }
 
-        public static PHIInst create(Type ty,int block_num) {
-            return new PHIInst(ty,block_num);
+        public void remove(){
+            for(BasicBlock BB:blocks){
+//                getParent().removePredecessor(BB);
+                BB.getPHIs().remove(this);
+            }
+            getInstNode().remove();
+            dropUsesAsValue();
+            dropUsesAsUser();
         }
 
-        public static PHIInst create(Type ty,int block_num,String Name, BasicBlock InsertAtEnd) {
-            return new PHIInst(ty,block_num,Name,InsertAtEnd);
+        public static PHIInst create(Type ty, int block_num) {
+            return new PHIInst(ty, block_num);
         }
 
-        public static PHIInst create(Type ty,int block_num,String Name, Instruction InsertBefore) {
-            return new PHIInst(ty,block_num,Name,InsertBefore);
+        public static PHIInst create(Type ty, int block_num, String Name, BasicBlock InsertAtEnd) {
+            return new PHIInst(ty, block_num, Name, InsertAtEnd);
         }
 
-        public ArrayList<BasicBlock> getBlocks(){
+        public static PHIInst create(Type ty, int block_num, String Name, Instruction InsertBefore) {
+            return new PHIInst(ty, block_num, Name, InsertBefore);
+        }
+
+        public ArrayList<BasicBlock> getBlocks() {
             return blocks;
         }
 
-        public void addIncomingValue(Value V){
+        public void addIncomingValue(Value V) {
             addOperand(V);
         }
 
-        public void addIncomingBlock(BasicBlock BB){
+        public void addIncomingBlock(BasicBlock BB) {
             blocks.add(BB);
         }
 
-        public void addIncoming(Value V,BasicBlock BB){
+        public void addIncoming(Value V, BasicBlock BB) {
             addIncomingValue(V);
             addIncomingBlock(BB);
+            BB.getPHIs().add(this);
         }
 
-        public BasicBlock getIncomingBlock(int i){
-            if(i>getNumOperands()) return null;
+        public void setIncomingBlock(int i, BasicBlock BB) {
+            if (i > getNumOperands() || i < 0) return;
+            blocks.set(i, BB);
+            BB.getPHIs().add(this);
+        }
+
+        public void replaceIncomingBlock(BasicBlock OLD, BasicBlock BB) {
+            if(blocks.contains(BB)){
+                removeIncomingValue(BB,true);
+            }
+            int i = blocks.indexOf(OLD);
+            if (i > getNumOperands() || i < 0) return;
+            blocks.set(i, BB);
+            BB.getPHIs().add(this);
+        }
+
+        public BasicBlock getIncomingBlock(int i) {
+            if (i > getNumOperands()) return null;
             return blocks.get(i);
+        }
+
+        public BasicBlock getIncomingBlock(Use U) {
+            if (this != U.getU()) return null;
+            return blocks.get(getOperandList().indexOf(U.getVal()));
+        }
+
+        public Value getIncomingValue(int i) {
+            if (i > getNumOperands()) return null;
+            return getOperand(i);
+        }
+
+        public ArrayList<Value> getIncomingValues() {
+            return getOperandList();
+        }
+
+        public Value getIncomingValueByBlock(BasicBlock BB) {
+            int i = blocks.indexOf(BB);
+            if (i > getNumOperands() || i < 0) return null;
+            return getOperand(i);
+        }
+
+        /**
+         * 设置来自BB的Value为V，若不存在BB，则添加
+         */
+        public void setOrAddIncomingValueByBlock(Value V, BasicBlock BB) {
+            int i = blocks.indexOf(BB);
+            if (i < 0) {
+                addIncoming(V, BB);
+            } else {
+                setOperand(i, V);
+            }
+        }
+
+        /**
+         * 删除来自某基本块的Value，注意会自动删除基本块的PHIs中对应的phi指令
+         *
+         * @param BB         来源基本块
+         * @param removeThis 在phi指令没有Value后，是否将其删除
+         */
+        public void removeIncomingValue(BasicBlock BB, boolean removeThis) {
+            removeOperand(blocks.indexOf(BB));
+            blocks.remove(BB);
+            BB.getPHIs().remove(this);
+            if (removeThis && getNumOperands() == 0) {
+                replaceAllUsesWith(Constants.UndefValue.get(getType()));
+                remove();
+            }
+        }
+
+        /**
+         * 若phi都返回同一个Value，则返回这个Value，否则返回null
+         * 注意：可能返回phi本身 %1 = phi [%1, %br1] [%2, %br2]
+         */
+        public Value hasConstantValue(boolean ignoreUndef) {
+            Value ConstantValue = getIncomingValue(0);
+            for (int i = 1, e = getNumOperands(); i != e; ++i)
+                if (getIncomingValue(i) != ConstantValue && getIncomingValue(i) != this) {
+                    if(ignoreUndef&&Constants.UndefValue.isUndefValue(ConstantValue)){
+                        //测例语义保证了不会出现undef，此处可以激进地忽略(中端测试可能无法通过)
+                        ConstantValue=getIncomingValue(i);
+                        continue;
+                    }
+                    if (ConstantValue != this)
+                        return null;
+                    ConstantValue = getIncomingValue(i);
+                }
+            if (ConstantValue == this)
+                return Constants.UndefValue.get(getType());
+            return ConstantValue;
+        }
+
+        /**
+         * 重置PHI指令Value的来源
+         *
+         * @param BB    来源基本块（待合并）
+         * @param Preds 来源基本块的前驱
+         */
+        public void redirectValuesFromPredecessors(BasicBlock BB, ArrayList<BasicBlock> Preds) {
+            Value oldVal = getIncomingValueByBlock(BB);
+            removeIncomingValue(BB, false);
+            HashMap<BasicBlock, Value> incomingValues = new HashMap<>();
+            for (int i = 0; i < getNumOperands(); i++) {
+                //加入不是undef的value
+                if (!Constants.UndefValue.isUndefValue(getIncomingValue(i))) {
+                    incomingValues.put(getIncomingBlock(i), getIncomingValue(i));
+                }
+            }
+            if (oldVal instanceof PHIInst && ((PHIInst) oldVal).getParent() == BB) {
+                PHIInst oldValPI = (PHIInst) (oldVal);
+                for (int i = 0; i < oldValPI.getNumOperands(); i++) {
+                    //当前phi指令和oldValPI指令可能有相同的前驱，若来自oldValPI
+                    //指令所在基本块的Value是undef，则考虑二者是否有共同前驱，有则
+                    //用来自共同前驱的值替换；若不是undef，则没有共同前驱，或共同前驱
+                    //的Value与OldValuePI的相同
+                    BasicBlock PredBB = oldValPI.getIncomingBlock(i);
+                    Value Selected = oldValPI.getIncomingValue(i);
+                    if (Constants.UndefValue.isUndefValue(Selected)) {
+                        //没有共同前驱
+                        if (!incomingValues.containsKey(PredBB)) {
+                            addIncoming(Selected, PredBB);
+                        }
+                    } else {
+                        incomingValues.put(PredBB, Selected);
+                        setOrAddIncomingValueByBlock(Selected, PredBB);
+                    }
+                }
+            } else {
+                for (BasicBlock PredBB : Preds) {
+                    if (Constants.UndefValue.isUndefValue(oldVal)) {
+                        //没有共同前驱
+                        if (!incomingValues.containsKey(PredBB)) {
+                            addIncoming(oldVal, PredBB);
+                        }
+                    } else {
+                        incomingValues.put(PredBB, oldVal);
+                        setOrAddIncomingValueByBlock(oldVal, PredBB);
+                    }
+                }
+            }
+        }
+
+        public boolean isSameWith(Instruction I){
+            if(this==I) return true;
+            if(!(I.getOp().equals(Ops.PHI))||getNumOperands()!=I.getNumOperands()||I.getType()!=getType()){
+                return false;
+            }
+            for(int i=0;i<getNumOperands();i++){
+                if(getOperand(i)!=I.getOperand(i)||getIncomingBlock(i)!=((PHIInst)I).getIncomingBlock(i)){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * phi的复制比较复杂，可能造成循环，因此此处不进行incomingValues的copy
+         */
+        @Override
+        public PHIInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (PHIInst) cloneMap.get(this);
+            }
+            PHIInst ret = new PHIInst(getType(), getNumOperands());
+            ret.setName(getName() + "_" + cloneMap.hashCode());
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -528,9 +881,7 @@ public abstract class Instructions {
     //                               ReturnInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
-    /// Return a value (possibly void), from a function.  Execution
-    /// does not continue in this function any longer.
-    ///
+
     public static class ReturnInst extends Instruction {
         public ReturnInst(String name, Value retVal) {
             super(Type.getVoidTy(), Ops.Ret, name, retVal == null ? 0 : 1);
@@ -558,28 +909,39 @@ public abstract class Instructions {
             return new ReturnInst();
         }
 
-        public ArrayList<BasicBlock> getSuccessors(){
+        public ArrayList<BasicBlock> getSuccessors() {
             return new ArrayList<>();
         }
 
-        public int getSuccessorsNum(){
+        public int getSuccessorsNum() {
             return 0;
         }
 
-        public BasicBlock getSuccessor(int idx){
+        public BasicBlock getSuccessor(int idx) {
             return null;
         }
 
-        public void setSuccessor(int idx,BasicBlock BB){
+        public void setSuccessor(int idx, BasicBlock BB) {
             System.out.println("return指令没有后继基本块！");
         }
 
         @Override
         public String toString() {
-            if(getOperandList().size()==0){
+            if (getOperandList().size() == 0) {
                 return "ret void";
             }
             return "ret " + getOperand(0).getType() + " " + getOperand(0).getName();
+        }
+
+        @Override
+        public ReturnInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (ReturnInst) cloneMap.get(this);
+            }
+            Value retVal = getNumOperands() == 1 ? getOperand(0).copy(cloneMap) : null;
+            ReturnInst ret = new ReturnInst(retVal);
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 
@@ -587,8 +949,7 @@ public abstract class Instructions {
     //                               BranchInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
-    /// Conditional or Unconditional Branch instruction.
-    ///
+
     public static class BranchInst extends Instruction {
         /// Ops list - Branches are strange.  The operands are ordered:
         ///  [Cond, FalseDest,] TrueDest.
@@ -601,6 +962,11 @@ public abstract class Instructions {
             addOperand(IfTrue);
         }
 
+        public BranchInst(BasicBlock IfTrue, BasicBlock InsertAtEnd) {
+            super(Type.getVoidTy(), Ops.Br, 1, InsertAtEnd);
+            addOperand(IfTrue);
+        }
+
         public BranchInst(BasicBlock IfTrue, BasicBlock IfFalse, Value Cond) {
             super(Type.getVoidTy(), Ops.Br, 3);
             addOperand(Cond);
@@ -608,108 +974,131 @@ public abstract class Instructions {
             addOperand(IfTrue);
         }
 
-        public void setCond(Value Cond){
-            setOperand(0,Cond);
+        public void setCond(Value Cond) {
+            setOperand(0, Cond);
         }
 
-        public void setIfFalse(BasicBlock IfFalse){
-            setOperand(1,IfFalse);
+        public void setIfFalse(BasicBlock IfFalse) {
+            setOperand(1, IfFalse);
         }
 
-        public void setIfTrue(BasicBlock IfTrue){
-            setOperand(2,IfTrue);
+        public void setIfTrue(BasicBlock IfTrue) {
+            setOperand(2, IfTrue);
         }
 
-        public void setBr(BasicBlock BB){
-            setOperand(0,BB);
+        public void setBr(BasicBlock BB) {
+            setOperand(0, BB);
         }
 
-        public BasicBlock getTrueBlock(){
-            if(getNumOperands()==3){
+        public BasicBlock getTrueBlock() {
+            if (getNumOperands() == 3) {
                 return (BasicBlock) getOperand(2);
-            }else{
+            } else {
                 return (BasicBlock) getOperand(0);
             }
         }
 
         public BasicBlock getFalseBlock() {
-            if(getNumOperands()==3){
+            if (getNumOperands() == 3) {
                 return (BasicBlock) getOperand(1);
-            }else{
+            } else {
                 return (BasicBlock) getOperand(0);
             }
         }
 
-        public Value getCond(){
-            if(getNumOperands()==3){
+        public Value getCond() {
+            if (getNumOperands() == 3) {
                 return getOperand(0);
-            }else{
+            } else {
                 return Constants.ConstantInt.const1_1();
             }
         }
 
-        public ArrayList<BasicBlock> getSuccessors(){
-            ArrayList<BasicBlock> ret=new ArrayList<>();
-            if(getNumOperands()==3){
+        public ArrayList<BasicBlock> getSuccessors() {
+            ArrayList<BasicBlock> ret = new ArrayList<>();
+            if (getNumOperands() == 3) {
                 ret.add(getTrueBlock());
                 ret.add(getFalseBlock());
-            }else{
+            } else {
                 ret.add(getTrueBlock());
             }
             return ret;
         }
 
-        public int getSuccessorsNum(){
-            if(getNumOperands()==3){
+        public int getSuccessorsNum() {
+            if (getNumOperands() == 3) {
                 return 2;
-            }else{
+            } else {
                 return 1;
             }
         }
 
-        public BasicBlock getSuccessor(int idx){
-            if(getNumOperands()==3){
-                if(idx==0) return getTrueBlock();
-                else if(idx==1) return getFalseBlock();
+        public BasicBlock getSuccessor(int idx) {
+            if (getNumOperands() == 3) {
+                if (idx == 0) return getTrueBlock();
+                else if (idx == 1) return getFalseBlock();
                 else return null;
-            }else{
-                if(idx==0) return getTrueBlock();
+            } else {
+                if (idx == 0) return getTrueBlock();
                 else return null;
             }
         }
 
-        public void setSuccessor(int idx,BasicBlock BB){
-            assert idx<getSuccessorsNum();
-            if(getNumOperands()==3){
+        public void setSuccessor(int idx, BasicBlock BB) {
+            assert idx < getSuccessorsNum();
+            if (getNumOperands() == 3) {
                 idx++;
             }
-            setOperand(idx,BB);
+            setOperand(idx, BB);
+        }
+
+        public boolean isConditional() {
+            return getNumOperands() == 3;
         }
 
         @Override
         public String toString() {
-            if(getOperandList().size()==1){
-                return "br "+getOperand(0).getType()+" %"+getOperand(0).getName();
+            if (getOperandList().size() == 1) {
+                return "br " + getOperand(0).getType() + " %" + getOperand(0).getName();
             }
-            return "br "+getOperand(0).getType()+" "+getOperand(0).getName()+", "
-                    +getOperand(2).getType()+" %"+getOperand(2).getName()+", "
-                    +getOperand(1).getType()+" %"+getOperand(1).getName();
+            return "br " + getOperand(0).getType() + " " + getOperand(0).getName() + ", "
+                    + getOperand(2).getType() + " %" + getOperand(2).getName() + ", "
+                    + getOperand(1).getType() + " %" + getOperand(1).getName();
         }
 
         public static BranchInst create(BasicBlock IfTrue) {
             return new BranchInst(IfTrue);
         }
 
+        public static BranchInst create(BasicBlock IfTrue, BasicBlock InsertAtEnd) {
+            return new BranchInst(IfTrue, InsertAtEnd);
+        }
+
         public static BranchInst create(BasicBlock IfTrue, BasicBlock IfFalse, Value Cond) {
             return new BranchInst(IfTrue, IfFalse, Cond);
+        }
+
+        @Override
+        public BranchInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (BranchInst) cloneMap.get(this);
+            }
+            BranchInst ret = null;
+            if (getNumOperands() == 1) {
+                ret = new BranchInst((BasicBlock) getOperand(0).copy(cloneMap));
+                cloneMap.put(this, ret);
+            } else {
+                ret = new BranchInst(getTrueBlock().copy(cloneMap), getFalseBlock().copy(cloneMap), getCond().copy(cloneMap));
+                cloneMap.put(this, ret);
+            }
+            return ret;
         }
     }
 
     //===----------------------------------------------------------------------===//
     //                               SelectInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents the LLVM 'select' instruction.
-    ///
+
     public static class SelectInst extends Instruction {
         public SelectInst(Value C, Value S1, Value S2) {
             super(S1.getType(), Ops.Select, 3);
@@ -720,9 +1109,9 @@ public abstract class Instructions {
 
         @Override
         public String toString() {
-            return getName() + " = select "+getOperand(0).getType()+" "+getOperand(0).getName()+", "
-                    +getOperand(1).getType()+" "+getOperand(1).getName()+", "
-                    +getOperand(2).getType()+" "+getOperand(2).getName();
+            return getName() + " = select " + getOperand(0).getType() + " " + getOperand(0).getName() + ", "
+                    + getOperand(1).getType() + " " + getOperand(1).getName() + ", "
+                    + getOperand(2).getType() + " " + getOperand(2).getName();
         }
 
         public static SelectInst create(Value C, Value S1, Value S2) {
@@ -752,10 +1141,24 @@ public abstract class Instructions {
         public void setFalseValue(Value C) {
             setOperand(2, C);
         }
+
+        @Override
+        public SelectInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (SelectInst) cloneMap.get(this);
+            }
+            SelectInst ret = new SelectInst(getCondition().copy(cloneMap), getTrueValue().copy(cloneMap), getFalseValue().copy(cloneMap));
+            cloneMap.put(this, ret);
+            return ret;
+        }
     }
 
+    /**
+     * 考虑在float的memset使用，现已废弃
+     */
     public static class BitCastInst extends Instruction {
         private Type targetType;
+
         public BitCastInst(Value C, Type targetType) {
             super(targetType, Ops.BitCast, 1);
             this.targetType = targetType;
@@ -764,7 +1167,7 @@ public abstract class Instructions {
 
         @Override
         public String toString() {
-            return getName() + " = bitcast "+getOperand(0).getType()+" "+getOperand(0).getName()+" to "+ targetType;
+            return getName() + " = bitcast " + getOperand(0).getType() + " " + getOperand(0).getName() + " to " + targetType;
         }
 
         public static BitCastInst create(Value C, Type target) {
@@ -777,6 +1180,16 @@ public abstract class Instructions {
 
         public void setTargetType(Type targetType) {
             this.targetType = targetType;
+        }
+
+        @Override
+        public BitCastInst copy(CloneMap cloneMap) {
+            if (cloneMap.get(this) != null) {
+                return (BitCastInst) cloneMap.get(this);
+            }
+            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap), targetType);
+            cloneMap.put(this, ret);
+            return ret;
         }
     }
 }
