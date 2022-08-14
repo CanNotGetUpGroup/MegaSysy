@@ -218,4 +218,60 @@ public class Loop {
         }
         return true;
     }
+
+    public Instructions.PHIInst getIndVar() {
+        return indVar;
+    }
+
+    public void setIndVar(Instructions.PHIInst indVar) {
+        this.indVar = indVar;
+    }
+
+    public Value getIndVarInit() {
+        return indVarInit;
+    }
+
+    public void setIndVarInit(Value indVarInit) {
+        this.indVarInit = indVarInit;
+    }
+
+    public Value getIndVarEnd() {
+        return indVarEnd;
+    }
+
+    public void setIndVarEnd(Value indVarEnd) {
+        this.indVarEnd = indVarEnd;
+    }
+
+    public Instruction getStepInst() {
+        return stepInst;
+    }
+
+    public void setStepInst(Instruction stepInst) {
+        this.stepInst = stepInst;
+    }
+
+    public Instruction getIndVarCondInst() {
+        return indVarCondInst;
+    }
+
+    public void setIndVarCondInst(Instruction indVarCondInst) {
+        this.indVarCondInst = indVarCondInst;
+    }
+
+    public Value getStep() {
+        return step;
+    }
+
+    public void setStep(Value step) {
+        this.step = step;
+    }
+
+    public Integer getTripCount() {
+        return tripCount;
+    }
+
+    public void setTripCount(Integer tripCount) {
+        this.tripCount = tripCount;
+    }
 }
