@@ -15,6 +15,7 @@ public class BasicBlock extends Value {
     private IListNode<BasicBlock, Function> bbNode;
     private IList<Instruction, BasicBlock> instList;
     private boolean isEntryBlock = false;
+    public boolean isCond;
 
     /**
      * 生成基本块对象

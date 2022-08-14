@@ -175,7 +175,7 @@ public class LoopInfo {
         computeExitBlocks();
         computeLoopPreheader();
         computeLatchBlocks();
-
+        computeIndVarInfo();
     }
 
     /**
@@ -369,9 +369,14 @@ public class LoopInfo {
      */
     private void computeLatchBlocks() {
         for (Loop loop : allLoops) {
-            BasicBlock latchBlock = getLoopLatchBlock(loop);
-            if (latchBlock != null) {
-                loop.getLatchBlocks().add(latchBlock);
+//            BasicBlock latchBlock = getLoopLatchBlock(loop);
+//            if (latchBlock != null) {
+//                loop.getLatchBlocks().add(latchBlock);
+//            }
+            for(BasicBlock Pred:loop.getLoopHeader().getPredecessors()){
+                if(loop.getBbList().contains(Pred)){
+                    loop.getLatchBlocks().add(Pred);
+                }
             }
         }
     }
@@ -379,6 +384,8 @@ public class LoopInfo {
     private void computeIndVarInfo(){
         for(Loop L:allLoops){
             var latchCmp=L.getLatchCmpInst();
+//            System.out.println(L.getSingleLatchBlock());
+//            System.out.println(latchCmp);
             if(!L.isSimpleForLoop()||latchCmp==null){
                 return;
             }
@@ -386,6 +393,10 @@ public class LoopInfo {
             var rhs=latchCmp.getOperand(1);
 
         }
+    }
+
+    public void getIndVariable(){
+
     }
 
     /**
