@@ -12,6 +12,7 @@ import util.Folder;
 import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 public abstract class Instructions {
     //===----------------------------------------------------------------------===//
@@ -82,6 +83,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new AllocaInst(getAllocatedType());
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -115,6 +121,11 @@ public abstract class Instructions {
             LoadInst ret = new LoadInst(getType(), getOperand(0).copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new LoadInst(getType(),getOperand(0));
         }
     }
 
@@ -150,6 +161,11 @@ public abstract class Instructions {
             StoreInst ret = new StoreInst(getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new StoreInst(getOperand(0),getOperand(1));
         }
     }
 
@@ -363,6 +379,15 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            ArrayList<Value> Idx = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                Idx.add(getOperand(i));
+            }
+            return new GetElementPtrInst(getSourceElementType(),getOperand(0),Idx,getNumOperands());
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -540,6 +565,15 @@ public abstract class Instructions {
             }
             return true;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            ArrayList<Value> args = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                args.add(getOperand(i));
+            }
+            return new CallInst(FTy, getOperand(0), args);
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -569,6 +603,11 @@ public abstract class Instructions {
             ZExtInst ret = new ZExtInst(getType(), getOperand(0).copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new ZExtInst(getType(), getOperand(0));
         }
     }
 
@@ -600,6 +639,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new SIToFPInst(getType(), getOperand(0));
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -629,6 +673,11 @@ public abstract class Instructions {
             FPToSIInst ret = new FPToSIInst(getType(), getOperand(0).copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new FPToSIInst(getType(), getOperand(0));
         }
     }
 
@@ -876,6 +925,15 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            PHIInst ret = new PHIInst(getType(), getNumOperands());
+            for(int i=0;i<getNumOperands();i++){
+                ret.addIncoming(getOperand(i),getIncomingBlock(i));
+            }
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -943,6 +1001,12 @@ public abstract class Instructions {
             ReturnInst ret = new ReturnInst(retVal);
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public ReturnInst shallowCopy() {
+            Value retVal = getNumOperands() == 1 ? getOperand(0) : null;
+            return new ReturnInst(retVal);
         }
     }
 
@@ -1094,6 +1158,17 @@ public abstract class Instructions {
             }
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            BranchInst ret;
+            if (getNumOperands() == 1) {
+                ret = new BranchInst((BasicBlock) getOperand(0));
+            } else {
+                ret = new BranchInst(getTrueBlock(), getFalseBlock(), getCond());
+            }
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -1152,6 +1227,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new SelectInst(getCondition(), getTrueValue(), getFalseValue());
+        }
     }
 
     /**
@@ -1191,6 +1271,11 @@ public abstract class Instructions {
             BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap), targetType);
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public BitCastInst shallowCopy() {
+            return new BitCastInst(getOperand(0), targetType);
         }
     }
 }

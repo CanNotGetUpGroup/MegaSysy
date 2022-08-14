@@ -196,6 +196,19 @@ public class BasicBlock extends Value {
         return B;
     }
 
+    public void replacePredecessorWith(BasicBlock OldBB,BasicBlock newBB){
+        for(int i=0;i<getPredecessorsNum();i++){
+            if(getPredecessor(i)==OldBB){
+                OldBB.replaceSuccessorWith(this,newBB);
+                newBB.setSuccessor(0,this);
+            }
+        }
+    }
+
+    public void replaceSuccessorWith(BasicBlock OldBB,BasicBlock newBB){
+        getTerminator().replaceSuccessorWith(OldBB,newBB);
+    }
+
     /**
      * 后继
      */

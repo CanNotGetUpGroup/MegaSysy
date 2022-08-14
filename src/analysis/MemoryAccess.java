@@ -54,6 +54,11 @@ public class MemoryAccess extends Instruction {
         return null;
     }
 
+    @Override
+    public Instruction shallowCopy() {
+        return null;
+    }
+
     public Value getPointer() {
         return pointer;
     }
