@@ -1,8 +1,18 @@
 package ir;
 
+import ir.instructions.Instructions;
+import util.CloneMap;
+
+import java.util.HashSet;
+import java.util.Set;
+
 public class GlobalVariable extends User {
     private Module parent;
     private boolean isConstantGlobal; // Is this a global constant?
+
+    public Type getElementType(){
+        return ((DerivedTypes.PointerType)getType()).getElementType();
+    }
 
     public Module getParent() {
         return parent;
@@ -86,4 +96,17 @@ public class GlobalVariable extends User {
         if(isConstantGlobal) return getName()+" = dso_local constant "+getOperand(0);
         return getName()+" = dso_local global "+getOperand(0);
     }
+
+    @Override
+    public Value copy(CloneMap cloneMap) {
+        return this;
+    }
+
+    public void remove(){
+        parent.getGlobalVariables().remove(this);
+        dropUsesAsValue();
+        dropUsesAsUser();
+    }
+
+
 }

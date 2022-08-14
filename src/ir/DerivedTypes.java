@@ -25,7 +25,7 @@ public abstract class DerivedTypes {
     /// Class to represent array types.
     ///
     /**
-     * e.g a[4][2]:NumElements=4,dim=2,eleSize=2
+     * e.g a[4][2]:NumElements=4,dim=2,eleSize=2,getKidType()=[2]
      */
     public static class ArrayType extends Type {
         private int NumElements;    //元素数量
@@ -79,6 +79,22 @@ public abstract class DerivedTypes {
             return getContainedTys().get(0);
         }
 
+        public boolean isIntArray(){
+            if(getKidType().isArrayTy()){
+                return ((ArrayType)getKidType()).isIntArray();
+            }else{
+                return getKidType().isInt32Ty();
+            }
+        }
+
+        public boolean isFloatArray(){
+            if(getKidType().isArrayTy()){
+                return ((ArrayType)getKidType()).isFloatArray();
+            }else{
+                return getKidType().isFloatTy();
+            }
+        }
+
         /**
          * 数组尺寸
          */
@@ -118,6 +134,19 @@ public abstract class DerivedTypes {
                 result = prime * result + hash(((ArrayType) ElementType).getKidType(), ((ArrayType) ElementType).getNumElements());
             }
             return result;
+        }
+
+        /**
+         * 返回一个维度表
+         */
+        public ArrayList<Integer> getDims() { 
+            ArrayList<Integer> ret = new ArrayList<>();
+            Type cur = this;
+            while(cur.isArrayTy()) { 
+                ret.add(((ArrayType)cur).getDim());
+                cur = ((ArrayType)cur).getKidType();
+            }
+            return ret;
         }
     }
 

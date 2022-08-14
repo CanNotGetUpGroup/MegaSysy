@@ -14,8 +14,6 @@ public class Type {
         FunctionTyID,      ///< Functions
         PointerTyID,       ///< Pointers
         ArrayTyID,         ///< Arrays
-        FixedVectorTyID,   ///< Fixed width SIMD vector type
-        ScalableVectorTyID ///< Scalable SIMD vector type
     }
 
     private TypeID ID=TypeID.LabelTyID;
@@ -38,6 +36,7 @@ public class Type {
     public Type(TypeID tid,int hashcode) {
         ID=tid;
         this.hashcode=hashcode;
+        MyContext.getInstance().Type2Hash.put(this,hashcode);
     }
 
     @Override
@@ -121,10 +120,6 @@ public class Type {
     public boolean isArrayTy() { return getID() == TypeID.ArrayTyID; }
     /// True if this is an instance of PointerType.
     public boolean isPointerTy() { return getID() == TypeID.PointerTyID; }
-    /// True if this is an instance of VectorType.
-    public boolean isVectorTy() {
-        return getID() == TypeID.ScalableVectorTyID || getID() == TypeID.FixedVectorTyID;
-    }
 
     public boolean isInt1Ty() {return equals(getInt1Ty());}
 
