@@ -652,6 +652,7 @@ public abstract class Instructions {
 
         public PHIInst(Type ty, int block_number, String Name, BasicBlock InsertAtEnd) {
             super(ty, Ops.PHI, 0, InsertAtEnd);
+            getInstNode().insertAfter(InsertAtEnd.getInstList().getHead());
             setName(Name);
         }
 
@@ -682,8 +683,8 @@ public abstract class Instructions {
             return new PHIInst(ty, block_num);
         }
 
-        public static PHIInst create(Type ty, int block_num, String Name, BasicBlock InsertAtEnd) {
-            return new PHIInst(ty, block_num, Name, InsertAtEnd);
+        public static PHIInst create(Type ty, int block_num, String Name, BasicBlock InsertAtHead) {
+            return new PHIInst(ty, block_num, Name, InsertAtHead);
         }
 
         public static PHIInst create(Type ty, int block_num, String Name, Instruction InsertBefore) {
