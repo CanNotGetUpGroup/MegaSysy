@@ -25,18 +25,18 @@ public class VirtualRegister extends Register {
         return name;
     }
 
-    private String name;
+    private final String name;
 
     public VirtualRegister() {
         super(VIRTUAL);
         this.id = counter();
-        name = "v" + id;
+        name = "v" + (isFloat() ? "f" : "i") + id;
     }
 
     public VirtualRegister(Content content) {
         super(VIRTUAL, content);
         this.id = counter();
-        name = "v" + id;
+        name = "v" + (isFloat() ? "f" : "i") + id;
     }
 
 

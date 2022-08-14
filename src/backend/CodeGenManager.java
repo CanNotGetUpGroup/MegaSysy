@@ -59,7 +59,6 @@ public class CodeGenManager {
     }
 
     private void halfRun2() {
-        System.out.println("aa");
         var allocator = new GraphColor(funcList);
         allocator.run();
 
@@ -143,12 +142,15 @@ public class CodeGenManager {
         Module module = Module.getInstance();
         module.rename();
 
-        if (true) {
+        if (false) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
             PassManager.initialization();
             PassManager.initializationMC();
+        } else {
+            PassManager.functionalOpt();
         }
+
         PassManager.run(module);
 
         pw1.println(module.toLL());
