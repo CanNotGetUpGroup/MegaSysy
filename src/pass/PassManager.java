@@ -1,7 +1,6 @@
 package pass;
 
 import backend.CodeGenManager;
-import ir.Function;
 import ir.Module;
 import pass.passes.*;
 
@@ -26,28 +25,30 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new Mem2Reg());//消除掉local int(or float)的alloca，确保DCE消除store的正确
         //只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
+        passes.add(new Mem2Reg());//消除掉local int(or float)的alloca，确保DCE消除store的正确
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new GlobalVariableOpt());
         passes.add(new GVNGCM(aggressive));// Mem2Reg处理掉了所有local alloca
-        passes.add(new LCSSA());
-//        passes.add(new LoopInfoUpdate()); // 计算循环信息
-//        passes.add(new LICM());// 循环不变量外提
-//
-//        passes.add(new FuncInline());
-//        passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
-//        passes.add(new Mem2Reg());// 处理掉新产生的alloca
-//        passes.add(new FuncInline());// 可能还有
-//        passes.add(new LoopInfoUpdate());
-//        passes.add(new LICM());// 循环不变量外提
-//        passes.add(new SimplifyCFG(eliminatePreHeader));
-//
-//        eliminatePreHeader=true;//完成了循环优化，删掉preHeader
-//        aggressive=true;//激进的GVN，消除掉数组参数的alloca
-//        passes.add(new GVNGCM(aggressive));
-//        passes.add(new DeadCodeEmit());
-//        passes.add(new SimplifyCFG(eliminatePreHeader));
-//        passes.add(new EliminateAlloca());//由于GVN需要使用alloca，因此最后再删除
+        passes.add(new LoopInfoUpdate()); // 计算循环信息
+        passes.add(new LICM());// 循环不变量外提
+
+        passes.add(new FuncInline());
+        passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
+        passes.add(new Mem2Reg());// 处理掉新产生的alloca
+        passes.add(new FuncInline());// 可能还有
+        passes.add(new LoopInfoUpdate());
+        passes.add(new LICM());// 循环不变量外提
+        passes.add(new SimplifyCFG(eliminatePreHeader));
+
+        eliminatePreHeader=true;//完成了循环优化，删掉preHeader
+        aggressive=true;//激进的GVN，消除掉数组参数的alloca
+        passes.add(new GVNGCM(true));
+        passes.add(new GVNGCM(aggressive));
+        passes.add(new DeadCodeEmit());
+        passes.add(new SimplifyCFG(eliminatePreHeader));
+        passes.add(new EliminateAlloca());//由于GVN需要使用alloca，因此最后再删除
+        passes.add(new Travel2Debug());
     }
 
     public static void functionalOpt(){
