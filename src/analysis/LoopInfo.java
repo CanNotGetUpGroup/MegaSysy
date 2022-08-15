@@ -4,15 +4,11 @@ import ir.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Stack;
-import java.util.prefs.BackingStoreException;
 
 import ir.instructions.BinaryInstruction;
-import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
-import org.antlr.v4.tool.GrammarParserInterpreter.BailButConsumeErrorStrategy;
 
 import analysis.DominatorTree.TreeNode;
 
@@ -26,6 +22,7 @@ public class LoopInfo {
     private HashMap<BasicBlock, Loop> bbLoopMap; // map between basic block and the most inner loop
     private ArrayList<Loop> topLevelLoops;
     private ArrayList<Loop> allLoops;
+    private DominatorTree domInfo;
 
     /**
      * 构造函数 new三个容器
@@ -124,7 +121,7 @@ public class LoopInfo {
      */
     public void computeLoopInfo(Function function) {
         clear();
-        DominatorTree domInfo = new DominatorTree(function);
+        domInfo = new DominatorTree(function);
         Stack<BasicBlock> backNode = new Stack<>();
         // ! 后序遍历domtree domInfo.PostOrder是Dominate tree的后序遍历
         for (TreeNode DomNode : domInfo.getDTPostOrder()) {
@@ -171,12 +168,32 @@ public class LoopInfo {
         InitTravelMap(travelMap, function.getEntryBB());
         PopulateLoopsDFS(travelMap, function.getEntryBB());
         computeAllLoops();
+        reOrderAllLoops();
+        computeAllLoops();
+
         for(Loop loop:allLoops) loop.clear();
         computeExitingBlocks();
         computeExitBlocks();
         computeLoopPreheader();
         computeLatchBlocks();
         computeIndVarInfo();
+    }
+
+    public void reOrderAllLoops(){
+        topLevelLoops.sort((o1,o2)->{
+            Integer dom1=domInfo.getNode(o1.getLoopHeader()).level,dom2=domInfo.getNode(o2.getLoopHeader()).level;
+            int header=dom1.compareTo(dom2);
+            return header!=0?header:1-o1.getLoopDepth().compareTo(o2.getLoopDepth());
+        });
+        for(Loop loop:allLoops){
+            if(loop.getSubLoops()!=null&&!loop.getSubLoops().isEmpty()){
+                loop.getSubLoops().sort((o1,o2)->{
+                    Integer dom1=domInfo.getNode(o1.getLoopHeader()).level,dom2=domInfo.getNode(o2.getLoopHeader()).level;
+                    int header=dom1.compareTo(dom2);
+                    return header!=0?header:1-o1.getLoopDepth().compareTo(o2.getLoopDepth());
+                });
+            }
+        }
     }
 
     /**
@@ -239,6 +256,7 @@ public class LoopInfo {
      * 维护loopInfo.allloop集合
      */
     private void computeAllLoops() {
+        allLoops.clear();
         Stack<Loop> loopStack = new Stack<>();
         allLoops.addAll(topLevelLoops);
         loopStack.addAll(topLevelLoops);
@@ -386,7 +404,7 @@ public class LoopInfo {
         for(Loop L:allLoops){
             var latchCmp=L.getLatchCmpInst();
             if(!L.isSimpleForLoop()||latchCmp==null){
-                return;
+                continue;
             }
 //            System.out.println(L.getSingleLatchBlock());
 //            System.out.println(latchCmp);

@@ -61,7 +61,7 @@ public class LoopUnroll extends FunctionPass {
         BasicBlock Header = L.getLoopHeader();
         BasicBlock LatchBB = L.getSingleLatchBlock();
         ArrayList<BasicBlock> ExitBBs = L.getExitBlocks();
-        ArrayList<BasicBlock> OriBBs = L.getBbList();
+        ArrayList<BasicBlock> OriBBs = new ArrayList<>(L.getBbList());
         ArrayList<BasicBlock> ExitingBBs = L.getExitingBlocks();
         BasicBlock ExitingBB = ExitingBBs.size() == 1 ? ExitingBBs.get(0) : null;
         BasicBlock ExitBB = null;
@@ -115,6 +115,7 @@ public class LoopUnroll extends FunctionPass {
         }
 
         int headerIdx = latchBr.getOperandList().indexOf(Header);
+        int exitLatchPredIndex = Header.getPredecessors().indexOf(LatchBB);
         latchBr.removeAllOperand();
         latchBr.getInstNode().remove();//只是从列表里删除
 
@@ -198,7 +199,6 @@ public class LoopUnroll extends FunctionPass {
             }
             storeExitIncoming.add(((PHIInst) I).getIncomingValueByBlock(LatchBB));
         }
-        int exitLatchPredIndex = Header.getPredecessors().indexOf(LatchBB);
         var preHeader = Header.getPredecessors().get(1 - exitLatchPredIndex);
 
         // 修改 preHeader 进入循环的判断条件
@@ -245,14 +245,14 @@ public class LoopUnroll extends FunctionPass {
             } else if (I == L.getIndVar()) {
                 continue;
             }
-            var copy = LoopUtils.copyInstruction(I);
+            var copy = I.shallowCopy();
             copy.getInstNode().insertIntoListEnd(exitIfBB.getInstList());
             LoopUtils.remapInst(copy, LastValMap);
             LastValMap.put(iterValMap.get(I), copy);
         }
-        var copyPhi = LoopUtils.copyInstruction(L.getIndVar());
+        var copyPhi = L.getIndVar().shallowCopy();
         copyPhi.getInstNode().insertIntoListEnd(exitIfBB.getInstList());
-        var copyIcmp = LoopUtils.copyInstruction(LatchCmpInst);
+        var copyIcmp = (LatchCmpInst).shallowCopy();
         LoopUtils.remapInst(copyPhi, LastValMap);
 
         HashMap<Value, Value> exitPhiToExitIfPhiMap = new HashMap<>();
@@ -260,14 +260,14 @@ public class LoopUnroll extends FunctionPass {
             if (!(I instanceof PHIInst)) {
                 break;
             }
-            var copyInst = LoopUtils.copyInstruction(I);
+            var copyInst = (I).shallowCopy();
             copyInst.getInstNode().insertIntoListEnd(exitIfBB.getInstList());
             var exitIncoming = ((PHIInst) I).getIncomingValueByBlock(LatchBB);
             copyInst.CoReplaceOperandByIndex(((PHIInst) I).getBlocks().indexOf(LatchBB), iterValMap.get(exitIncoming));
             exitPhiToExitIfPhiMap.put(I, copyInst);
         }
 
-        var copyIndVarCondInst = LoopUtils.copyInstruction(L.getIndVar());
+        var copyIndVarCondInst = (L.getIndVar()).shallowCopy();
         LoopUtils.remapInst(copyIndVarCondInst, LastValMap);
         copyIndVarCondInst.CoReplaceOperandByIndex
                 (L.getIndVar().getBlocks().indexOf(LatchBB),
