@@ -57,6 +57,7 @@ public class LoopUtils {
         for(Instruction I:BB.getInstList()){
             var copyInst=I.shallowCopy();
             valMap.put(I,copyInst);
+            copyInst.getInstNode().insertIntoListEnd(ret.getInstList());
         }
         return ret;
     }
