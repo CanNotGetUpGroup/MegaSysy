@@ -2,6 +2,7 @@ package util;
 
 import ir.*;
 import ir.instructions.BinaryInstruction;
+import ir.instructions.Instructions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -56,6 +57,9 @@ public class LoopUtils {
         MyIRBuilder.getInstance().setInsertPoint(ret);
         for(Instruction I:BB.getInstList()){
             var copyInst=I.shallowCopy();
+            if(copyInst instanceof Instructions.PHIInst){
+                ret.getPHIs().add((Instructions.PHIInst) copyInst);
+            }
             valMap.put(I,copyInst);
             copyInst.getInstNode().insertIntoListEnd(ret.getInstList());
         }
@@ -67,6 +71,9 @@ public class LoopUtils {
             Value op=I.getOperand(i);
             if(LastValMap.containsKey(op)&&!(op instanceof Function)){
                 I.CoReplaceOperandByIndex(i,LastValMap.get(op));
+            }
+            if(I instanceof Instructions.PHIInst&&LastValMap.get(((Instructions.PHIInst) I).getIncomingBlock(i))!=null){
+                ((Instructions.PHIInst) I).setIncomingBlock(i, (BasicBlock) LastValMap.get(((Instructions.PHIInst) I).getIncomingBlock(i)));
             }
         }
     }

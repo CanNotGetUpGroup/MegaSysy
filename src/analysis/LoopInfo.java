@@ -427,7 +427,9 @@ public class LoopInfo {
                 return;
             }
 
-            getStepInst(L);
+            if(!getStepInst(L)){
+                return;
+            }
             getTripCount(L,compareBias);
         }
     }
@@ -455,7 +457,7 @@ public class LoopInfo {
         loop.setIndVarEnd(latchCmp.getOperand(end));
     }
 
-    private void getStepInst(Loop L){
+    private boolean getStepInst(Loop L){
         var indVar = L.getIndVar();
         int indVarDepth = this.getLoopDepthForBB(indVar.getParent());
         for (var incomingVal : indVar.getIncomingValues()) {
@@ -474,13 +476,14 @@ public class LoopInfo {
 
         var stepInst = L.getStepInst();
         if (stepInst == null) {
-            return;
+            return false;
         }
         for (var op : stepInst.getOperandList()) {
             if (op != indVar) {
                 L.setStep(op);
             }
         }
+        return true;
     }
 
     private void getTripCount(Loop L,Value compareBias){
@@ -524,9 +527,7 @@ public class LoopInfo {
                     }
                 }
             }
-
             tripCount -= (bias - step);
-
             L.setTripCount(tripCount);
         }
     }
