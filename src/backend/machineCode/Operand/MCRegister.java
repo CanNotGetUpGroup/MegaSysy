@@ -97,7 +97,8 @@ public class MCRegister extends Register {
             }
         }
         if (!(obj instanceof Register))
-            throw new RuntimeException("can't compare");
+//            throw new RuntimeException("can't compare");
+            return false;
         if (!(obj instanceof MCRegister))
             return false;
         return getType() == ((MCRegister) obj).getType() && getId() == ((MCRegister) obj).getId();
