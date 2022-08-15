@@ -51,6 +51,9 @@ public class LCSSA extends FunctionPass {
         if (usedOutLoopList.isEmpty()) {
             return;
         }
+//        else{
+//            System.out.println("[debug] LCSSA......");
+//        }
 
         ArrayList<BasicBlock> exitBlocks = loop.getExitBlocks(); // 循环退出后第一个到达的block
         if (exitBlocks == null || exitBlocks.isEmpty()) {
@@ -116,6 +119,7 @@ public class LCSSA extends FunctionPass {
                     phi.addIncoming(inst, exitBB.getPredecessor(i));
                 }
                 exitBB.getInstList().insertAtHead(phi.getInstNode()); // 插入phi指令到exitBB的最前面
+//                System.out.println("[debug] insert phi inst at head of exit block" + phi);
             }
         }
 
@@ -140,6 +144,7 @@ public class LCSSA extends FunctionPass {
             }
             // 维护循环外的 use
             userInst.COReplaceOperand(inst, phi); // 替换userInst的inst为value
+//            System.out.println("[debug] replace " + inst + " with " + phi);
         }
     }
 
