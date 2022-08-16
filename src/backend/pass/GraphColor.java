@@ -739,7 +739,7 @@ public class GraphColor {
                 int time = 0;
                 substitutions = new HashSet<>();
                 while (true) {
-//                    if (++time > 10) throw new RuntimeException("to many rewrite");
+                    if (++time > 10) throw new RuntimeException("to many rewrite");
                     // initial all data structure
 
                     {
