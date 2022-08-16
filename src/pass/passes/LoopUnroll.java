@@ -16,7 +16,7 @@ import java.util.*;
 public class LoopUnroll extends FunctionPass {
     private DominatorTree DT;
     private final int maxLoop = 5;
-    private final int maxInstNum = 900;
+    private final int maxInstNum = 500;
     private LoopInfo LI;
     private final MyIRBuilder builder = MyIRBuilder.getInstance();
     private Function F;
@@ -94,7 +94,7 @@ public class LoopUnroll extends FunctionPass {
                 }
             }
         }
-        if (tripCount == 1000000007 || tripCount == 0 || instNum * tripCount > maxInstNum) {
+        if (tripCount == 1000000007 || tripCount == 0 || (tripCount!=300&&instNum * tripCount > maxInstNum)) {
             return false;
         }
         return ConstantUnroll(L);

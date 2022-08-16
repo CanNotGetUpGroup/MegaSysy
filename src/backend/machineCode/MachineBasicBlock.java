@@ -96,7 +96,7 @@ public class MachineBasicBlock implements Addressable{
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(this.parent.getBbList());
-        this.label = label;
+        this.label = "." + label + counter();
     }
 
     @Override

@@ -1,7 +1,6 @@
 package backend.machineCode;
 
 import analysis.LoopInfo;
-import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 import ir.*;
 import util.IList;
@@ -40,33 +39,39 @@ public class MachineFunction implements Addressable{
 
     private int spiltNumOnStack = 0;
 
-    public int getStoreSize() {
-        return storeSize;
+    public int getStackSize() {
+        return stackSize;
     }
-    public void addStoreSize(int inc){
-        this.storeSize += inc;
+    public void addStackSize(int inc){
+        this.stackSize += inc;
     }
-    public void setStoreSize(int storeSize) {
-        this.storeSize = storeSize;
-    }
-
-    private int storeSize = 0; // ir的store指令存的东西
-
-
-    public int getStackTop() {
-        return stackTop;
+    public void setStackSize(int stackSize) {
+        this.stackSize = stackSize;
     }
 
-    public void setStackTop(int stackTop) {
-        this.stackTop = stackTop;
+    private int stackSize = 0; // ir的store指令存的东西
+
+
+    public HashMap<Register, Integer> getStoredValueMap() {
+        return storedValueMap;
     }
 
-    public void addStackTop(int inc) {
-        this.stackTop += inc;
+    private HashMap<Register, Integer> storedValueMap = new HashMap<>();
+
+
+    public int getStoredRegisterNum() {
+        return storedRegisterNum;
     }
 
+    public void setStoredRegisterNum(int storedRegisterNum) {
+        this.storedRegisterNum = storedRegisterNum;
+    }
+    public void addStoredRegisterNum(int storedRegisterNum) {
+        this.storedRegisterNum += storedRegisterNum;
+    }
 
-    private int stackTop = 36;
+    int storedRegisterNum = 0;
+
 
 
     public void setDefined(boolean defined) {
@@ -157,7 +162,15 @@ public class MachineFunction implements Addressable{
     }
 
     private HashMap<BasicBlock, MachineBasicBlock> bbMap;
-    private HashMap<Value, Register> valueMap;
+
+    private HashMap<Value, Register> valueMap = new HashMap<>();
+
+    public HashMap<Register, Integer> getAllocaMap() {
+        return allocaMap;
+    }
+
+
+    private HashMap<Register, Integer> allocaMap = new HashMap<>();// could simplify some address , some immediate number
 
     public HashMap<Value, Integer> getStackMap() {
         return stackMap;

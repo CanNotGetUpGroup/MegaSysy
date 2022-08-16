@@ -2,6 +2,7 @@ package ir.instructions;
 
 import analysis.AliasAnalysis;
 import analysis.PointerInfo;
+import backend.machineCode.Instruction.Phi;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
@@ -920,9 +921,10 @@ public abstract class Instructions {
                 return false;
             }
             for(int i=0;i<getNumOperands();i++){
-                if(!getOperandList().contains(I.getOperand(i))||!getBlocks().contains(((PHIInst)I).getIncomingBlock(i))){
+                int valIdx=getOperandList().indexOf(I.getOperand(i));
+                if(valIdx==-1) return false;
+                if(!getIncomingBlock(valIdx).equals(((PHIInst)I).getIncomingBlock(i)))
                     return false;
-                }
             }
             return true;
         }
