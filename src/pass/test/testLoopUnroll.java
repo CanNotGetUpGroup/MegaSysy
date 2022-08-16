@@ -20,14 +20,33 @@ public class testLoopUnroll {
         LCSSA lcssa=new LCSSA();
         GVNGCM gvngcm=new GVNGCM(true);
         SimplifyCFG simplifyCFG=new SimplifyCFG(false);
-        LoopUnroll loopUnroll=new LoopUnroll();
+        LoopUnroll loopUnroll=new LoopUnroll(true);
+        InterproceduralAnalysis interproceduralAnalysis=new InterproceduralAnalysis();
 
         addCondPreBlock.runOnModule(module);
+        interproceduralAnalysis.runOnModule(module);
         mem2Reg.runOnModule(module);
         simplifyCFG.runOnModule(module);
         gvngcm.runOnModule(module);
         lcssa.runOnModule(module);
         loopUnroll.runOnModule(module);
+        gvngcm.runOnModule(module);
+        new LoopUnroll(false).runOnModule(module);
+
+//        new SimplifyCFG(false).runOnModule(module);
+//        new LCSSA().runOnModule(module);
+//        new LoopUnroll().runOnModule(module);
+//        new GVNGCM(true).runOnModule(module);
+
+//        new SimplifyCFG(false).runOnModule(module);
+//        new LCSSA().runOnModule(module);
+//        new LoopUnroll().runOnModule(module);
+//        new GVNGCM(true).runOnModule(module);
+//
+//        new SimplifyCFG(false).runOnModule(module);
+//        new LCSSA().runOnModule(module);
+//        new LoopUnroll().runOnModule(module);
+//        new GVNGCM(true).runOnModule(module);
 
         pw.println(module.toLL());
         pw.flush();

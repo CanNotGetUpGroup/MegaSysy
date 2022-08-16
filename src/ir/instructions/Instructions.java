@@ -430,6 +430,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public ICmpInst shallowCopy() {
+            return new ICmpInst(getPredicate(), getOperand(0), getOperand(1));
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -471,6 +476,11 @@ public abstract class Instructions {
             FCmpInst ret = new FCmpInst(getPredicate(), getOperand(0).copy(cloneMap), getOperand(1).copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public FCmpInst shallowCopy() {
+            return new FCmpInst(getPredicate(), getOperand(0), getOperand(1));
         }
     }
 
@@ -827,6 +837,11 @@ public abstract class Instructions {
             }
         }
 
+        public void replaceIncomingByBlock(BasicBlock oldBB,BasicBlock newBB,Value Val){
+            removeIncomingValue(oldBB,false);
+            addIncoming(Val,newBB);
+        }
+
         /**
          * 若phi都返回同一个Value，则返回这个Value，否则返回null
          * 注意：可能返回phi本身 %1 = phi [%1, %br1] [%2, %br2]
@@ -905,7 +920,7 @@ public abstract class Instructions {
                 return false;
             }
             for(int i=0;i<getNumOperands();i++){
-                if(getOperand(i)!=I.getOperand(i)||getIncomingBlock(i)!=((PHIInst)I).getIncomingBlock(i)){
+                if(!getOperandList().contains(I.getOperand(i))||!getBlocks().contains(((PHIInst)I).getIncomingBlock(i))){
                     return false;
                 }
             }
