@@ -53,7 +53,7 @@ public class VirtualRegister extends Register {
             throw new RuntimeException("can't compare" + obj + " " + this);
 
         var reg = (VirtualRegister) obj;
-        return reg.getType() == getType() && Objects.equals(reg.getName(), getName());
+        return reg.getContent() == getContent() && Objects.equals(reg.getName(), getName());
     }
 
     @Override
