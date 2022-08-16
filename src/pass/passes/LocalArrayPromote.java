@@ -271,7 +271,7 @@ public class LocalArrayPromote extends ModulePass {
             for (int i = 0; i < curElemArrayList.size(); i += curNumElem) {
                 ArrayList<Value> tmpElemArrayList = new ArrayList<>();
                 for (int j = 0; j < curNumElem; j++) {
-                    tmpElemArrayList.add(curElemArrayList.get(i+j));
+                    tmpElemArrayList.add(curElemArrayList.get(i + j));
                 }
 
                 newElemArrayList.add(ConstantArray.get(curArrayType, tmpElemArrayList));
@@ -284,6 +284,7 @@ public class LocalArrayPromote extends ModulePass {
     private void promote() {
         Constant arr = packConstArr();
         GlobalVariable gv = GlobalVariable.create("@promote_" + promoteNum, arr.getType(), parent, arr, true);
+        promoteNum++;
         for (var store : stores) {
             store.removeAllOperand();
             store.getInstNode().remove();
