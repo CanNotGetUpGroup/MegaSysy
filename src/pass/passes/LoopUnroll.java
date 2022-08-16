@@ -16,7 +16,7 @@ import java.util.*;
 public class LoopUnroll extends FunctionPass {
     private DominatorTree DT;
     private final int maxLoop = 5;
-    private final int maxInstNum = 1500;
+    private final int maxInstNum = 500;
     private LoopInfo LI;
     private final MyIRBuilder builder = MyIRBuilder.getInstance();
     private Function F;
