@@ -65,8 +65,8 @@ public class CodeGenManager {
         var clean = new Clean(funcList);
 //        clean.run();
 
-        var peepHole = new PeepHole(funcList);
-//        peepHole.run();
+//        var peepHole = new PeepHole(funcList);
+//       peepHole.run();
     }
 
     private void halfRun22() {
@@ -108,7 +108,9 @@ public class CodeGenManager {
 
     }
 
-
+    public ArrayList<MachineFunction> getFuncList() {
+        return funcList;
+    }
 
     public String toArm() {
         StringBuilder sb = new StringBuilder();
