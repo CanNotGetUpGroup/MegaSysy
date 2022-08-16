@@ -146,6 +146,10 @@ public class Folder {
         if (Match.compare(X, MY)) {
             return ConstantInt.get(0);
         }
+        // X - C -> X + (-C)
+        if(Y instanceof ConstantInt){
+            return BinaryInstruction.create(Ops.Add, X, ConstantInt.get(-((ConstantInt) Y).getVal()), InsertBefore);
+        }
         ret = simplifySubAssociative(Ops.Sub, X, Y, recurse);
         return ret;
     }
