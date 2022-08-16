@@ -23,7 +23,7 @@ public class PassManager {
         passes.clear();
         GVNGCM.GCMOpen=true;
 //        eliminatePreHeader=true;//关闭LICM
-        passes.add(new AddCondPreBlock());
+        passes.add(new AddCondPreBlock());//尽量往后放,if{do while}形式影响性能
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new Mem2Reg());//消除掉local int(or float)的alloca，确保DCE消除store的正确
         //只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
@@ -70,7 +70,7 @@ public class PassManager {
     public static void initializationMC() {
         // MC Pass
         // MCPasses.add(new Hello());
-//         MCPasses.add(new PeepHole());
+         MCPasses.add(new PeepHole());
     }
 
     /**
