@@ -30,7 +30,7 @@ public class PeepHole extends MCPass{
         for(var f : CGM.getFuncList()) {
             if (!f.isDefined()) continue;
             for(var bb : f.getBbList()) {
-                if(bb.getInstList().isEmpty()) continue;
+                if(bb.getInstList().isEmpty()) continue; // 怎么会有空的bb啊喂
 
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
