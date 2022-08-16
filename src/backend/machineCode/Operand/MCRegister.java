@@ -101,7 +101,7 @@ public class MCRegister extends Register {
             return false;
         if (!(obj instanceof MCRegister))
             return false;
-        return getType() == ((MCRegister) obj).getType() && getId() == ((MCRegister) obj).getId();
+        return getContent() == ((MCRegister) obj).getContent() && getId() == ((MCRegister) obj).getId();
     }
 
     @Override
