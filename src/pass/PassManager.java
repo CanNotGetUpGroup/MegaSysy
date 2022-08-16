@@ -31,8 +31,9 @@ public class PassManager {
         passes.add(new GlobalVariableOpt());
         passes.add(new GVNGCM(aggressive));// Mem2Reg处理掉了所有local alloca
         passes.add(new LCSSA());
-        passes.add(new LoopInfoUpdate()); // 计算循环信息
-        passes.add(new LICM());// 循环不变量外提
+        passes.add(new LoopInfoUpdate());
+        passes.add(new LICM());
+        passes.add(new LocalArrayPromote());
 
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
