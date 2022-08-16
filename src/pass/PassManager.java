@@ -48,10 +48,10 @@ public class PassManager {
         passes.add(new GVNGCM(aggressive));
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG(eliminatePreHeader));
-//        passes.add(new LoopUnroll(true));//常量循环消除
+        passes.add(new LoopUnroll(true));//常量循环消除
 //        passes.add(new LoopUnroll(false));
 //        passes.add(new LoopUnroll(false));
-//        passes.add(new SimplifyCFG(eliminatePreHeader));
+        passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new EliminateAlloca());//由于GVN需要使用alloca，因此最后再删除
     }
@@ -70,7 +70,7 @@ public class PassManager {
     public static void initializationMC() {
         // MC Pass
         // MCPasses.add(new Hello());
-         MCPasses.add(new PeepHole());
+//         MCPasses.add(new PeepHole());
     }
 
     /**

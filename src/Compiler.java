@@ -53,7 +53,7 @@ public class Compiler {
         module.rename();
         PassManager.functionalOpt();
 
-        if(false){
+        if(O2){
             //TODO：优化掉undef
             PassManager.ignoreUndef=false;
             PassManager.initialization();
