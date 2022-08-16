@@ -103,4 +103,9 @@ public class BinaryInstruction extends Instruction {
         cloneMap.put(this, ret);
         return ret;
     }
+
+    @Override
+    public Instruction shallowCopy() {
+        return new BinaryInstruction(getType(),getOp(),getOperand(0),getOperand(1));
+    }
 }

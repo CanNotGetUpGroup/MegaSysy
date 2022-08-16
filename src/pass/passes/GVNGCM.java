@@ -18,7 +18,7 @@ import util.IListIterator;
 
 public class GVNGCM extends ModulePass {
     private boolean aggressive=false;//开启将alloca替换为参数的优化(需要在函数内联之后)
-    public static boolean GCMOpen=false;//暂时关闭
+    public static boolean GCMOpen=true;
 
     private Set<Instruction> visInsts = new HashSet<>();
     private ArrayList<Instruction> deadInst = new ArrayList<>();
@@ -141,6 +141,17 @@ public class GVNGCM extends ModulePass {
         boolean ret = false;
         Value V = Folder.simplifyInstruction(I);
         if (V != null) {
+            if(I instanceof PHIInst && I.getType().isPointerTy()){
+                for(Use use:I.getUseList()){
+                    Instruction u=(Instruction)use.getU();
+                    if(AliasAnalysis.MSSA.getMemoryAccess(u)!=null){
+                        MemoryAccess.MemoryDefOrUse MOU=AliasAnalysis.MSSA.getMemoryAccess(u);
+                        if(MOU.getPointer().equals(I)){
+                            MOU.setPointer(V);
+                        }
+                    }
+                }
+            }
             I.replaceAllUsesWith(V);
             addInstToDeadList(I);
             return true;
@@ -215,6 +226,7 @@ public class GVNGCM extends ModulePass {
             hashToValue.put(nextValueNumber, new ArrayList<>(){{add(V);}});
             valueToHash.put(V, new Pair<>(nextValueNumber, null_array));
             valueToInteger.put(V, nextValueNumber);
+            integerToValue.put(nextValueNumber,V);
             return nextValueNumber++;
         }
         Instruction I = (Instruction) V;
@@ -241,12 +253,14 @@ public class GVNGCM extends ModulePass {
                 hashToValue.put(hash.a, new ArrayList<>(){{add(V);}});
                 valueToHash.put(V, hash);
                 valueToInteger.put(V, nextValueNumber);
+                integerToValue.put(nextValueNumber,V);
                 return nextValueNumber++;
             }
         }
         hashToValue.put(nextValueNumber, new ArrayList<>(){{add(V);}});
         valueToHash.put(V, new Pair<>(nextValueNumber, null_array));
         valueToInteger.put(V, nextValueNumber);
+        addToLeader(nextValueNumber,V);
         return nextValueNumber++;
     }
 
@@ -343,7 +357,7 @@ public class GVNGCM extends ModulePass {
         ArrayList<Value> arrayIdx = GEP.getArrayIdx();
         //需要区分argument还是它的alloca
         if(aggressive&&arrayIdx.size()==1&&AliasAnalysis.isParamOrArgument(arrayIdx.get(0))){
-            return new Pair<>(getHash(arrayIdx.get(0)).a,null_array);
+            return getHash(arrayIdx.get(0));
         }
         for (Value v : arrayIdx) {
             array.add(getHash(v).a);
@@ -357,13 +371,32 @@ public class GVNGCM extends ModulePass {
     public Pair<Integer,ArrayList<Integer>> getHash(LoadInst LI) {
         Value Address = LI.getOperand(0);
         if(aggressive&&AliasAnalysis.isParam(Address)){
-            return new Pair<>(getHash(AliasAnalysis.getParam(Address)).a,null_array);
+            return getHash(AliasAnalysis.getParam(Address));
         }
         MemoryAccess MA = AliasAnalysis.MSSA.getMemoryAccess(LI);
         ArrayList<Integer> array = new ArrayList<>();
-        array.add(getHash(Address).a);
-        if (MA != null)
-            array.add(((MemoryAccess.MemoryUse) MA).getDefiningAccess().getID());
+        Pair<Integer,ArrayList<Integer>> loadHash=getHash(Address);
+        array.add(loadHash.a);
+        if (MA != null){
+            MemoryAccess definingAccess=((MemoryAccess.MemoryUse) MA).getDefiningAccess();
+            array.add(definingAccess.getID());
+            if(definingAccess instanceof MemoryAccess.MemoryDef&&
+                    ((MemoryAccess.MemoryDef) definingAccess).getMemoryInstruction() instanceof StoreInst){
+                StoreInst SI=(StoreInst)((MemoryAccess.MemoryDef)definingAccess).getMemoryInstruction();
+                Pair<Integer,ArrayList<Integer>> storeHash=getHash(SI.getOperand(1));
+                if(loadHash.a.equals(storeHash.a)){
+                    boolean same=(loadHash.b.size()==storeHash.b.size());
+                    for(int i=0;i<loadHash.b.size();i++){
+                        if(!loadHash.b.get(i).equals(storeHash.b.get(i))){
+                            same=false;
+                            break;
+                        }
+                    }
+                    if(same)
+                        return getHash(SI.getOperand(0));
+                }
+            }
+        }
         return new Pair<>(hashCombine(LI.getOp(), LI.getType(), array),array);
     }
 
@@ -512,7 +545,7 @@ public class GVNGCM extends ModulePass {
             BasicBlock minBB = curBB;
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
             while (curBB != I.getParent()) {
-                if(DT.getNode(curBB)==null){
+                if(DT.getNode(curBB)==null||curBB==DT.Root.BB){
                     System.out.println("curBB shouldn't be null!");
                 }
                 curBB = DT.getNode(curBB).IDom.BB;

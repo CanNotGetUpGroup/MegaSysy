@@ -4,7 +4,7 @@ import ir.Instruction;
 import ir.Type;
 import ir.Value;
 
-public abstract class CmpInst extends Instruction {
+public abstract class CmpInst extends BinaryInstruction {
     public enum Predicate {
         ICMP_EQ,  ///< equal
         ICMP_NE,  ///< not equal
@@ -60,16 +60,12 @@ public abstract class CmpInst extends Instruction {
     }
 
     public CmpInst(Type type, Ops op, String name, Predicate pre, Value LHS, Value RHS) {
-        super(type,op,name, 2);
-        addOperand(LHS);
-        addOperand(RHS);
+        super(type,op,name,LHS,RHS);
         predicate=pre;
     }
 
     public CmpInst(Type type,Ops op,  Predicate pre, Value LHS, Value RHS) {
-        super(type,op, 2);
-        addOperand(LHS);
-        addOperand(RHS);
+        super(type,op, LHS,RHS);
         predicate=pre;
     }
 
