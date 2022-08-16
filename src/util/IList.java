@@ -124,7 +124,7 @@ public class IList<T, P> implements Iterable<T> {
     }
 
     /**
-     * 将First到Last移动到insertHead前
+     * 将First到Last移动到insertHead前,Last为null表示移动First后面所有节点
      */
     public void splice(IListIterator<T,P> insertHead,IListNode<T,P> First,IListNode<T,P> Last){
         while(First!=null&&First!=Last){
