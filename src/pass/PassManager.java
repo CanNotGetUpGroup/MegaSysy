@@ -4,6 +4,7 @@ import backend.CodeGenManager;
 import ir.Function;
 import ir.Module;
 import pass.passes.*;
+import backend.pass.*;
 
 import java.util.ArrayList;
 
@@ -69,6 +70,7 @@ public class PassManager {
     public static void initializationMC() {
         // MC Pass
         // MCPasses.add(new Hello());
+         MCPasses.add(new PeepHole());
     }
 
     /**
@@ -87,7 +89,7 @@ public class PassManager {
      */
     public static void runMC(CodeGenManager CGM) {
         for (MCPass mp : MCPasses) {
-            System.out.println("MC Pass:" + mp.getName());
+//            System.out.println("MC Pass:" + mp.getName());
             mp.runOnCodeGen(CGM);
         }
     }
