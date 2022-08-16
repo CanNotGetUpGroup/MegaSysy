@@ -6,7 +6,8 @@ public class Register extends MCOperand {
 
     public enum Type{
         VIRTUAL,
-        MACHINE
+        MACHINE,
+        PlaceHolder
     }
 
     public enum Content {

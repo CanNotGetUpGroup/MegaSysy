@@ -1,12 +1,11 @@
 package pass.passes;
 
-import ir.BasicBlock;
-import ir.Function;
-import ir.Instruction;
-import ir.Value;
+import analysis.LoopInfo;
+import ir.*;
 import ir.instructions.Instructions;
 import pass.FunctionPass;
 import util.CloneMap;
+import util.LoopUtils;
 import util.MyIRBuilder;
 
 import java.util.ArrayList;
@@ -20,6 +19,25 @@ public class AddCondPreBlock extends FunctionPass {
     @Override
     public void runOnFunction(Function F) {
         HashSet<BasicBlock> Visited=new HashSet<>();
+        LoopInfo LI=F.getLoopInfo();
+        LI.computeLoopInfo(F);
+//        LoopUtils.rearrangeBBOrder();
+//        for(Loop loop:LI.getAllLoops()){
+//            BasicBlock BB=loop.getLoopHeader();
+//            BasicBlock trueBlock=BB.getSuccessor(0),falseBlock=BB.getSuccessor(1);
+//            ArrayList<BasicBlock> preds=new ArrayList<>(BB.getPredecessors());
+//            for(BasicBlock Pred:preds){
+//                if(Pred==loop.getPreHeader()) continue;
+//                CloneMap cm=new CloneMap();
+//                cm.put(trueBlock,trueBlock);
+//                cm.put(falseBlock,falseBlock);
+//                BasicBlock newBB=new BasicBlock("",F,Pred);
+//                Pred.getTerminator().remove();
+//                builder.setInsertPoint(Pred);
+//                builder.createBr(newBB);
+//                createBr(newBB,BB,cm);
+//            }
+//        }
         for(BasicBlock BB:F.getBbList()){
             Visited.add(BB);
             if(BB.isCond){

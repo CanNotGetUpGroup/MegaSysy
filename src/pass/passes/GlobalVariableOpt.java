@@ -60,6 +60,7 @@ public class GlobalVariableOpt extends ModulePass {
                     }
                     builder.setInsertPoint(I);
                     builder.createStore(GV.getOperand(0),AI);
+                    System.out.println(GV.toString()+" be localized");
                     GV.replaceAllUsesWith(AI);
                     GV.remove();
                     return true;
