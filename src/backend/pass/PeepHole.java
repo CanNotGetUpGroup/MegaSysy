@@ -25,8 +25,9 @@ public class PeepHole extends MCPass{
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
                 if (lastInst instanceof Branch && lastInst.getCond() == null) {
-                    if (((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
+                    if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
                         lastInst.delete();
+                        done = false;
                     }
                 }
 
