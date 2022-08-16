@@ -38,6 +38,7 @@ public class MemorySSA {
     private final HashMap<MemoryPhi,Integer> PhiToLoad =new HashMap<>();
     HashMap<Instructions.LoadInst,Integer> LoadLoopUp=new HashMap<>();
     ArrayList<Instructions.LoadInst> Loads=new ArrayList<>();
+    HashSet<Value> Pointers=new HashSet<>();
 //    private final Set<BasicBlock> Visited=new HashSet<>();
 
     public MemorySSA(Function F, DominatorTree DT) {
@@ -88,43 +89,51 @@ public class MemorySSA {
     }
 
     public void buildMemorySSA() {
+        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+            Pointer2Defs.put(g,new ArrayList<>());
+        }
+        for(Instruction I:F.getEntryBB().getInstList()){
+            if(!(I instanceof Instructions.AllocaInst)) break;
+            Pointer2Defs.put(I,new ArrayList<>());
+        }
         //先生成MemoryDef和MemoryUse，但不为他们指定definingAccess
         for (BasicBlock BB : F.getBbList()) {
             LinkedList<MemoryAccess> Accesses = null;
             LinkedList<MemoryAccess> Defs = null;
             for (Instruction I : BB.getInstList()) {
                 MemoryDefOrUse MUD = createNewAccess(I);
-                if (MUD == null)
+                if (MUD == null) {
                     continue;
-                if (Accesses == null)
+                }
+                if (Accesses == null) {
                     Accesses = getOrAddAccessList(BB);
+                }
                 Accesses.add(MUD);
                 if ((MUD instanceof MemoryDef)) {
-                    if (Defs == null)
+                    if (Defs == null) {
                         Defs = getOrAddDefList(BB);
+                    }
                     Defs.add(MUD);
                 }
             }
         }
-        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+        Pointer2Defs.forEach((pointer,defs)->{
             ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
-            placePHINodes(DT, Pointer2Defs.get(g),g, PHIBasicBlocks);
-        }
-        for(Instruction I:F.getEntryBB().getInstList()){
-            if(!(I instanceof Instructions.AllocaInst)) break;
-            ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
-            placePHINodes(DT, Pointer2Defs.get(I),I, PHIBasicBlocks);
-        }
+            placePHINodes(DT, defs,pointer, PHIBasicBlocks);
+        });
 
         Set<BasicBlock> Visited = new HashSet<>();
         HashMap<Value,MemoryAccess> IncomingValues=new HashMap<>();
-        for(GlobalVariable g:F.getParent().getGlobalVariables()){
-            IncomingValues.put(g,LiveOnEntry);
-        }
-        for(Instruction I:F.getEntryBB().getInstList()){
-            if(!(I instanceof Instructions.AllocaInst)) break;
-            IncomingValues.put(I,LiveOnEntry);
-        }
+//        for(GlobalVariable g:F.getParent().getGlobalVariables()){
+//            IncomingValues.put(g,LiveOnEntry);
+//        }
+//        for(Instruction I:F.getEntryBB().getInstList()){
+//            if(!(I instanceof Instructions.AllocaInst)) break;
+//            IncomingValues.put(I,LiveOnEntry);
+//        }
+        Pointer2Defs.keySet().forEach((pointer)->{
+            IncomingValues.put(pointer,LiveOnEntry);
+        });
 
         RenamePass(DT, IncomingValues, Visited);
 
@@ -480,17 +489,22 @@ public class MemorySSA {
                     }
                     Instructions.CallInst CI=(Instructions.CallInst)I;
                     CI2Pointers.put(CI,new ArrayList<>());
-                    for(GlobalVariable g:F.getParent().getGlobalVariables()){
-                        if(AliasAnalysis.callAlias(g,CI)){
-                            CI2Pointers.get(CI).add(g);
+//                    for(GlobalVariable g:F.getParent().getGlobalVariables()){
+//                        if(AliasAnalysis.callAlias(g,CI)){
+//                            CI2Pointers.get(CI).add(g);
+//                        }
+//                    }
+//                    for(Instruction inst:F.getEntryBB().getInstList()){
+//                        if(!(inst instanceof Instructions.AllocaInst)) break;
+//                        if(AliasAnalysis.callAlias(inst,CI)){
+//                            CI2Pointers.get(CI).add(inst);
+//                        }
+//                    }
+                    Pointer2Defs.keySet().forEach((pointer)->{
+                        if(AliasAnalysis.callAlias(pointer,CI)){
+                            CI2Pointers.get(CI).add(pointer);
                         }
-                    }
-                    for(Instruction inst:F.getEntryBB().getInstList()){
-                        if(!(inst instanceof Instructions.AllocaInst)) break;
-                        if(AliasAnalysis.callAlias(inst,CI)){
-                            CI2Pointers.get(CI).add(inst);
-                        }
-                    }
+                    });
                     if(CI2Pointers.get(CI).isEmpty()){
                         return null;
                     }
@@ -508,6 +522,9 @@ public class MemorySSA {
                     }
                     ret = new MemoryDef(I, null, ID++);
                     Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(1));
+                    if(ptr==null){// ptr形式的phi
+                        ptr=I.getOperand(1);
+                    }
                     ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(ptr,new ArrayList<>());
                     defs.add(I.getParent());
                     Pointer2Defs.put(ptr,defs);
@@ -520,9 +537,14 @@ public class MemorySSA {
                 }
                 ret = new MemoryUse(I, null);
                 Value ptr=AliasAnalysis.getPointerOrArgumentValue(I.getOperand(0));
+                if(ptr==null){
+                    ptr=I.getOperand(0);
+                }
 //                ArrayList<BasicBlock> loads=Pointer2Uses.getOrDefault(ptr,new ArrayList<>());
 //                loads.add(I.getParent());
 //                Pointer2Uses.put(ptr,loads);
+                ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(ptr,new ArrayList<>());
+                Pointer2Defs.put(ptr,defs);
                 Loads.add((Instructions.LoadInst) I);
                 LoadLoopUp.put((Instructions.LoadInst) I,Loads.size()-1);
                 ret.setPointer(ptr);

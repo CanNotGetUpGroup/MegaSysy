@@ -141,6 +141,17 @@ public class GVNGCM extends ModulePass {
         boolean ret = false;
         Value V = Folder.simplifyInstruction(I);
         if (V != null) {
+            if(I instanceof PHIInst && I.getType().isPointerTy()){
+                for(Use use:I.getUseList()){
+                    Instruction u=(Instruction)use.getU();
+                    if(AliasAnalysis.MSSA.getMemoryAccess(u)!=null){
+                        MemoryAccess.MemoryDefOrUse MOU=AliasAnalysis.MSSA.getMemoryAccess(u);
+                        if(MOU.getPointer().equals(I)){
+                            MOU.setPointer(V);
+                        }
+                    }
+                }
+            }
             I.replaceAllUsesWith(V);
             addInstToDeadList(I);
             return true;
