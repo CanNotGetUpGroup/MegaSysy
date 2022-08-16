@@ -57,21 +57,26 @@ public class LocalArrayPromote extends ModulePass {
     }
 
     public void runOnFunction(Function F) {
-        for (BasicBlock BB : F.getBbList()) {
-            for (Instruction I : BB.getInstList()) {
-                if (I instanceof AllocaInst) {
-                    AllocaInst alloca = (AllocaInst) I;
-                    if (alloca.getAllocatedType().isArrayTy()) {
-                        init(alloca);
-                        if (travalStoresOfAlloca()) {
-                            if (analyzeLoadAndCall()) {
-                                promote();
+        boolean promoteArray;
+        do {
+            promoteArray = false;
+            for (BasicBlock BB : F.getBbList()) {
+                for (Instruction I : BB.getInstList()) {
+                    if (I instanceof AllocaInst) {
+                        AllocaInst alloca = (AllocaInst) I;
+                        if (alloca.getAllocatedType().isArrayTy()) {
+                            init(alloca);
+                            if (travalStoresOfAlloca()) {
+                                if (analyzeLoadAndCall()) {
+                                    promote();
+                                    promoteArray = true;
+                                }
                             }
                         }
                     }
                 }
             }
-        }
+        } while (promoteArray);
     }
 
     private void init(AllocaInst alloca) {
@@ -286,14 +291,12 @@ public class LocalArrayPromote extends ModulePass {
         GlobalVariable gv = GlobalVariable.create("@promote_" + promoteNum, arr.getType(), parent, arr, true);
         promoteNum++;
         for (var store : stores) {
-            store.removeAllOperand();
-            store.getInstNode().remove();
+            store.remove();
         }
         if (memset != null) {
-            memset.removeAllOperand();
-            memset.getInstNode().remove();
-            memset = null;
+            memset.remove();
         }
         curArr.replaceAllUsesWith(gv);
+        curArr.remove();
     }
 }
