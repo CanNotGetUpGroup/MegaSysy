@@ -49,7 +49,7 @@ public class PassManager {
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new LoopUnroll(true));// 常量循环消除
-        passes.add(new LocalArrayPromote());
+//        passes.add(new LocalArrayPromote());
         passes.add(new GlobalVariableOpt());
         // passes.add(new LoopUnroll(false));
         // passes.add(new LoopUnroll(false));

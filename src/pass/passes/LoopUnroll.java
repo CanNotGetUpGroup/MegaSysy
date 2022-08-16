@@ -468,25 +468,6 @@ public class LoopUnroll extends FunctionPass {
             }
         }
 
-        // 更新 LCSSA phi
-        if (tripCount > 1) {
-        for (var exitBB : L.getExitBlocks()) {
-                for (var inst : exitBB.getInstList()) {
-                    if (!(inst instanceof PHIInst)) {
-                        break;
-                    }
-                    var phi = (PHIInst) inst;
-                    var latchIndex = phi.getBlocks().indexOf(LatchBB);
-                    if(latchIndex==-1) continue;
-                    var incomingVal = phi.getIncomingValues().get(latchIndex);
-                    if (incomingVal instanceof Instruction && (L.getBbList()
-                            .contains(((Instruction) incomingVal).getParent()))) {
-                        incomingVal = LastValMap.get(incomingVal);
-                    }
-                    phi.CoReplaceOperandByIndex(latchIndex, incomingVal);
-                }
-            }
-        }
 
         var preHeader = Header.getPredecessors().get(0);
 
@@ -504,6 +485,28 @@ public class LoopUnroll extends FunctionPass {
         var last = latches.get(latches.size() - 1);
         builder.setInsertPoint(last);
         builder.createBr(ExitBB);
+
+
+        // 更新 LCSSA phi
+        if (tripCount > 1) {
+            for (var exitBB : L.getExitBlocks()) {
+                for (var inst : exitBB.getInstList()) {
+                    if (!(inst instanceof PHIInst)) {
+                        break;
+                    }
+                    var phi = (PHIInst) inst;
+                    var latchIndex = phi.getBlocks().indexOf(LatchBB);
+                    if(latchIndex==-1) continue;
+                    var incomingVal = phi.getIncomingValues().get(latchIndex);
+                    if (incomingVal instanceof Instruction && (L.getBbList()
+                            .contains(((Instruction) incomingVal).getParent()))) {
+                        incomingVal = LastValMap.get(incomingVal);
+                    }
+                    phi.replaceIncomingByBlock(LatchBB,last, incomingVal);
+                }
+            }
+        }
+
         LI.removeLoop(L);
         return true;
     }
