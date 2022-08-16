@@ -65,11 +65,12 @@ public class Compiler {
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
 
-        if(O2){
-            mc.performanceRun();
-        }else{
-            mc.run();
-        }
+//        if(O2){
+//            mc.performanceRun();
+//        }else{
+//            mc.run();
+//        }
+        mc.performanceRun();
 
         PassManager.runMC(mc);
 
