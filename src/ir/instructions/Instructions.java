@@ -310,7 +310,8 @@ public abstract class Instructions {
 //                        System.out.println("error!");
                         return null;
                     }
-                    ConstantValue = CA.getElement(CI.getVal());
+                    ConstantValue = ((Constants.ConstantArray)((GlobalVariable)getArrayIdx().get(0))
+                            .getOperand(0)).getIndexConstant(CI.getVal());
                     return ConstantValue;
                 }
             } else {
@@ -363,7 +364,7 @@ public abstract class Instructions {
             if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
                 ret.add(getOperand(1));
             }
-            AliasAnalysis.gepToArrayIdx.put(this,ret);
+//            AliasAnalysis.gepToArrayIdx.put(this,ret);
             return ret;
         }
 
