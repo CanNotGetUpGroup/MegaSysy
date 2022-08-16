@@ -63,7 +63,7 @@ public class CodeGenManager {
         allocator.run();
 
         var clean = new Clean(funcList);
-//        clean.run();
+        clean.run();
 
 //        var peepHole = new PeepHole(funcList);
 //       peepHole.run();
@@ -144,7 +144,7 @@ public class CodeGenManager {
         Module module = Module.getInstance();
         module.rename();
 
-        if (true) {
+        if (false) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
             PassManager.initialization();
@@ -167,6 +167,8 @@ public class CodeGenManager {
         pw2.flush();
 
         mc.halfRun2();
+
+        PassManager.runMC(mc);
 
         pw3.println(mc.toArm());
         pw3.flush();

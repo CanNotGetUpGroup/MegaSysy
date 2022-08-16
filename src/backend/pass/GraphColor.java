@@ -404,7 +404,8 @@ public class GraphColor {
         Register m = spillWorklist.iterator().next();
         for (var i : spillWorklist) {
             double curScore;
-            curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(1.4, loopDepth.getOrDefault(i, 0));
+            curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(2, loopDepth.getOrDefault(i, 0));
+
             if (substitutions.contains(i)) {
                 curScore = -1;
             }
@@ -413,7 +414,6 @@ public class GraphColor {
                 m = i;
             }
         }
-
 
         //Note: avoid choosing nodes that are the tiny live ranges
         //resulting from the fetches of previously spilled registers
@@ -424,8 +424,10 @@ public class GraphColor {
     }
 
     void AssignColors() {
+
         for (int i = 0; i < MCRegister.maxRegNum(curPassType); i++) {
             colorMap.put(new MCRegister(curPassType, i), i);
+
         }
 
         // select stack filter
@@ -737,7 +739,7 @@ public class GraphColor {
                 int time = 0;
                 substitutions = new HashSet<>();
                 while (true) {
-                    if (++time > 5) throw new RuntimeException("to many rewrite");
+//                    if (++time > 10) throw new RuntimeException("to many rewrite");
                     // initial all data structure
 
                     {
@@ -779,8 +781,16 @@ public class GraphColor {
                             init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister && x.getContent() == curPassType).collect(Collectors.toSet()));
                             for (var u : i.getUse()) {
                                 var depth = loopDepth.getOrDefault(u, 0);
-                                if (bbDepth > depth)
+                                if (bbDepth > depth) {
                                     depth = bbDepth;
+                                }
+                                loopDepth.put(u, depth);
+                            }
+                            for (var u : i.getDef()) {
+                                var depth = loopDepth.getOrDefault(u, 0);
+                                if (bbDepth > depth) {
+                                    depth = bbDepth;
+                                }
                                 loopDepth.put(u, depth);
                             }
                         }
@@ -803,7 +813,7 @@ public class GraphColor {
 
                         break;
                     }
-                    System.out.println("Rewrite");
+                    System.out.println("Rewrite, spill : " + spilledNodes.size());
                     RewriteProgram(f);
                 }
             }
