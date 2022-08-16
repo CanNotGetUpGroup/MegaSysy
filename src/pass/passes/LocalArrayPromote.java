@@ -72,13 +72,15 @@ public class LocalArrayPromote extends ModulePass {
                                 if (analyzeLoadAndCall()) {
                                     promote();
                                     promoteArray = true;
-                                    // gvngcm.runOnModule(parent);
-                                    // gvo.runOnModule(parent);
                                 }
                             }
                         }
                     }
                 }
+            }
+            if(promoteArray){
+                gvngcm.runOnModule(parent);
+                gvo.runOnModule(parent);
             }
         } while (promoteArray);
     }
