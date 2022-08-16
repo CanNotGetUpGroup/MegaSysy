@@ -53,12 +53,19 @@ public abstract class User extends Value {
         this.numOperands = OperandList.size();
     }
 
+    public void removeAllOperand() {
+        while(!OperandList.isEmpty()){
+            removeOperand(0);
+        }
+        this.numOperands = 0;
+    }
+
     public void removeOperand(int idx) {
-        OperandList.get(idx).removeUse(this,idx);
-        for(int i=idx+1;i<OperandList.size();i++){
-            for(Use use:OperandList.get(i).getUseList()){
-                if(use.getU()==this){
-                    use.setOperandNo(i-1);
+        OperandList.get(idx).removeUse(this, idx);
+        for (int i = idx + 1; i < OperandList.size(); i++) {
+            for (Use use : OperandList.get(i).getUseList()) {
+                if (use.getU() == this) {
+                    use.setOperandNo(i - 1);
                     break;
                 }
             }
@@ -120,7 +127,7 @@ public abstract class User extends Value {
 
     /**
      * 设置某index的operand为V
-     * 
+     *
      * @param index:位置，operand视作从0开始
      * @param v:想要设置的operand
      **/
@@ -134,10 +141,9 @@ public abstract class User extends Value {
 
     /**
      * 替换某一index的operand为V，维护 operand 的 usesList
-     * 
+     *
      * @param index: 位置，operand视作从0开始
      * @param v:     想要设置的operand
-     * 
      */
     public void CoReplaceOperandByIndex(int index, Value v) {
         var op = OperandList.get(index);
