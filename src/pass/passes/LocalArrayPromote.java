@@ -57,6 +57,8 @@ public class LocalArrayPromote extends ModulePass {
     }
 
     public void runOnFunction(Function F) {
+        GVNGCM gvngcm = new GVNGCM(true);
+        GlobalVariableOpt gvo = new GlobalVariableOpt();
         boolean promoteArray;
         do {
             promoteArray = false;
@@ -70,6 +72,8 @@ public class LocalArrayPromote extends ModulePass {
                                 if (analyzeLoadAndCall()) {
                                     promote();
                                     promoteArray = true;
+                                    // gvngcm.runOnModule(parent);
+                                    // gvo.runOnModule(parent);
                                 }
                             }
                         }
@@ -278,7 +282,6 @@ public class LocalArrayPromote extends ModulePass {
                 for (int j = 0; j < curNumElem; j++) {
                     tmpElemArrayList.add(curElemArrayList.get(i + j));
                 }
-
                 newElemArrayList.add(ConstantArray.get(curArrayType, tmpElemArrayList));
             }
             curElemArrayList = newElemArrayList;
