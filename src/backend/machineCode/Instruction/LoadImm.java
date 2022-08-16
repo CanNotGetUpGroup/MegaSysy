@@ -19,7 +19,6 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, MCOperand src) {
         super(parent);
-        parent.getParent().getAllocaMap().put(dest, this);
         this.src = src;
         this.dest = dest;
     }
@@ -27,7 +26,6 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, int src) {
         super(parent);
-        parent.getParent().getAllocaMap().put(dest, this);
         this.src = new ImmediateNumber(src);
         this.dest = dest;
     }
@@ -41,7 +39,6 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, LoadImm imm) {
         super(parent, imm);
-        parent.getParent().getAllocaMap().put(dest, this);
         this.src = imm.getSrc();
         this.dest = imm.getDest();
     }
