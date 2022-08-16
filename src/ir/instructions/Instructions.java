@@ -310,7 +310,8 @@ public abstract class Instructions {
 //                        System.out.println("error!");
                         return null;
                     }
-                    ConstantValue = CA.getElement(CI.getVal());
+                    ConstantValue = ((Constants.ConstantArray)((GlobalVariable)getArrayIdx().get(0))
+                            .getOperand(0)).getIndexConstant(CI.getVal());
                     return ConstantValue;
                 }
             } else {
