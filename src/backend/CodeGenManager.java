@@ -144,7 +144,7 @@ public class CodeGenManager {
         Module module = Module.getInstance();
         module.rename();
 
-        if (false) {
+        if (true) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
             PassManager.initialization();

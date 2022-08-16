@@ -7,7 +7,6 @@ import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 import backend.machineCode.Operand.StackOffsetNumber;
-import ir.Instruction;
 
 public class LoadImm extends MachineInstruction {
 
@@ -20,7 +19,6 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, MCOperand src) {
         super(parent);
-        parent.getParent().getRegDefineMap().put(dest, this);
         this.src = src;
         this.dest = dest;
     }
@@ -28,7 +26,6 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, Register dest, int src) {
         super(parent);
-        parent.getParent().getRegDefineMap().put(dest, this);
         this.src = new ImmediateNumber(src);
         this.dest = dest;
     }
@@ -42,7 +39,6 @@ public class LoadImm extends MachineInstruction {
 
     public LoadImm(MachineBasicBlock parent, LoadImm imm) {
         super(parent, imm);
-        parent.getParent().getRegDefineMap().put(dest, this);
         this.src = imm.getSrc();
         this.dest = imm.getDest();
     }

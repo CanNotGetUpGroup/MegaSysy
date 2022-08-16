@@ -165,12 +165,12 @@ public class MachineFunction implements Addressable{
 
     private HashMap<Value, Register> valueMap = new HashMap<>();
 
-    public HashMap<Register, MachineInstruction> getRegDefineMap() {
-        return regDefineMap;
+    public HashMap<Register, Integer> getAllocaMap() {
+        return allocaMap;
     }
 
 
-    private HashMap<Register, MachineInstruction> regDefineMap = new HashMap<>();// could simplify some address , some immediate number
+    private HashMap<Register, Integer> allocaMap = new HashMap<>();// could simplify some address , some immediate number
 
     public HashMap<Value, Integer> getStackMap() {
         return stackMap;
