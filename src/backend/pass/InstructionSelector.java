@@ -10,10 +10,8 @@ import ir.*;
 import ir.Module;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
-import util.IList;
 import util.IListNode;
 
-import java.awt.image.renderable.RenderableImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -79,7 +77,6 @@ public class InstructionSelector {
             var f = head.getVal();
             MachineFunction mf = new MachineFunction(f.getName());
             mf.setLoopInfo(f.getLoopInfo());
-            mf.setStackTop(optimize ? 36 : 8);
 
             if (f.isDefined())
                 mf.setDefined(true);
@@ -110,6 +107,12 @@ public class InstructionSelector {
         var bbList = irFunction.getBbList();
         var head = bbList.getHead();
 
+        // initialize all machine basic block
+        // prologue block
+        MachineBasicBlock firstbb = new MachineBasicBlock(mf, "Prologue");
+        firstbb.setLoopDepth(0);
+        firstbb.pushBacktoBBList();
+
         while (bbList.getLast() != null && head != bbList.getLast()) {
             head = head.getNext();
             var bb = head.getVal();
@@ -118,14 +121,49 @@ public class InstructionSelector {
             mbb.pushBacktoBBList();
             bbMap.put(bb, mbb);
         }
+        firstbb.addSuccessor(bbMap.get(irFunction.getEntryBB()));
+
+        // insert sub stack instruction
+        // TODO: need modify
+        var reg0 = new VirtualRegister();
+        new LoadImm(firstbb, reg0, new StackOffsetNumber(0, mf)).pushBacktoInstList();
+        new Arithmetic(firstbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), reg0).pushBacktoInstList();
+
         for (var bb : bbList) {
             for (var inst : bb.getInstList()) {
-                if (inst.getOp() == Instruction.Ops.Call)
+                if (inst.getOp() == Instruction.Ops.Call) {
                     mf.setLeaf(false);
+
+                    // reserve space for parameter on stack
+                    int paraNum = inst.getNumOperands();
+
+                    int floatParaNum = 0, intParaNum = 0;
+                    int firstStackFloatPara = paraNum, firstStackIntPara = paraNum;
+                    for (int i = 1; i < paraNum; i++) {
+                        if (inst.getOperand(i).getType().isFloatTy()) {
+                            if (floatParaNum >= 16 && firstStackFloatPara == paraNum)
+                                firstStackFloatPara = i;
+                            floatParaNum++;
+                        } else {
+                            if (intParaNum >= 4 && firstStackIntPara == paraNum)
+                                firstStackIntPara = i;
+                            intParaNum++; // could include pointer/array...
+                        }
+                    }
+                    // paras store on stack
+                    int numOnStack = 0;
+                    if (floatParaNum > 16)
+                        numOnStack += floatParaNum - 16;
+                    if (intParaNum > 4)
+                        numOnStack += intParaNum - 4;
+                    if (numOnStack > mf.getMaxParaNumOnStack())
+                        mf.setMaxParaNumOnStack(numOnStack);
+                }
             }
         }
+        mf.addStackSize(mf.getMaxParaNumOnStack() * 4);
 
-        var firstbb = mf.getBbList().getFirst().getVal();
+        // set up parameters, move all to virtual parameter
         var paras = irFunction.getArguments();
         int floatNum = 0, intNum = 0, onStackNum = 0;
         for (var para : paras) {
@@ -139,23 +177,30 @@ public class InstructionSelector {
                             .pushBacktoInstList();
                     floatNum++;
                 } else {
+                    // TODO: don't know size now ???  cur solution: Load a stackOffset number, and change it after reg allocation
+                    var reg = new VirtualRegister();
+                    new LoadImm(firstbb, reg, new StackOffsetNumber(onStackNum * 4, mf, true)).pushBacktoInstList();
+                    new Arithmetic(firstbb, Arithmetic.Type.ADD, reg,new MCRegister(MCRegister.RegName.SP)).pushBacktoInstList();
+                    new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(reg)).setForFloat(true).pushBacktoInstList();
                     onStackNum++;
-                    new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(new MCRegister(MCRegister.RegName.r11), 4 * onStackNum)).setForFloat(true).pushBacktoInstList();
                 }
-            } else { // para is not float, array or int
+            } else { // para is not float, can be array or int
                 dest = new VirtualRegister();
                 if (intNum < 4) {
                     new Move(firstbb, dest, new MCRegister(Register.Content.Int, intNum))
                             .pushBacktoInstList();
                     intNum++;
                 } else {
+                    var reg = new VirtualRegister();
+                    new LoadImm(firstbb, reg, new StackOffsetNumber(onStackNum * 4, mf, true)).pushBacktoInstList();
+                    new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(new MCRegister(MCRegister.RegName.SP), reg)).pushBacktoInstList();
                     onStackNum++;
-                    new LoadOrStore(firstbb, LoadOrStore.Type.LOAD, dest, new Address(new MCRegister(MCRegister.RegName.r11), 4 * onStackNum)).pushBacktoInstList();
                 }
             }
             mf.getValueMap().put(para, dest);
         }
 
+        // translate basic block (add instructions for basic block)
         head = bbList.getHead();
         while (bbList.getLast() != null && head != bbList.getLast()) {
             head = head.getNext();
@@ -164,28 +209,9 @@ public class InstructionSelector {
             translateBB(bb);
         }
 
-        //
-        MachineInstruction newInst = new PushOrPop(mf.getBbList().getFirst().getVal(), PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
-        newInst.setPrologue(true);
-        newInst.pushtofront();
-
-        MachineInstruction lastPrologue = firstbb.getInstList().getFirst().getVal();
-        for (var i : firstbb.getInstList()) {
-            if (i.isPrologue())
-                lastPrologue = i;
-            else break;
-        }
-        var insertPoint = lastPrologue.getInstNode().getNext();
-        if (!ImmediateNumber.isLegalImm(mf.getStoreSize())) {
-            var reg = new VirtualRegister();
-            new LoadImm(firstbb, reg, mf.getStoreSize()).insertBefore(insertPoint);
-            new Arithmetic(firstbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), reg).insertBefore(insertPoint);
-        } else
-            new Arithmetic(firstbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), mf.getStoreSize()).insertBefore(insertPoint);
     }
 
     private void translateBB(BasicBlock bb) {
-
         var bbMap = funcMap.get(bb.getParent()).getBBMap();
         MachineBasicBlock mbb = bbMap.get(bb);
         var instList = bb.getInstList();
@@ -203,6 +229,7 @@ public class InstructionSelector {
         var mf = funcMap.get(bb.getParent());
         var mbb = mf.getBBMap().get(bb);
         var valueMap = mf.getValueMap();
+        var regDefMap = mf.getRegDefineMap();
         new Comment(mbb, ir.toString()).pushBacktoInstList();
 
         switch (ir.getOp()) {
@@ -235,7 +262,7 @@ public class InstructionSelector {
             }
             case Br -> {
                 var node = mbb.getInstList().getLast();
-                // TODO: float num cmp
+
                 if (ir.getNumOperands() == 1) { // unconditional branch
                     var dest = ir.getOperand(0);
                     var mdest = mf.getBBMap().get((BasicBlock) dest);
@@ -295,11 +322,6 @@ public class InstructionSelector {
                 node.getVal().setforBr(true);
             }
             case Call -> {
-
-                // TODO : change after phi
-
-                // TODO : Float num
-
                 //  float: from s0 to s15
                 // int : from r0 to r3
 
@@ -316,23 +338,17 @@ public class InstructionSelector {
                         intParaNum++; // could include pointer/array...
                     }
                 }
-                // paras store on stack
-                int numOnStack = 0;
-                if (floatParaNum > 16) numOnStack += floatParaNum - 16;
-                if (intParaNum > 4) numOnStack += intParaNum - 4;
-                if (numOnStack > mf.getMaxParaNumOnStack()) mf.setMaxParaNumOnStack(numOnStack);
-                for (int i = 4, stackPos = 0; i < paraNum; i++) {
 
+                for (int i = 4, stackPos = 0; i < paraNum; i++) {
                     var op = ir.getOperand(i);
                     if (op.getType().isFloatTy()) {
                         if (i < firstStackFloatPara) continue;
                         new LoadOrStore(mbb, LoadOrStore.Type.STORE, valueToFloatReg(mbb, op), new Address(new MCRegister(MCRegister.RegName.SP), stackPos * 4)).setForFloat(true).pushBacktoInstList();
-                        stackPos++;
                     } else {
                         if (i < firstStackIntPara) continue;
                         new LoadOrStore(mbb, LoadOrStore.Type.STORE, valueToReg(mbb, op), new Address(new MCRegister(MCRegister.RegName.SP), stackPos * 4)).pushBacktoInstList();
-                        stackPos++;
                     }
+                    stackPos++;
                 }
 
                 // params store on reg
@@ -379,38 +395,38 @@ public class InstructionSelector {
                 assert type.isPointerTy();
                 DerivedTypes.PointerType pType = (DerivedTypes.PointerType) type;
                 if (pType.getElementType().isArrayTy()) {
-                    // TODO: 数组
-                    assert pType.getElementType().isArrayTy();
-
                     var contentType = (DerivedTypes.ArrayType) pType.getElementType();
                     var size = contentType.getEleSize() * contentType.getNumElements();
 
                     // 分配栈空间
-                    mf.addStackTop(size * 4);
-
                     var dest = new VirtualRegister();
-//                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), ImmediateNumber.getLegalOperand(mbb, size * 4)).pushBacktoInstList();
-                    mf.addStoreSize(size * 4);
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop() - 4).pushBacktoInstList();
+                    var inst = new Arithmetic(mbb, Arithmetic.Type.ADD,
+                            dest, new MCRegister(MCRegister.RegName.SP), mf.getStackSize());
+
+                    inst.pushBacktoInstList();
+
+                    mf.addStackSize(size * 4);
+
                     // 保存一下位置
+
                     valueMap.put(ir, dest);
+                    regDefMap.put(dest, inst);
 
                 } else {
                     // int or float
                     var dest = new VirtualRegister();
                     // 分配栈空间
 
-//                    new Arithmetic(mbb, Arithmetic.Type.SUB, new MCRegister(MCRegister.RegName.SP), 4).pushBacktoInstList();
-                    mf.addStoreSize(4);
-                    new Arithmetic(mbb, Arithmetic.Type.SUB, dest, new MCRegister(MCRegister.RegName.r11), mf.getStackTop()).pushBacktoInstList();
+                    new Arithmetic(mbb, Arithmetic.Type.ADD,
+                            dest, new MCRegister(MCRegister.RegName.SP), mf.getStackSize()).pushBacktoInstList();
+                    mf.addStackSize(4);
                     // 保存一下位置
                     valueMap.put(ir, dest);
-                    mf.addStackTop(4);
                 }
             }
             case Store -> {
-                Register op1 = valueToReg(mbb, ir.getOperand(0)),
-                        op2 = valueToReg(mbb, ir.getOperand(1));
+                Register op1 = valueToReg(mbb, ir.getOperand(0));
+                Register op2 = valueToReg(mbb, ir.getOperand(1));
                 new LoadOrStore(mbb, LoadOrStore.Type.STORE, op1, new Address(op2)).pushBacktoInstList();
             }
             case Load -> {
@@ -424,9 +440,14 @@ public class InstructionSelector {
                 var curIr = (Instructions.GetElementPtrInst) ir;
                 assert ir.getType().isPointerTy();
 
+
                 var irOp = ir.getOperand(0);
                 var srcAddr = valueToReg(mbb, irOp);
 
+                if (curIr.allIndicesZero()) {
+                    valueMap.put(ir, srcAddr);
+                    break;
+                }
 
                 int constOffset = 0;
 
@@ -725,7 +746,7 @@ public class InstructionSelector {
                 }
             } else if (type.isFloatTy()) {
                 float value = ((Constants.ConstantFP) val).getVal();
-                if(value == 0){
+                if (value == 0) {
                     return new ImmediateNumber(0);
                 }
                 Register dest = new VirtualRegister();
@@ -756,7 +777,7 @@ public class InstructionSelector {
     }
 
     public static Register valueToRegInsertBefore(MachineBasicBlock parent, Value val, IListNode<MachineInstruction, MachineBasicBlock> node) {
-        MCOperand res = valueToMCOperand(parent, val);
+        MCOperand res = valueToMCOperandInsertBefore(parent, val, node);
         if (res instanceof Register)
             return (Register) res;
         if (res instanceof ImmediateNumber) {

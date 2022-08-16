@@ -24,7 +24,8 @@ public class Move extends MachineInstruction {
         this.dest = (Register) dest;
         this.type = Type.MOV;
         this.op = op;
-        if (op instanceof Register && ((Register) op).isFloat() || ((Register) dest).isFloat()) setForFloat(true);
+        if (op instanceof Register && ((Register) op).isFloat() || ((Register) dest).isFloat())
+            setForFloat(true);
     }
 
     public Move(MachineBasicBlock parent, Type type, MCOperand dest, MCOperand op) {
@@ -33,7 +34,8 @@ public class Move extends MachineInstruction {
         this.dest = (Register) dest;
         this.type = type;
         this.op = op;
-        if (op instanceof Register && ((Register) op).isFloat() || ((Register) dest).isFloat()) setForFloat(true);
+        if (op instanceof Register && ((Register) op).isFloat() || ((Register) dest).isFloat())
+            setForFloat(true);
     }
 
     public Move(MachineBasicBlock parent, Move mov) {

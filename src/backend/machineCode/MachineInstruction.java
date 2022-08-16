@@ -214,6 +214,9 @@ public abstract class MachineInstruction {
     public void insertBefore(IListNode<MachineInstruction, MachineBasicBlock> node) {
         this.getInstNode().insertBefore(node);
     }
+    public  void insertAfter(MachineInstruction node) {
+        this.getInstNode().insertAfter(node.getInstNode());
+    }
 
     public void insertBefore(MachineInstruction node) {
         this.getInstNode().insertBefore(node.getInstNode());

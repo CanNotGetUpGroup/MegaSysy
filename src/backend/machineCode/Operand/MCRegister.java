@@ -11,7 +11,7 @@ public class MCRegister extends Register {
     private RegName name;
 
     public static int maxRegNum(Content type){
-        if(type == Content.Int) return 11;
+        if(type == Content.Int) return 12;
         else return 32;
     }
 
@@ -97,7 +97,8 @@ public class MCRegister extends Register {
             }
         }
         if (!(obj instanceof Register))
-            throw new RuntimeException("can't compare");
+//            throw new RuntimeException("can't compare");
+            return false;
         if (!(obj instanceof MCRegister))
             return false;
         return getType() == ((MCRegister) obj).getType() && getId() == ((MCRegister) obj).getId();
