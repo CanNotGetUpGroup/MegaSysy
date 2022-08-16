@@ -25,18 +25,18 @@ public class VirtualRegister extends Register {
         return name;
     }
 
-    private String name;
+    private final String name;
 
     public VirtualRegister() {
         super(VIRTUAL);
         this.id = counter();
-        name = "v" + id;
+        name = "v" + (isFloat() ? "f" : "i") + id;
     }
 
     public VirtualRegister(Content content) {
         super(VIRTUAL, content);
         this.id = counter();
-        name = "v" + id;
+        name = "v" + (isFloat() ? "f" : "i") + id;
     }
 
 
@@ -50,7 +50,8 @@ public class VirtualRegister extends Register {
                 return r.getId() == getColorId() && r.getContent() == getContent();
         }
         if (!(obj instanceof Register))
-            throw new RuntimeException("can't compare" + obj + " " + this);
+            return false;
+            // throw new RuntimeException("can't compare" + obj + " " + this);
 
         var reg = (VirtualRegister) obj;
         return reg.getType() == getType() && Objects.equals(reg.getName(), getName());

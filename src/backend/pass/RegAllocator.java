@@ -18,6 +18,7 @@ import static backend.machineCode.Instruction.Arithmetic.Type.*;
 public class RegAllocator {
     private ArrayList<MachineFunction> funcList;
 
+
     public RegAllocator(ArrayList<MachineFunction> funcList) {
         this.funcList = funcList;
     }
@@ -56,17 +57,9 @@ public class RegAllocator {
                 for (var inst : firstBb.getInstList()) {
                     if (!inst.isPrologue()) {
                         int paraOnStack = func.getMaxParaNumOnStack();
-                        // Push FP
-                        newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.r11));
-                        newInst.setPrologue(true);
-                        newInst.getInstNode().insertBefore(inst.getInstNode());
 
-                        // set Frame Pointer -> Fp = sp + 4
-                        newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
-                        newInst.setPrologue(true);
-                        newInst.getInstNode().insertBefore(inst.getInstNode());
                         int offset = 4 * numOnStack + 4 * paraOnStack ;
-                        if((offset + func.getStackTop()) % 8 != 0) offset += 4;
+                        if((offset + func.getStackSize()) % 8 != 0) offset += 4;
                         MCOperand c;
                         if (ImmediateNumber.isLegalImm(offset))
                             c = new ImmediateNumber(offset);
@@ -108,7 +101,7 @@ public class RegAllocator {
                         } else {
                             reg = new MCRegister(Register.Content.Int, 4);
                         }
-                        int offset = 4 * vRegHash.get((VirtualRegister) dest) + func.getStackTop();
+                        int offset = 4 * vRegHash.get((VirtualRegister) dest) + func.getStackSize();
                         Address addr;
                         if (offset < 1024 )
                             addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -141,7 +134,7 @@ public class RegAllocator {
                         } else {
                             reg = new MCRegister(Register.Content.Int, 5);
                         }
-                        int offset = 4 * vRegHash.get((VirtualRegister) op1) + func.getStackTop();
+                        int offset = 4 * vRegHash.get((VirtualRegister) op1) + func.getStackSize();
                         Address addr;
                         if (offset < 1024)
                             addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -171,7 +164,7 @@ public class RegAllocator {
                         } else {
                             reg = new MCRegister(Register.Content.Int, 6);
                         }
-                        int offset = 4 * vRegHash.get((VirtualRegister) op2) + func.getStackTop();
+                        int offset = 4 * vRegHash.get((VirtualRegister) op2) + func.getStackSize();
                         Address addr;
                         if (offset < 1024)
                             addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -198,7 +191,7 @@ public class RegAllocator {
                     }
                     else if (op2 instanceof Address && ((Address) op2).getReg() instanceof VirtualRegister) {
 
-                        int offset = 4 * vRegHash.get(((Address) op2).getReg()) + func.getStackTop();
+                        int offset = 4 * vRegHash.get(((Address) op2).getReg()) + func.getStackSize();
                         Address addr;
                         if (offset < 1024)
                             addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
@@ -222,7 +215,7 @@ public class RegAllocator {
                     }
                     //  地址的第二个参数可能也是reg, 肯定还得是int
                     else if (op2 instanceof Address && ((Address) op2).getOffset() instanceof VirtualRegister) {
-                        int offset = 4 * vRegHash.get(((Address) op2).getOffset()) + func.getStackTop();
+                        int offset = 4 * vRegHash.get(((Address) op2).getOffset()) + func.getStackSize();
                         Address addr;
                         // TODO: 1024 for coprocessor and 4096 for arm processor
                         if (offset < 1024)

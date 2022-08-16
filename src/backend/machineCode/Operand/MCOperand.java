@@ -10,4 +10,12 @@ public abstract class MCOperand {
     public MCOperand(Type type){
         this.type = type;
     }
+
+    @Override
+    public boolean equals(Object obj){
+        if(!(obj instanceof MCOperand)){
+            return false;
+        }
+        return false; //TODO compare!
+    }
 }
