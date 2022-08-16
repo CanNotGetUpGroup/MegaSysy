@@ -34,7 +34,6 @@ public class PassManager {
                 passes.add(new LCSSA());
                 passes.add(new LoopInfoUpdate());
                 passes.add(new LICM());
-                passes.add(new LocalArrayPromote());
 
                 passes.add(new FuncInline());
                 passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
@@ -50,6 +49,7 @@ public class PassManager {
                 passes.add(new DeadCodeEmit());
                 passes.add(new SimplifyCFG(eliminatePreHeader));
                 passes.add(new LoopUnroll(true));// 常量循环消除
+                passes.add(new LocalArrayPromote());
                 // passes.add(new LoopUnroll(false));
                 // passes.add(new LoopUnroll(false));
                 passes.add(new SimplifyCFG(eliminatePreHeader));
