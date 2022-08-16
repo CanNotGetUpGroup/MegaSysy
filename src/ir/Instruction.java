@@ -150,8 +150,22 @@ public abstract class Instruction extends User {
     public void setSuccessor(int idx,BasicBlock BB){
     }
 
+    public void replaceSuccessorWith(BasicBlock OldBB,BasicBlock newBB){
+        for(int i=0;i<getSuccessorsNum();i++){
+            if(getSuccessor(i)==OldBB){
+                setSuccessor(i,newBB);
+            }
+        }
+    }
+
     public Function getFunction(){
         if(getParent()==null) return null;
         return getParent().getParent();
     }
+
+
+    /**
+     * 浅拷贝，Operand不拷贝
+     */
+    public abstract Instruction shallowCopy();
 }

@@ -6,6 +6,7 @@ import ir.Constants.*;
 import ir.Instruction.*;
 import ir.Module;
 import ir.instructions.*;
+import util.CloneMap;
 import util.IListNode;
 import util.MyIRBuilder;
 import util.SymbolTable;
@@ -819,6 +820,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     //判断
                     BasicBlock condBlock = builder.createBasicBlock(curF);
                     condBlock.setComment("judge " + ctx.cond().getText());
+                    condBlock.isCond=true;
                     builder.createBr(condBlock);
                     builder.setInsertPoint(condBlock);
                     visit(ctx.cond());
@@ -837,6 +839,7 @@ public class Visitor extends SysyBaseVisitor<Value> {
                     falseBlock = builder.createBasicBlock(curF);
                     falseBlock.setComment("exit while");
                     ((Instructions.BranchInst) CondBr).setIfFalse(falseBlock);
+
                     while (!continueStk.peek().isEmpty()) {
 //                        continueStk.peek().pop().setBr(cycBB);
                         continueStk.peek().pop().setBr(condBlock);

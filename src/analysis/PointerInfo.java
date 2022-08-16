@@ -20,7 +20,7 @@ public class PointerInfo {
     public PointerInfo(Value pointer) {
         this.pointer = pointer;
         gepList=new ArrayList<>();
-        if(pointer instanceof GlobalVariable&&!globalStatuses.containsKey(pointer)){
+        if(pointer instanceof GlobalVariable){
             globalStatuses.put((GlobalVariable) pointer,new GlobalStatus());
         }
     }
