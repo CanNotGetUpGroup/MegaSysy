@@ -61,7 +61,7 @@ public class PeepHole extends MCPass{
                             && ((LoadOrStore)next).getType() == LoadOrStore.Type.LOAD
                             && ((LoadOrStore)i).getOp2().equals(((LoadOrStore)next).getOp2())
                         ) {
-                            new Move(bb, next.getOp1(), i.getDest()).insertBefore(next);
+                            new Move(bb, next.getDest(), i.getOp1()).insertBefore(next);
                             next.delete();
                             done = false;
                         }
