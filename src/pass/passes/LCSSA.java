@@ -14,7 +14,6 @@ import ir.Type;
 import ir.Use;
 import ir.Value;
 import ir.Constants.UndefValue;
-import ir.Instruction.Ops;
 import ir.instructions.Instructions.PHIInst;
 import pass.FunctionPass;
 
@@ -51,9 +50,9 @@ public class LCSSA extends FunctionPass {
         if (usedOutLoopList.isEmpty()) {
             return;
         }
-//        else{
-//            System.out.println("[debug] LCSSA......");
-//        }
+        // else{
+        // System.out.println("[debug] LCSSA......");
+        // }
 
         ArrayList<BasicBlock> exitBlocks = loop.getExitBlocks(); // 循环退出后第一个到达的block
         if (exitBlocks == null || exitBlocks.isEmpty()) {
@@ -95,7 +94,7 @@ public class LCSSA extends FunctionPass {
                         }
                     }
                     // the user of inst is out of loop
-                    if (!loop.getBbList().contains(userBB) && !set.contains(userBB)) {
+                    if (!loop.getBbList().contains(userBB) && !set.contains(inst)) {
                         set.add(inst);
                         break;
                     }
@@ -118,7 +117,7 @@ public class LCSSA extends FunctionPass {
                     phi.addIncoming(inst, exitBB.getPredecessor(i));
                 }
                 exitBB.getInstList().insertAtHead(phi.getInstNode()); // 插入phi指令到exitBB的最前面
-//                System.out.println("[debug] insert phi inst at head of exit block" + phi);
+                // System.out.println("[debug] insert phi inst at head of exit block" + phi);
             }
         }
 
@@ -128,9 +127,9 @@ public class LCSSA extends FunctionPass {
             var userInst = (Instruction) use.getU();
             var userBB = userInst.getParent();
             if (userInst instanceof PHIInst) { // 循环外的use为PHI时,如果是刚放置的phi,则不需要替换
-                 if(userInst == phi){
+                if (userInst == phi) {
                     continue;
-                 }
+                }
                 var userPhi = (PHIInst) userInst;
                 int idx = 0;
                 for (var value : userPhi.getIncomingValues()) {
@@ -145,7 +144,7 @@ public class LCSSA extends FunctionPass {
             }
             // 维护循环外的 use
             userInst.COReplaceOperand(inst, phi); // 替换userInst的inst为value
-//            System.out.println("[debug] replace " + inst + " with " + phi);
+            // System.out.println("[debug] replace " + inst + " with " + phi);
         }
     }
 
