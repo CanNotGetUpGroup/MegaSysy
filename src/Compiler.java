@@ -37,13 +37,11 @@ public class Compiler {
 //                }
 //                pw.println(sb.toString());
 //                pw.flush();
-                throw new RuntimeException("skip this testcase");
+//                throw new RuntimeException("skip this testcase");
             }
         }
 
-        boolean O2 = false;
-        if (args.length == 5 && args[4].equals("-O2"))
-            O2 = true;
+        boolean O2 = args.length == 5 && args[4].equals("-O2");
 
         SysyLexer lexer = new SysyLexer(inputStream);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
@@ -56,7 +54,7 @@ public class Compiler {
 
         if (O2) {
             //TODO：优化掉undef
-            PassManager.ignoreUndef=false;
+            PassManager.ignoreUndef = true;
             PassManager.initialization();
             PassManager.initializationMC();
         }
