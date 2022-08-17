@@ -34,20 +34,21 @@ public class PeepHole extends MCPass{
                 if(bb.getInstList().isEmpty()) continue; // 怎么会有空的bb啊喂
 
                 // 消除bb尾无效跳转
-                // var lastInst = bb.getInstList().getLast().getVal();
-                // if (lastInst instanceof Branch && lastInst.getCond() == null) {
-                //     if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
-                //         lastInst.delete();
-                //         done = false;
-                //         // if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
-                //     }
-                // }
+                var lastInst = bb.getInstList().getLast().getVal();
+                if (lastInst instanceof Branch && lastInst.getCond() == null) {
+                    if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
+                        lastInst.delete();
+                        done = false;
+                        if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
+                    }
+                }
 
 
                 for (var next : bb.getInstList()) {
                     var iNode = next.getInstNode().getPrev();
                     if (iNode == null) continue;
                     var i = iNode.getVal();
+
                     if(i instanceof Arithmetic) {
                         if((((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
                                 && i.getOp2() instanceof ImmediateNumber
@@ -84,7 +85,7 @@ public class PeepHole extends MCPass{
 
                     if(i instanceof Move) {
                         // move a a -> del
-                        if(i.getDest().equals(i.getOp2()) && !i.hasShift()) {
+                        if(i.getDest().toString().equals(i.getOp2().toString())) {
                             i.delete();
                             done = false;
                             if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: move a a -> del");
@@ -93,6 +94,7 @@ public class PeepHole extends MCPass{
                             // move a c -> move a c    !! move a a 不能删除
                             if(next instanceof Move 
                                     && !i.hasShift() && !next.hasShift()
+                                    && i.getCond() == null && next.getCond() == null
                                     && i.getDest().equals(next.getDest())
                                     && !next.getDest().equals(next.getOp2())) {
                                 i.delete();
@@ -103,6 +105,7 @@ public class PeepHole extends MCPass{
                             // move b a
                             if(next instanceof Move
                                     && !i.hasShift() && !next.hasShift()
+                                    && i.getCond() == null && next.getCond() == null
                                     && i.getDest().equals(next.getOp2())
                                     && i.getOp2().equals(next.getDest())
                                 ) {
@@ -172,7 +175,8 @@ public class PeepHole extends MCPass{
                         if(next instanceof LoadOrStore && Objects.equals(iLastUse, next)) {
                             boolean isSameDest = ((Address)next.getOp2()).getReg().equals(i.getDest());
                             boolean isImmOffset = ((Address)next.getOp2()).getOffset() instanceof ImmediateNumber;
-                            if(isSameDest && isImmOffset) {
+                            // TODO: bb间的usedef存在问题，只开放r0不会遇到bug，待修复
+                            if(isSameDest && isImmOffset && i.getDest().getId() == 0) {
                                 int nextImm = ((ImmediateNumber)((Address)next.getOp2()).getOffset()).getValue();
                                 if((isAdd && nextImm+iImm < 4096) || (!isAdd && nextImm-iImm >= 0)) {
                                     var nImm = isAdd ? new ImmediateNumber(nextImm+iImm) : new ImmediateNumber(nextImm-iImm);
@@ -296,10 +300,15 @@ public class PeepHole extends MCPass{
     }
 
     private void blockLiveRange(MachineBasicBlock bb, HashMap<MCOperand,MachineInstruction> lastDef, HashMap<MachineInstruction, MachineInstruction> lastUse) {
+        lastDef.clear();
+        lastUse.clear();
 
         for(var i : bb.getInstList()) {
             for(var use : i.getUse()) {
-                if(lastDef.containsKey(use)) lastUse.put(lastDef.get(use), i);
+                if(lastDef.containsKey(use)) {
+                    lastUse.put(lastDef.get(use), i);
+                }
+                    
             }
             for(var def : i.getDef()) {
                 lastDef.put(def, i);
@@ -310,6 +319,8 @@ public class PeepHole extends MCPass{
                     i instanceof Comment
                     ) {  // 这里的SideEffect比较激进 可能有问题？
                 lastUse.put(i, i);
+            } else {
+                lastUse.put(i, null);
             }
         }
     }
@@ -319,6 +330,7 @@ public class PeepHole extends MCPass{
         boolean done = false;
         while(!done) {
             // System.out.println("PeepHole");
+            // done = peepHoleWithDataflow(CGM);
             done = peepHoleWithoutDataflow(CGM) & peepHoleWithDataflow(CGM);
         }
     }
