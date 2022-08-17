@@ -20,6 +20,7 @@ import java.util.Objects;
 import org.antlr.v4.runtime.misc.Pair;
 
 public class PeepHole extends MCPass{
+    private static final boolean PEEPHOLE_DEBUG = true;
 
     public PeepHole() {
         super();
@@ -33,13 +34,14 @@ public class PeepHole extends MCPass{
                 if(bb.getInstList().isEmpty()) continue; // 怎么会有空的bb啊喂
 
                 // 消除bb尾无效跳转
-                var lastInst = bb.getInstList().getLast().getVal();
-                if (lastInst instanceof Branch && lastInst.getCond() == null) {
-                    if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
-                        lastInst.delete();
-                        done = false;
-                    }
-                }
+                // var lastInst = bb.getInstList().getLast().getVal();
+                // if (lastInst instanceof Branch && lastInst.getCond() == null) {
+                //     if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
+                //         lastInst.delete();
+                //         done = false;
+                //         // if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
+                //     }
+                // }
 
 
                 for (var next : bb.getInstList()) {
@@ -54,11 +56,13 @@ public class PeepHole extends MCPass{
                                 // add/sub a a 0 -> del
                                 i.delete();
                                 done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a a 0 -> del");
                             }else {
                                 // add/sub a b 0 -> mov a b
                                 new Move(bb, i.getDest(), i.getOp1()).insertBefore(i);
                                 i.delete();
                                 done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a b 0 -> mov a b");
                             }
                         }
                     }
@@ -74,6 +78,7 @@ public class PeepHole extends MCPass{
                             new Move(bb, next.getDest(), i.getOp1()).insertBefore(next);
                             next.delete();
                             done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: ldr2mov");
                         }
                     }
 
@@ -82,6 +87,7 @@ public class PeepHole extends MCPass{
                         if(i.getDest().equals(i.getOp2()) && !i.hasShift()) {
                             i.delete();
                             done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: move a a -> del");
                         }else {
                             // move a b
                             // move a c -> move a c    !! move a a 不能删除
@@ -91,6 +97,7 @@ public class PeepHole extends MCPass{
                                     && !next.getDest().equals(next.getOp2())) {
                                 i.delete();
                                 done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: delredmov");
                                 }
                             // move a b
                             // move b a
@@ -101,6 +108,7 @@ public class PeepHole extends MCPass{
                                 ) {
                                     next.delete();
                                     done = false;
+                                    if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: delloopmov");
                                 }
                         }
                     }
@@ -149,6 +157,7 @@ public class PeepHole extends MCPass{
 
                     var iLastUse = lastUse.get(i);
 
+                    // *********************************************************************************************************************************************
                     // add/sub ldr/str/move
                     // ADD r1, r2, 4
                     // LDR r0, [ r1, 8 ] -> LDR r0, [ r2, 4+8 ]
@@ -171,6 +180,7 @@ public class PeepHole extends MCPass{
                                     ((Address)next.getOp2()).setOffset(nImm);
                                     i.delete();
                                     done = false;
+                                    if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: add/sub ldr/str");
                                 }
                             }
                         } else if (next instanceof Move) {
@@ -197,11 +207,34 @@ public class PeepHole extends MCPass{
                                             ((Address)nextnext.getOp2()).setOffset(nImm);
                                             i.delete();
                                             done = false;
+                                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: add/sub move");
                                         }
                                     }
                                 }
                             }
                         }
+                    }
+                    // *********************************************************************************************************************************************
+                    // mov a 2
+                    // cmp b a  -> cmp b 2
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i instanceof Move &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        Objects.equals(iLastUse, next) &&
+                        next instanceof Cmp &&
+                        (i.getDest().equals(next.getOp1()) || i.getDest().equals(next.getOp2())) &&
+                        !next.getOp1().equals(next.getOp2())) { // to avoid cmp a a
+                            var imm = ((ImmediateNumber)i.getOp2()).getValue();
+                            if(ImmediateNumber.isLegalImm(imm)) {
+                                if(i.getDest().equals(next.getOp1())) {
+                                    next.setOp1(new ImmediateNumber(imm));
+                                } else {
+                                    next.setOp2(new ImmediateNumber(imm));
+                                }
+                                i.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
+                            }
                     }
                 }
             }
@@ -285,7 +318,7 @@ public class PeepHole extends MCPass{
     public void runOnCodeGen(CodeGenManager CGM) {
         boolean done = false;
         while(!done) {
-            System.out.println("PeepHole");
+            // System.out.println("PeepHole");
             done = peepHoleWithoutDataflow(CGM) & peepHoleWithDataflow(CGM);
         }
     }
