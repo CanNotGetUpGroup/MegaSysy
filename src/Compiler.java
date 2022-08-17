@@ -25,7 +25,7 @@ public class Compiler {
         FileWriter fw = new FileWriter(args[2]);
         PrintWriter pw = new PrintWriter(fw);
 
-        String[] str = {"float.sy"};
+        String[] str = {};
         for (String s : str) {
             if (args[3].endsWith(s)) {
 //                InputStream in=new FileInputStream(args[3]);
@@ -54,7 +54,7 @@ public class Compiler {
 
         if (O2) {
             //TODO：优化掉undef
-            PassManager.ignoreUndef = true;
+            PassManager.ignoreUndef = false;
             PassManager.initialization();
             PassManager.initializationMC();
         }
