@@ -453,6 +453,15 @@ public class GraphColor {
         }
     }
 
+    MCRegister getMCReg(Register reg) {
+        if (reg instanceof MCRegister)
+            return (MCRegister) reg;
+        var vreg = (VirtualRegister) reg;
+        if (((VirtualRegister) reg).getColorId() == -1) {
+            throw new RuntimeException("Can't substitude");
+        }
+        return new MCRegister(vreg.getContent(), vreg.getColorId());
+    }
 
     void substituteAllRegister(MachineFunction func) {
         for (var bb : func.getBbList()) {
@@ -463,16 +472,19 @@ public class GraphColor {
                 if (dest instanceof VirtualRegister && dest.getContent() == curPassType) {
                     int color = colorMap.get(getAlias(dest));
                     ((VirtualRegister) dest).setColorId(color);
+                    i.setDest(getMCReg(dest));
                     registerUsed.add(new MCRegister(dest.getContent(), color));
                 }
                 if (op1 instanceof VirtualRegister && ((VirtualRegister) op1).getContent() == curPassType) {
                     int color = colorMap.get(getAlias((Register) op1));
                     ((VirtualRegister) op1).setColorId(color);
+                    i.setOp1(getMCReg((VirtualRegister) op1));
                     registerUsed.add(new MCRegister(((Register) op1).getContent(), color));
                 }
                 if (op2 instanceof VirtualRegister && ((VirtualRegister) op2).getContent() == curPassType) {
                     int color = colorMap.get(getAlias((Register) op2));
                     ((VirtualRegister) op2).setColorId(color);
+                    i.setOp2(getMCReg((VirtualRegister) op2));
                     registerUsed.add(new MCRegister(((Register) op2).getContent(), color));
                 } else if (op2 instanceof Address) {
                     var add = (Address) op2;
@@ -481,11 +493,13 @@ public class GraphColor {
                     if (reg instanceof VirtualRegister && reg.getContent() == curPassType) {
                         int color = colorMap.get(getAlias(reg));
                         ((VirtualRegister) reg).setColorId(colorMap.get(getAlias(reg)));
+                        add.setReg(getMCReg(reg));
                         registerUsed.add(new MCRegister(reg.getContent(), color));
                     }
                     if (off instanceof VirtualRegister && ((VirtualRegister) off).getContent() == curPassType) {
                         int color = colorMap.get(getAlias((Register) off));
                         ((VirtualRegister) off).setColorId(colorMap.get(getAlias((Register) off)));
+                        add.setOffset(getMCReg((Register) off));
                         registerUsed.add(new MCRegister(((Register) off).getContent(), color));
                     }
                 }
