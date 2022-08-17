@@ -5,7 +5,7 @@ import java.util.Objects;
 import static backend.machineCode.Operand.Register.Type.VIRTUAL;
 
 public class VirtualRegister extends Register {
-    private static int c = 0;
+
 
     public int getColorId() {
         return colorId;
@@ -16,6 +16,8 @@ public class VirtualRegister extends Register {
     }
 
     private int colorId = -1;
+
+    private static int c = 0;
 
     private static int counter() {
         return c++;

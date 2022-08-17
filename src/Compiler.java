@@ -14,19 +14,20 @@ import java.io.*;
 import java.util.Arrays;
 
 public class Compiler {
-    private static final Module module=Module.getInstance();
+    private static final Module module = Module.getInstance();
+
     /**
      * 功能测试：compiler -S -o testcase.s testcase.sy
      * 性能测试：compiler -S -o testcase.s testcase.sy -O2
      */
     public static void main(String[] args) throws IOException {
         CharStream inputStream = CharStreams.fromFileName(args[3]); // 获取输入流
-        FileWriter fw=new FileWriter(args[2]);
-        PrintWriter pw=new PrintWriter(fw);
+        FileWriter fw = new FileWriter(args[2]);
+        PrintWriter pw = new PrintWriter(fw);
 
-        String[] str={"float.sy"};
-        for(String s:str){
-            if(args[3].endsWith(s)){
+        String[] str = {"float.sy"};
+        for (String s : str) {
+            if (args[3].endsWith(s)) {
 //                InputStream in=new FileInputStream(args[3]);
 //                int n;
 //                StringBuilder sb=new StringBuilder();
@@ -40,20 +41,20 @@ public class Compiler {
             }
         }
 
-        boolean O2=false;
-        if(args.length==5&&args[4].equals("-O2"))
-            O2=true;
+        boolean O2 = false;
+        if (args.length == 5 && args[4].equals("-O2"))
+            O2 = true;
 
         SysyLexer lexer = new SysyLexer(inputStream);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
-        Visitor visitor=new Visitor();
+        Visitor visitor = new Visitor();
         SysyParser parser = new SysyParser(tokenStream);
         ParseTree tree = parser.program(); // 获取语法树的根节点
         visitor.visit(tree);
         module.rename();
         PassManager.functionalOpt();
 
-        if(false){
+        if (O2) {
             //TODO：优化掉undef
             PassManager.ignoreUndef=false;
             PassManager.initialization();
@@ -65,11 +66,7 @@ public class Compiler {
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
 
-        if(O2){
-            mc.performanceRun();
-        }else{
-            mc.run();
-        }
+        mc.performanceRun();
 
         PassManager.runMC(mc);
 
