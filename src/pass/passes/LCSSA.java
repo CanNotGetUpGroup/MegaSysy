@@ -131,6 +131,14 @@ public class LCSSA extends FunctionPass {
                  if(userInst == phi){
                     continue;
                  }
+                var userPhi = (PHIInst) userInst;
+                int idx = 0;
+                for (var value : userPhi.getIncomingValues()) {
+                    if (value.getUseList().contains(use)) {
+                        userBB = userPhi.getIncomingBlock(idx);
+                    }
+                    idx++;
+                }
             }
             if (userBB == bb || loop.getBbList().contains(userBB)) { // userBB在循环内无需维护
                 continue;
