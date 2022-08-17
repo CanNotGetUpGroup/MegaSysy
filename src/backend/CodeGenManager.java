@@ -146,7 +146,7 @@ public class CodeGenManager {
 
         mc.performanceRun();
 
-//        PassManager.runMC(mc);
+        PassManager.runMC(mc);
 
         pw3.println(mc.toArm());
         pw3.flush();

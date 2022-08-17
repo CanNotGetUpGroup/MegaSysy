@@ -21,10 +21,9 @@ public class Clean {
                 for (var i : bb.getInstList()) {
                     if (i instanceof Comment){
                         // case : comment
-                        i.getInstNode().remove();
+//                        i.getInstNode().remove();
                     }
                     else if (i instanceof Move && i.getDest().toString().equals(i.getOp2().toString())){
-//                        System.out.println(i);
                         // case : mov r0, r0
                         i.getInstNode().remove();
                     }
