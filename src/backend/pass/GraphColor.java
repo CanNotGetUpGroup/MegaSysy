@@ -5,10 +5,7 @@ import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.*;
-import ir.Constant;
-import ir.Function;
 
-import java.awt.geom.AffineTransform;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -23,21 +20,21 @@ public class GraphColor {
         this.funcList = funcList;
     }
 
-    HashSet<Register> simplifyWorklist; // list of low-degree non-move-related nodes.
-    HashSet<Register> freezeWorklist; // low-degree move-related nodes.
-    HashSet<Register> spillWorklist; // high-degree nodes.
-    HashSet<Register> spilledNodes; // nodes marked for spilling during this round; initially empty.
-    HashSet<Register> coalescedNodes; // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
-    HashSet<Register> coloredNodes; // nodes successfully colored.
+    Set<Register> simplifyWorklist; // list of low-degree non-move-related nodes.
+    Set<Register> freezeWorklist; // low-degree move-related nodes.
+    Set<Register> spillWorklist; // high-degree nodes.
+    Set<Register> spilledNodes; // nodes marked for spilling during this round; initially empty.
+    Set<Register> coalescedNodes; // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
+    Set<Register> coloredNodes; // nodes successfully colored.
     Deque<Register> selectStack; // stack containing temporaries removed from the graph.
 
-    HashSet<Move> coalescedMoves; // moves that have been coalesced.
-    HashSet<Move> constrainedMoves;// moves whose source and target interfere.
-    HashSet<Move> frozenMoves;// moves that will no longer be considered for coalescing.
-    HashSet<Move> worklistMoves; // moves enabled for possible coalescing.
-    HashSet<Move> activeMoves; //moves not yet ready for coalescing.
+    Set<Move> coalescedMoves; // moves that have been coalesced.
+    Set<Move> constrainedMoves;// moves whose source and target interfere.
+    Set<Move> frozenMoves;// moves that will no longer be considered for coalescing.
+    Set<Move> worklistMoves; // moves enabled for possible coalescing.
+    Set<Move> activeMoves; //moves not yet ready for coalescing.
 
-    HashSet<Map.Entry<Register, Register>> adjSet; // the set of interference edges (u, v) in the graph.
+    Set<Map.Entry<Register, Register>> adjSet; // the set of interference edges (u, v) in the graph.
     HashMap<Register, Set<Register>> adjList; // the set of interference edges (u, v) in the graph.
     Map<Register, Integer> degree; // an array containing the current degree of each node. Precolored nodes are initialized with a degree of ∞,
 
@@ -234,7 +231,7 @@ public class GraphColor {
     //forall m ∈ Adjacent(n)
     //DecrementDegree(m)
     void Simplify() {
-        var reg = simplifyWorklist.iterator().next();
+        var reg = selectOne(simplifyWorklist);
         simplifyWorklist.remove(reg);
         if (reg == null)
             throw new RuntimeException("null register");
@@ -284,7 +281,7 @@ public class GraphColor {
     }
 
     void Coalesce() {
-        var m = worklistMoves.iterator().next();
+        var m = selectOne(worklistMoves);
         var x = getAlias(m.getDest());
         if (m.getOp2() instanceof ImmediateNumber) {
             worklistMoves.remove(m);
@@ -374,7 +371,7 @@ public class GraphColor {
     }
 
     void freeze() {
-        var u = freezeWorklist.iterator().next();
+        var u = selectOne(freezeWorklist);
         freezeWorklist.remove(u);
         simplifyWorklist.add(u);
         FreezeMoves(u);
@@ -401,7 +398,7 @@ public class GraphColor {
 
     void SelectSpill() {
         Double maxScore = 0.0;
-        Register m = spillWorklist.iterator().next();
+        Register m = selectOne(spillWorklist);
         for (var i : spillWorklist) {
             double curScore;
             curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(2, loopDepth.getOrDefault(i, 0));
@@ -434,7 +431,7 @@ public class GraphColor {
         while (!selectStack.isEmpty()) {
             var n = selectStack.pop();
             var okColors = IntStream.range(0, MCRegister.maxRegNum(curPassType)).boxed()
-                    .collect(Collectors.toCollection(HashSet::new));
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
 
             for (var w : adjList.getOrDefault(n, new HashSet<>())) {
                 var alias = getAlias(w);
@@ -624,14 +621,13 @@ public class GraphColor {
 
         MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
         MachineInstruction newInst;
-        // TODO:
+
         int saveOnStack = 9 + 16;
 
         // reserve space for temp variable on stack
         int paraOnStack = func.getMaxParaNumOnStack();
 
         // push callee save register
-        // TODO: only save those used
         newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
         newInst.setPrologue(true);
         newInst.insertBefore(firstBb.getInstList().getFirst());
@@ -663,7 +659,7 @@ public class GraphColor {
             func.addStackSize(4);
         func.addStoredRegisterNum(saveOnStack);
 
-        // TODO: release stack
+        // release stack
         for (var bb : func.getBbList()) {
             for (var inst : bb.getInstList()) {
                 if (inst.isEpilogue()) {
@@ -672,7 +668,6 @@ public class GraphColor {
                             new MCRegister(Register.Content.Int, 3),
                             func.getStackSize()).insertBefore(inst);
 
-                    // TODO: modify
                     new Arithmetic(firstBb, ADD,
                             new MCRegister(MCRegister.RegName.SP),
                             new MCRegister(MCRegister.RegName.SP),
@@ -703,8 +698,20 @@ public class GraphColor {
         }
     }
 
-    HashSet<Register> substitutions = new HashSet<>();
-    HashSet<Register> registerUsed = new HashSet<>();
+
+    static Random rand = new Random();
+
+    static <T> T selectOne(Set<T> set) {
+
+        int sz = set.size();
+        var list = new ArrayList<>(set);
+        var sorted = list.stream().sorted().collect(Collectors.toList());
+        return sorted.get(sz - 1);
+    }
+
+
+    Set<Register> substitutions = new HashSet<>();
+    Set<Register> registerUsed = new HashSet<>();
     HashMap<Register, Integer> loopDepth;
 
     public void run() {
