@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Stack;
-import java.util.stream.Collectors;
 
 import ir.BasicBlock;
 import ir.Constant;
@@ -78,7 +77,7 @@ public class LocalArrayPromote extends ModulePass {
                     }
                 }
             }
-            if(promoteArray){
+            if (promoteArray) {
                 gvngcm.runOnModule(parent);
                 gvo.runOnModule(parent);
             }
