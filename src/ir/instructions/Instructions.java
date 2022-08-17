@@ -770,8 +770,13 @@ public abstract class Instructions {
             BB.getPHIs().add(this);
         }
 
+        /**
+         * WARNING:此处将phi从原来incomingBlock的PHIs种删除
+         */
         public void setIncomingBlock(int i, BasicBlock BB) {
             if (i > getNumOperands() || i < 0) return;
+            if(blocks.get(i)!=null)
+                blocks.get(i).getPHIs().remove(this);
             blocks.set(i, BB);
             BB.getPHIs().add(this);
         }
@@ -783,6 +788,7 @@ public abstract class Instructions {
             int i = blocks.indexOf(OLD);
             if (i > getNumOperands() || i < 0) return;
             blocks.set(i, BB);
+            OLD.getPHIs().remove(this);
             BB.getPHIs().add(this);
         }
 

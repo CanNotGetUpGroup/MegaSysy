@@ -506,7 +506,7 @@ public class LoopInfo {
                 }
                 case ICMP_SGT -> {
                     if (step < 0) {
-                        tripCount = init > end ? (int)Math.ceil((double)(init - end)/step):0;
+                        tripCount = init > end ? (int)Math.ceil((double)(init - end)/-step):0;
                     }
                 }
                 case ICMP_SLE -> {
@@ -516,7 +516,7 @@ public class LoopInfo {
                 }
                 case ICMP_SGE -> {
                     if (step < 0) {
-                        tripCount = init >= end ? (int)Math.ceil((double)(init - end + 1)/step):0;
+                        tripCount = init >= end ? (int)Math.ceil((double)(init - end + 1)/-step):0;
                     }
                 }
                 case ICMP_NE -> {
