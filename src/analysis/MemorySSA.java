@@ -27,26 +27,19 @@ public class MemorySSA {
     private final Function F;
     private final DominatorTree DT;
 
-    private final HashMap<Instructions.AllocaInst,Integer> AllocaLookup= new HashMap<>();
-    private ArrayList<Instructions.AllocaInst> allocaInsts;
     private final HashMap<BasicBlock,Integer> BBNumbers= new HashMap<>();
     private final HashMap<Instructions.CallInst,ArrayList<Value>> CI2Pointers=new HashMap<>();
     private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Defs=new HashMap<>();
 
-    private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> LoadToPhi;
-    private final HashMap<Value,ArrayList<BasicBlock>> Pointer2Uses=new HashMap<>();
     private final HashMap<MemoryPhi,Integer> PhiToLoad =new HashMap<>();
     HashMap<Instructions.LoadInst,Integer> LoadLoopUp=new HashMap<>();
     ArrayList<Instructions.LoadInst> Loads=new ArrayList<>();
-    HashSet<Value> Pointers=new HashSet<>();
-//    private final Set<BasicBlock> Visited=new HashSet<>();
 
     public MemorySSA(Function F, DominatorTree DT) {
         this.F = F;
         this.DT = DT;
         ValueToMemAcc = new HashMap<>();
         PointerToPhi = new HashMap<>();
-        LoadToPhi = new HashMap<>();
         BlockToMemAccList = new HashMap<>();
         BlockToMemDefList = new HashMap<>();
         LiveOnEntry = new MemoryAccess(Instruction.Ops.MemDef, F.getEntryBB());

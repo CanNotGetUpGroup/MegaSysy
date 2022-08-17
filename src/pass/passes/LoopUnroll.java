@@ -36,7 +36,7 @@ public class LoopUnroll extends FunctionPass {
         do{
             continueUnroll=false;
             lcssa.runOnFunction(F);
-            simplifyCFG.runOnFunction(F);
+//            simplifyCFG.runOnFunction(F);
             Module.getInstance().rename(F);
 
             F.getLoopInfo().computeLoopInfo(F);
@@ -46,6 +46,7 @@ public class LoopUnroll extends FunctionPass {
             if (loops.isEmpty()) return;
             DT = F.getAndUpdateDominatorTree();
             Queue<Loop> WorkList = new LinkedList<>();
+            simplifyCFG.runOnFunction(F);
 
             for (Loop l : loops) {
                 LoopUtils.addLoopToWorkList(l, WorkList);
@@ -54,17 +55,22 @@ public class LoopUnroll extends FunctionPass {
                 Loop L = WorkList.poll();
                 if(!constant){
                     tryToUnrollLoop(L);
+                    simplifyCFG.runOnFunction(F);
+                    Module.getInstance().rename(F);
+                    gvngcm.functionGVNGCM(F);
+                    Module.getInstance().rename(F);
                 }else{//常数次展开
-                    if(tryToConstantUnrollLoop(L)){
+                    if(tryToConstantUnrollLoop(L)){//没有展开成功不要simplifyCFG，会破坏掉LCSSA
                         continueUnroll=true;
+                        Module.getInstance().rename();
                         System.out.println("unroll "+L.getTripCount()+" loop");
+                        simplifyCFG.runOnFunction(F);
+                        Module.getInstance().rename(F);
+                        gvngcm.functionGVNGCM(F);
+                        Module.getInstance().rename(F);
+                        break;
                     }
                 }
-                simplifyCFG.runOnFunction(F);
-                Module.getInstance().rename(F);
-                gvngcm.functionGVNGCM(F);
-                Module.getInstance().rename(F);
-                if(continueUnroll) break;
             }
         }while (constant&&continueUnroll);
     }
@@ -417,8 +423,8 @@ public class LoopUnroll extends FunctionPass {
 
         headerIsTrueBB = latchBr.getTrueBlock().equals(Header);
         exitLatchPredIndex = Header.getPredecessors().indexOf(LatchBB);
-        latchBr.removeAllOperand();//删除latch的后继
-        latchBr.getInstNode().remove();//只是从列表里删除
+        latchBr.remove();//记得维护PHIs
+//        LatchBB.getPHIs().clear();
         return true;
     }
 
@@ -468,8 +474,30 @@ public class LoopUnroll extends FunctionPass {
                     LoopUtils.remapInst(I, LastValMap);
                 }
             }
+
+            Module.getInstance().rename(F);
         }
 
+        HashMap<Value,Value> exitIncoming=new HashMap<>();
+        //储存一下ExitBB的incomingVal
+        if (tripCount > 1) {
+            for (var exitBB : L.getExitBlocks()) {
+                for (var inst : exitBB.getInstList()) {
+                    if (!(inst instanceof PHIInst)) {
+                        break;
+                    }
+                    var phi = (PHIInst) inst;
+                    var latchIndex = phi.getBlocks().indexOf(LatchBB);
+                    if(latchIndex==-1) continue;
+                    var incomingVal = phi.getIncomingValues().get(latchIndex);
+                    if (incomingVal instanceof Instruction && (L.getBbList()
+                            .contains(((Instruction) incomingVal).getParent()))) {
+                        incomingVal = LastValMap.get(incomingVal);
+                    }
+                    exitIncoming.put(phi,incomingVal);
+                }
+            }
+        }
 
         var preHeader = Header.getPredecessors().get(0);
 
@@ -488,7 +516,6 @@ public class LoopUnroll extends FunctionPass {
         builder.setInsertPoint(last);
         builder.createBr(ExitBB);
 
-
         // 更新 LCSSA phi
         if (tripCount > 1) {
             for (var exitBB : L.getExitBlocks()) {
@@ -497,13 +524,8 @@ public class LoopUnroll extends FunctionPass {
                         break;
                     }
                     var phi = (PHIInst) inst;
-                    var latchIndex = phi.getBlocks().indexOf(LatchBB);
-                    if(latchIndex==-1) continue;
-                    var incomingVal = phi.getIncomingValues().get(latchIndex);
-                    if (incomingVal instanceof Instruction && (L.getBbList()
-                            .contains(((Instruction) incomingVal).getParent()))) {
-                        incomingVal = LastValMap.get(incomingVal);
-                    }
+                    var incomingVal = exitIncoming.get(phi);
+                    if(incomingVal==null) continue;
                     phi.replaceIncomingByBlock(LatchBB,last, incomingVal);
                 }
             }
