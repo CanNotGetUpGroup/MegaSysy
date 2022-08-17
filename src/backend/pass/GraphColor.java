@@ -397,7 +397,7 @@ public class GraphColor {
     }
 
     void SelectSpill() {
-        Double maxScore = 0.0;
+        double maxScore = 0.0;
         Register m = selectOne(spillWorklist);
         for (var i : spillWorklist) {
             double curScore;
