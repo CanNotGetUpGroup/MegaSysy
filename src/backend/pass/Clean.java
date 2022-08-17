@@ -19,21 +19,15 @@ public class Clean {
         for (var f : funcList) {
             for (var bb : f.getBbList()) {
                 for (var i : bb.getInstList()) {
-                    if (i instanceof Comment)
+                    if (i instanceof Comment){
                         // case : comment
-                        i.getInstNode().remove();
-                    else if (i instanceof Move && i.getDest().toString().equals(i.getOp2().toString()))
+//                        i.getInstNode().remove();
+                    }
+                    else if (i instanceof Move && i.getDest().toString().equals(i.getOp2().toString())){
                         // case : mov r0, r0
                         i.getInstNode().remove();
-                    else if (i instanceof Arithmetic) {
-                        // case : sub r0, r0, 0
-                        if (i.getOp2() instanceof ImmediateNumber
-                                && ((ImmediateNumber) i.getOp2()).getValue() == 0
-                                && !i.hasShift()
-                                && i.getOp1().toString().equals(i.getDest().toString())){
-                            i.getInstNode().remove();
-                        }
                     }
+
                 }
             }
         }

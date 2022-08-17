@@ -63,7 +63,7 @@ public class CodeGenManager {
         allocator.run();
 
         var clean = new Clean(funcList);
-//        clean.run();
+        clean.run();
 
 //        var peepHole = new PeepHole(funcList);
 //       peepHole.run();
@@ -91,21 +91,8 @@ public class CodeGenManager {
     }
 
     public void performanceRun() {
-        var selector = new InstructionSelector(module, true);
-        selector.run();
-        this.funcList = selector.getFuncList();
-        this.dataBlockArrayList = selector.getGlobalDataList();
-
-        var phiEliminate = new PhiElimination(funcList);
-        phiEliminate.run();
-
-        var allocator = new GraphColor(funcList);
-        allocator.run();
-        var clean = new Clean(funcList);
-//        clean.run();
-//        var peepHole = new PeepHole(funcList);
-//        peepHole.run();
-
+        halfRun1(true);
+        halfRun2();
     }
 
     public ArrayList<MachineFunction> getFuncList() {
@@ -134,6 +121,7 @@ public class CodeGenManager {
         PrintWriter pw1 = new PrintWriter(fw1);
         PrintWriter pw2 = new PrintWriter(fw2);
         PrintWriter pw3 = new PrintWriter(fw3);
+         final Module module = Module.getInstance();
 
         SysyLexer lexer = new SysyLexer(inputStream);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer); // 词法分析获取 token 流
@@ -141,32 +129,24 @@ public class CodeGenManager {
         SysyParser parser = new SysyParser(tokenStream);
         ParseTree tree = parser.program(); // 获取语法树的根节点
         visitor.visit(tree);
-        Module module = Module.getInstance();
         module.rename();
+        PassManager.functionalOpt();
 
         if (true) {
             //TODO：优化掉undef
-            PassManager.ignoreUndef = false;
+            PassManager.ignoreUndef = true;
             PassManager.initialization();
             PassManager.initializationMC();
-        } else {
-            PassManager.functionalOpt();
         }
-
         PassManager.run(module);
 
-        pw1.println(module.toLL());
-        pw1.flush();
 
-        // back-end
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
-        mc.halfRun1(true);
 
-        pw2.println(mc.toArm());
-        pw2.flush();
+        mc.performanceRun();
 
-        mc.halfRun2();
+        PassManager.runMC(mc);
 
         pw3.println(mc.toArm());
         pw3.flush();
