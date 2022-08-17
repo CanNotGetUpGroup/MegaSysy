@@ -1,5 +1,6 @@
 package backend.machineCode;
 
+import backend.machineCode.Instruction.Comment;
 import ir.BasicBlock;
 import ir.Function;
 
@@ -8,7 +9,7 @@ import util.IListNode;
 
 import java.util.HashSet;
 
-public class MachineBasicBlock implements Addressable{
+public class MachineBasicBlock implements Addressable {
     private static int c = 1;
 
     private int counter() {
@@ -31,7 +32,7 @@ public class MachineBasicBlock implements Addressable{
         this.predInst = predInst;
     }
 
-    public void addPredInst(MachineInstruction inst){
+    public void addPredInst(MachineInstruction inst) {
         this.predInst.add(inst);
     }
 
@@ -42,9 +43,8 @@ public class MachineBasicBlock implements Addressable{
     }
 
 
-
     public void addSuccessor(MachineBasicBlock successor) {
-        this.successors.add(successor) ;
+        this.successors.add(successor);
     }
 
     private HashSet<MachineBasicBlock> successors = new HashSet<>();
@@ -54,11 +54,11 @@ public class MachineBasicBlock implements Addressable{
 
     private int loopDepth;
 
-    public void setLoopDepth(int l){
-        this.loopDepth=l;
+    public void setLoopDepth(int l) {
+        this.loopDepth = l;
     }
 
-    public int getLoopDepth(){
+    public int getLoopDepth() {
         return loopDepth;
     }
 
@@ -110,7 +110,8 @@ public class MachineBasicBlock implements Addressable{
         while (instList.getLast() != null && head != instList.getLast()) {
             head = head.getNext();
             var i = head.getVal();
-            sb.append("\t").append(i.toString()).append("\n");
+            if (!(i instanceof Comment))
+                sb.append("\t").append(i.toString()).append("\n");
         }
         return sb.toString();
     }
