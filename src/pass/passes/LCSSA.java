@@ -109,7 +109,6 @@ public class LCSSA extends FunctionPass {
     public void generateLoopClosedPhi(Instruction inst, Loop loop) {
         var bb = inst.getParent();
         PHIInst phi = null;
-
         // 在循环出口的基本块开头放置 phi，参数为 inst，即循环内定义的变量 PHI添加到exitBB的最前面
         for (var exitBB : loop.getExitBlocks()) {
             // bb 支配exitBB才放置 phi，否则改变了作用域
@@ -128,16 +127,10 @@ public class LCSSA extends FunctionPass {
         for (var use : usesList) {
             var userInst = (Instruction) use.getU();
             var userBB = userInst.getParent();
-            if (userInst instanceof PHIInst) { // 循环外的use为PHI时，直接跳过
-                // var phi = (PHIInst) userInst;
-                // int idx = 0;
-                // for (var value : phi.getIncomingValues()) {
-                // if (value.getUseList().contains(use)) {// userInst是phi指令需要取对应的IncomingBlock
-                // userBB = phi.getIncomingBlock(idx);
-                // }
-                // idx++;
-                // }
-                continue;
+            if (userInst instanceof PHIInst) { // 循环外的use为PHI时,如果是刚放置的phi,则不需要替换
+                 if(userInst == phi){
+                    continue;
+                 }
             }
             if (userBB == bb || loop.getBbList().contains(userBB)) { // userBB在循环内无需维护
                 continue;
