@@ -856,10 +856,12 @@ public abstract class Instructions {
          */
         public Value hasConstantValue(boolean ignoreUndef) {
             Value ConstantValue = getIncomingValue(0);
+            boolean ignore=false;
             for (int i = 1, e = getNumOperands(); i != e; ++i)
                 if (getIncomingValue(i) != ConstantValue && getIncomingValue(i) != this) {
                     if(ignoreUndef&&Constants.UndefValue.isUndefValue(ConstantValue)){
                         //测例语义保证了不会出现undef，此处可以激进地忽略(中端测试可能无法通过)
+                        ignore=true;
                         ConstantValue=getIncomingValue(i);
                         continue;
                     }
@@ -867,6 +869,9 @@ public abstract class Instructions {
                         return null;
                     ConstantValue = getIncomingValue(i);
                 }
+            if(ignore){
+                System.out.println("ignore undef successfully");
+            }
             if (ConstantValue == this)
                 return Constants.UndefValue.get(getType());
             return ConstantValue;
