@@ -137,10 +137,12 @@ public class InterProceduralDCE extends ModulePass {
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
                         if (inst instanceof ReturnInst) {
-                            Constant ret = Constant.getNullValue(((ReturnInst) inst).getOperand(0).getType());
-                            inst.removeAllOperand();
-                            if (ret != null) {
-                                inst.addOperand(ret);
+                            if (!inst.getOperandList().isEmpty()) {
+                                Constant ret = Constant.getNullValue(((ReturnInst) inst).getOperand(0).getType());
+                                inst.removeAllOperand();
+                                if (ret != null) {
+                                    inst.addOperand(ret);
+                                }
                             }
                         }
                     }
