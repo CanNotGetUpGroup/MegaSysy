@@ -1,6 +1,6 @@
 package pass.passes;
 
-import ir.Function;
+import ir.Module;
 import pass.ModulePass;
 
 public class InterproceduralDCE extends ModulePass {
@@ -10,12 +10,18 @@ public class InterproceduralDCE extends ModulePass {
     }
 
     @Override
+    public String getName() {
+        return "InterproceduralDCE";
+    }
+
+    @Override
     public void runOnModule(Module M) {
-        for (Function F : M.getFuncList()) {
-            // 非Builtin函数
-            if (F.isDefined()) {
-                runOnFunction(F);
+        for (var func : M.getFuncList()) {
+            if (!func.isDefined()) {
+                continue;
             }
+
         }
     }
+
 }

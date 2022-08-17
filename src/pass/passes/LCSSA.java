@@ -82,17 +82,6 @@ public class LCSSA extends FunctionPass {
                     assert user instanceof Instruction;
                     var userInst = (Instruction) user;
                     var userBB = userInst.getParent();
-                    // userInst是phi指令需要特判,userBB取值是phi指令的IncomingBlock
-                    if (userInst instanceof PHIInst) {
-                        var phi = (PHIInst) userInst;
-                        int idx = 0;
-                        for (var value : phi.getIncomingValues()) {
-                            if (value.getUseList().contains(use)) {
-                                userBB = phi.getIncomingBlock(idx);
-                            }
-                            idx++;
-                        }
-                    }
                     // the user of inst is out of loop
                     if (!loop.getBbList().contains(userBB) && !set.contains(inst)) {
                         set.add(inst);
