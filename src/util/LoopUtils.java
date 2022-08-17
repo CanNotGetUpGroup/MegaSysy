@@ -57,9 +57,9 @@ public class LoopUtils {
         MyIRBuilder.getInstance().setInsertPoint(ret);
         for(Instruction I:BB.getInstList()){
             var copyInst=I.shallowCopy();
-            if(copyInst instanceof Instructions.PHIInst){
-                ret.getPHIs().add((Instructions.PHIInst) copyInst);
-            }
+//            if(copyInst instanceof Instructions.PHIInst){
+//                ret.getPHIs().add((Instructions.PHIInst) copyInst);
+//            }
             valMap.put(I,copyInst);
             copyInst.getInstNode().insertIntoListEnd(ret.getInstList());
         }
