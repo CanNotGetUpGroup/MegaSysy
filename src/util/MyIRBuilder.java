@@ -226,6 +226,10 @@ public class MyIRBuilder {
                 return createFDiv(retL,retR);
             case FRem:
                 return createFRem(retL,retR);
+            case Shl:
+                return createShl(retL,retR);
+            case Shr:
+                return createShr(retL,retR);
         }
         return null;
     }
@@ -340,6 +344,22 @@ public class MyIRBuilder {
             return insert(V);
         }
         return insert(BinaryInstruction.create(Instruction.Ops.FRem,LHS,RHS));
+    }
+
+    public Value createShl(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.Shl, LHS, RHS);
+        if (V != null) {
+            return insert(V);
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.Shl,LHS,RHS));
+    }
+
+    public Value createShr(Value LHS, Value RHS) {
+        Value V = foldConstant(Instruction.Ops.Shr, LHS, RHS);
+        if (V != null) {
+            return insert(V);
+        }
+        return insert(BinaryInstruction.create(Instruction.Ops.Shr,LHS,RHS));
     }
 
     public Value createAnd(Value LHS, Value RHS) {

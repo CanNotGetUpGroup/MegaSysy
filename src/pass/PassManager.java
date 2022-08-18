@@ -15,6 +15,7 @@ public class PassManager {
     public static boolean ignoreUndef = false;
     public static boolean eliminatePreHeader = false;
     public static boolean aggressive = false;
+    public static boolean debug = true;
 
     /**
      * 初始化，在此处按照顺序添加IR pass
@@ -58,7 +59,9 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new EliminateAlloca());// 由于GVN需要使用alloca，因此最后再删除
-        passes.add(new VerifyFunction());
+        if(debug){
+            passes.add(new VerifyFunction());
+        }
     }
 
     public static void functionalOpt() {

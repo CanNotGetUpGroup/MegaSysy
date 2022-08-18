@@ -26,6 +26,7 @@ public class Loop {
     private Instruction indVarCondInst; // icmp 中携带 indVar 的操作数（在 while (i < n)
     //的情况下等于 stepInst）
     private Value step; // 迭代长度
+    private Value bias;
     private Integer tripCount; // 迭代次数（只考虑 init/end/step 都是常量的情况）
 
     /**
@@ -273,5 +274,13 @@ public class Loop {
 
     public void setTripCount(Integer tripCount) {
         this.tripCount = tripCount;
+    }
+
+    public Value getBias() {
+        return bias;
+    }
+
+    public void setBias(Value bias) {
+        this.bias = bias;
     }
 }
