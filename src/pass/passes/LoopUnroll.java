@@ -478,7 +478,6 @@ public class LoopUnroll extends FunctionPass {
             Module.getInstance().rename(F);
         }
 
-        HashMap<Value,Value> exitIncoming=new HashMap<>();
         //储存一下ExitBB的incomingVal
         if (tripCount > 1) {
             for (var exitBB : L.getExitBlocks()) {
@@ -494,7 +493,7 @@ public class LoopUnroll extends FunctionPass {
                             .contains(((Instruction) incomingVal).getParent()))) {
                         incomingVal = LastValMap.get(incomingVal);
                     }
-                    exitIncoming.put(phi,incomingVal);
+                    phi.CoReplaceOperandByIndex(latchIndex,incomingVal);
                 }
             }
         }
@@ -524,9 +523,9 @@ public class LoopUnroll extends FunctionPass {
                         break;
                     }
                     var phi = (PHIInst) inst;
-                    var incomingVal = exitIncoming.get(phi);
-                    if(incomingVal==null) continue;
-                    phi.replaceIncomingByBlock(LatchBB,last, incomingVal);
+                    var latchIndex = phi.getBlocks().indexOf(LatchBB);
+                    if(latchIndex==-1) continue;
+                    phi.setIncomingBlock(latchIndex,last);
                 }
             }
         }
