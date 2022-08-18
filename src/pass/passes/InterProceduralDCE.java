@@ -1,11 +1,13 @@
 package pass.passes;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 
+import ir.Argument;
 import ir.Constant;
 import ir.Function;
-import ir.GlobalVariable;
+// import ir.GlobalVariable;
 import ir.Module;
 import ir.instructions.Instructions.CallInst;
 import ir.instructions.Instructions.ReturnInst;
@@ -112,23 +114,129 @@ public class InterProceduralDCE extends ModulePass {
                 outputFuncs.add(func);
             }
         }
-        while (removeUselessRet(M) || removeUselessArg(M) || removeUselessGlobalVariable(M)) {
+        do {
+            removeUselessArg(M);
             deadCodeEmit.runOnModule(M);
-        }
+        } while (removeUselessRet(M) || removeUselessGlobalVariable(M));
     }
 
     /**
      * 对于Function Arguments
-     * 鉴于死代码删除时已经把过程内无用代码删去了，那么我们认为一个参数如果它的uselist为空，就说明该参数是无用参数
-     * 对于这种无用参数，我们将全局对该func的call指令对应的arg位置换为NullValue
+     * 默认它是活跃的，不能删去，经过算法判定为死参数才能删除
+     * 
+     * @trival 鉴于死代码删除时已经把过程内无用代码删去了，那么我们认为一个参数如果它的uselist为空，就说明该参数是无用参数
+     * @advanced This pass deletes dead arguments from internal functions. Dead
+     *           argument elimination removes arguments which are directly dead, as
+     *           well as arguments only passed into function calls as dead arguments
+     *           of other functions. This pass also deletes dead arguments in a
+     *           similar way. -- llvm
+     * 
+     * @implNote 这个递归分析给我整麻了，死参数分析还不一定有点...
+     *           - 遍历每一个func的argument
+     *           - 建立一个分析栈,维护在分析此argument时递归分析的其他参数
+     *           - 如果已经被判定过生死,跳过,否则进入第三步
+     *           - 判断argument的user是否为空,若为空,则加入dead,否则进入第四步
+     *           - 判断argumen的user是否存在非call指令,若为是,则加入not dead,否则进入第五步
+     *           - 此时argument的user全为call指令,对user遍历
+     *           - 找到argument在call指令中args的idx,凭借这个idx找到argment在call_func中的作为什么参数传入
+     *           - 递归分析新参数
+     *           - 如果这个参数是死参数或者已经在分析栈中,则跳过
+     *           - 如果这个参数是活参数,则argument为活参数
+     *           - 遍历结束,此时说明argument的call指令全为死参数或者存在循环、递归的参数调用
+     *           - 那么此时我们判定该argument为死参数
      * 
      * @param M module
      * @return 是否做了remove操作
      */
     private boolean removeUselessArg(Module M) {
         boolean doneRemove = false;
-
+        HashSet<Argument> analysisSet = new HashSet<>();
+        HashMap<Argument, Boolean> isDeadArg = new HashMap<>();
+        for (var func : M.getFuncList()) {
+            if (!func.isDefined()) {
+                continue;
+            }
+            for (var arg : func.getArguments()) {
+                // arg已经被判定完成
+                if (isDeadArg.containsKey(arg)) {
+                    continue;
+                }
+                analysisSet.clear();
+                analysisArgUse(arg, analysisSet, isDeadArg);
+            }
+        }
+        for (var func : M.getFuncList()) {
+            if (!func.isDefined()) {
+                continue;
+            }
+            for (var arg : func.getArguments()) {
+                if (isDeadArg.get(arg)) {
+                    removeDeadArg(arg);
+                    doneRemove = true;
+                }
+            }
+        }
         return doneRemove;
+    }
+
+    private void analysisArgUse(Argument arg, HashSet<Argument> analysisSet, HashMap<Argument, Boolean> isDeadArg) {
+        analysisSet.add(arg);
+        if (arg.getUseList().isEmpty()) {
+            isDeadArg.put(arg, true);
+            return;
+        }
+        for (var use : arg.getUseList()) {
+            var user = use.getU();
+            if (!(user instanceof CallInst)) {
+                isDeadArg.put(arg, false);
+                return;
+            }
+        }
+        // 此时arg的所有use都是call指令，假定此时是Dead的
+        // 如果所有的use都是dead arg或者分析到最后没有新arg被分析（参数调用形成了循环依赖或者递归）那就说明它是dead的
+        // 如果存在一个use不是dead，那么它就不是dead的
+        for (var use : arg.getUseList()) {
+            var user = use.getU();
+            assert user instanceof CallInst;
+            // 找到arg在call指令arglist的哪个位置
+            int idx = 0;
+            for (var userArg : ((CallInst) user).getArgs()) {
+                if (userArg == arg) {
+                    break;
+                }
+                idx++;
+            }
+            // 分析call对应的func在idx位置的arg是不是dead的
+            var func = ((CallInst) user).getFunction();
+            var newArg = func.getArguments().get(idx);
+            if (!analysisSet.contains(newArg)) {
+                if (isDeadArg.containsKey(newArg)) {
+                    if (!isDeadArg.get(newArg)) {
+                        isDeadArg.put(arg, false);
+                        return;
+                    }
+                } else {
+                    analysisArgUse(newArg, analysisSet, isDeadArg);
+                    if (!isDeadArg.get(newArg)) {
+                        isDeadArg.put(arg, false);
+                    }
+                }
+            }
+        }
+        isDeadArg.put(arg, true);
+    }
+
+    private void removeDeadArg(Argument arg) {
+        var func = arg.getParent();
+        int idx = arg.getArgNo();
+        for (var use : func.getUseList()) {
+            var user = use.getU();
+            if (user instanceof CallInst) {
+                var call = (CallInst) user;
+                Constant nullArg = Constant.getNullValue(call.getArgs().get(idx).getType());
+                call.CoReplaceOperandByIndex(idx + 1, nullArg);
+            }
+        }
     }
 
     /**
@@ -233,9 +341,9 @@ public class InterProceduralDCE extends ModulePass {
      */
     private boolean removeUselessGlobalVariable(Module M) {
         boolean doneRemove = false;
-        for (GlobalVariable gv : M.getGlobalVariables()) {
+        // for (GlobalVariable gv : M.getGlobalVariables()) {
 
-        }
+        // }
         return doneRemove;
     }
 }

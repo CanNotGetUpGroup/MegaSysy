@@ -8,14 +8,10 @@ import util.IListNode;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Set;
-import java.util.regex.Pattern;
 
 import analysis.DominatorTree;
 import analysis.LoopInfo;
 import util.MyIRBuilder;
-
-import javax.print.attribute.standard.NumberUp;
 
 public class Function extends User {
     private ArrayList<Argument> Arguments;
@@ -90,12 +86,12 @@ public class Function extends User {
                 sb.deleteCharAt(sb.length() - 1);
             }
         } else {
-            String funcName=this.getName();
-//            if(funcName.equals("_sysy_stoptime")){
-//                funcName="stoptime";
-//            }else if(funcName.equals("_sysy_starttime")){
-//                funcName="starttime";
-//            }
+            String funcName = this.getName();
+            // if(funcName.equals("_sysy_stoptime")){
+            // funcName="stoptime";
+            // }else if(funcName.equals("_sysy_starttime")){
+            // funcName="starttime";
+            // }
             sb.append("declare ")
                     .append(this.getType().getReturnType())
                     .append(" @")
@@ -168,9 +164,9 @@ public class Function extends User {
     }
 
     public void remove() {
-        for(BasicBlock BB:getBbList()){
-            for(Instruction I:BB.getInstList()){
-                if(I instanceof Instructions.PHIInst){
+        for (BasicBlock BB : getBbList()) {
+            for (Instruction I : BB.getInstList()) {
+                if (I instanceof Instructions.PHIInst) {
                     continue;
                 }
                 I.remove();
@@ -209,38 +205,41 @@ public class Function extends User {
      */
     @Override
     public Function copy(CloneMap cloneMap) {
-        if(cloneMap.get(this)!=null){
+        if (cloneMap.get(this) != null) {
             return (Function) cloneMap.get(this);
         }
         cloneMap.setInFunctionCopy(true);
-        Function ret=new Function(getType(),getName()+"_"+cloneMap.hashCode());
-        cloneMap.put(this,ret);
-        for(Argument argument:getArguments()){
-            Argument copy=argument.copy(cloneMap);
+        Function ret = new Function(getType(), getName() + "_" + cloneMap.hashCode());
+        cloneMap.put(this, ret);
+        for (Argument argument : getArguments()) {
+            Argument copy = argument.copy(cloneMap);
             ret.getArguments().add(copy);
             copy.setParent(ret);
             copy.setArgNo(argument.getArgNo());
         }
-        MyIRBuilder builder=MyIRBuilder.getInstance();
-        for(BasicBlock BB:getBbList()){
-            cloneMap.put(BB,builder.createBasicBlock(ret));
-            (BB.copy(cloneMap)).setComment(this.getName()+" "+BB.getComment());
+        MyIRBuilder builder = MyIRBuilder.getInstance();
+        for (BasicBlock BB : getBbList()) {
+            cloneMap.put(BB, builder.createBasicBlock(ret));
+            (BB.copy(cloneMap)).setComment(this.getName() + " " + BB.getComment());
         }
-        for(BasicBlock BB:getBbList()){
-            for(Instruction I:BB.getInstList()){
-                ((Instruction)I.copy(cloneMap)).getInstNode().insertIntoListEnd(((BasicBlock)cloneMap.get(BB)).getInstList());
-                if(I.getComment()!= null) I.copy(cloneMap).setComment(I.getComment());
+        for (BasicBlock BB : getBbList()) {
+            for (Instruction I : BB.getInstList()) {
+                ((Instruction) I.copy(cloneMap)).getInstNode()
+                        .insertIntoListEnd(((BasicBlock) cloneMap.get(BB)).getInstList());
+                if (I.getComment() != null)
+                    I.copy(cloneMap).setComment(I.getComment());
             }
         }
-        //添加phi
-        for(BasicBlock BB:getBbList()){
-            for(Instruction I:BB.getInstList()){
-                if(!(I instanceof Instructions.PHIInst)){
+        // 添加phi
+        for (BasicBlock BB : getBbList()) {
+            for (Instruction I : BB.getInstList()) {
+                if (!(I instanceof Instructions.PHIInst)) {
                     break;
                 }
-                Instructions.PHIInst phi=(Instructions.PHIInst)I;
+                Instructions.PHIInst phi = (Instructions.PHIInst) I;
                 for (int i = 0; i < phi.getNumOperands(); i++) {
-                    phi.copy(cloneMap).addIncoming(phi.getOperand(i).copy(cloneMap), phi.getBlocks().get(i).copy(cloneMap));
+                    phi.copy(cloneMap).addIncoming(phi.getOperand(i).copy(cloneMap),
+                            phi.getBlocks().get(i).copy(cloneMap));
                 }
             }
         }
@@ -268,7 +267,7 @@ public class Function extends User {
      *
      * @return 函数是否有附加影响
      */
-    public boolean hasSideEffect(){
+    public boolean hasSideEffect() {
         return sideEffect;
     }
 
@@ -276,7 +275,7 @@ public class Function extends User {
         this.sideEffect = sideEffect;
     }
 
-    public boolean useGlobalVars(){
+    public boolean useGlobalVars() {
         return useGlobalVars;
     }
 
@@ -285,7 +284,7 @@ public class Function extends User {
     }
 
     public DominatorTree getDominatorTree() {
-        if(dominatorTree == null){
+        if (dominatorTree == null) {
             dominatorTree = new DominatorTree(this);
         }
         return dominatorTree;
@@ -293,12 +292,13 @@ public class Function extends User {
 
     /**
      * Auto Update DominatorTree
+     * 
      * @return
      */
     public DominatorTree getAndUpdateDominatorTree() {
-        if(dominatorTree == null){
+        if (dominatorTree == null) {
             dominatorTree = new DominatorTree(this);
-        }else {
+        } else {
             dominatorTree.update(this);
         }
         return dominatorTree;
@@ -308,7 +308,7 @@ public class Function extends User {
         this.storeGlobalVars = storeGlobalVars;
     }
 
-    public HashSet<GlobalVariable> getStoreGlobalVars() { 
+    public HashSet<GlobalVariable> getStoreGlobalVars() {
         return storeGlobalVars;
     }
 
@@ -316,7 +316,7 @@ public class Function extends User {
         this.loadGlobalVars = loadGlobalVars;
     }
 
-    public HashSet<GlobalVariable> getLoadGlobalVars() { 
+    public HashSet<GlobalVariable> getLoadGlobalVars() {
         return loadGlobalVars;
     }
 }
