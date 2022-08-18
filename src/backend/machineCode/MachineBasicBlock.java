@@ -1,12 +1,15 @@
 package backend.machineCode;
 
+import backend.machineCode.Instruction.Comment;
 import ir.BasicBlock;
 import ir.Function;
 
 import util.IList;
 import util.IListNode;
 
-public class MachineBasicBlock implements Addressable{
+import java.util.HashSet;
+
+public class MachineBasicBlock implements Addressable {
     private static int c = 1;
 
     private int counter() {
@@ -21,7 +24,43 @@ public class MachineBasicBlock implements Addressable{
         this.label = label;
     }
 
+    public HashSet<MachineInstruction> getPredInst() {
+        return predInst;
+    }
+
+    public void setPredInst(HashSet<MachineInstruction> predInst) {
+        this.predInst = predInst;
+    }
+
+    public void addPredInst(MachineInstruction inst) {
+        this.predInst.add(inst);
+    }
+
+    private HashSet<MachineInstruction> predInst = new HashSet<>();
+
+    public HashSet<MachineBasicBlock> getSuccessors() {
+        return successors;
+    }
+
+
+    public void addSuccessor(MachineBasicBlock successor) {
+        this.successors.add(successor);
+    }
+
+    private HashSet<MachineBasicBlock> successors = new HashSet<>();
+
+
     private String label;
+
+    private int loopDepth;
+
+    public void setLoopDepth(int l) {
+        this.loopDepth = l;
+    }
+
+    public int getLoopDepth() {
+        return loopDepth;
+    }
 
 
     private MachineFunction parent;
@@ -57,7 +96,7 @@ public class MachineBasicBlock implements Addressable{
         instList = new IList<>(this);
         //插入到parent末尾
         bbNode.insertIntoListEnd(this.parent.getBbList());
-        this.label = label;
+        this.label = "." + label + counter();
     }
 
     @Override
@@ -71,7 +110,8 @@ public class MachineBasicBlock implements Addressable{
         while (instList.getLast() != null && head != instList.getLast()) {
             head = head.getNext();
             var i = head.getVal();
-            sb.append("\t").append(i.toString()).append("\n");
+            if (!(i instanceof Comment))
+                sb.append("\t").append(i.toString()).append("\n");
         }
         return sb.toString();
     }

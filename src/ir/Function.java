@@ -7,8 +7,11 @@ import util.IList;
 import util.IListNode;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.regex.Pattern;
 
+import analysis.DominatorTree;
 import analysis.LoopInfo;
 import util.MyIRBuilder;
 
@@ -25,6 +28,10 @@ public class Function extends User {
     private ArrayList<Function> callerList;
     private ArrayList<Function> calleeList;
     private boolean sideEffect = false;
+    private boolean useGlobalVars = false;
+    private DominatorTree dominatorTree = null;
+    private HashSet<GlobalVariable> storeGlobalVars;
+    private HashSet<GlobalVariable> loadGlobalVars;
 
     /**
      * 生成一个Function对象
@@ -48,6 +55,8 @@ public class Function extends User {
         Arguments = new ArrayList<>();
         calleeList = new ArrayList<>();
         callerList = new ArrayList<>();
+        storeGlobalVars = new HashSet<>();
+        loadGlobalVars = new HashSet<>();
     }
 
     public Function(FunctionType type, String name) {
@@ -82,11 +91,11 @@ public class Function extends User {
             }
         } else {
             String funcName=this.getName();
-            if(funcName.equals("_sysy_stoptime")){
-                funcName="stoptime";
-            }else if(funcName.equals("_sysy_startttime")){
-                funcName="starttime";
-            }
+//            if(funcName.equals("_sysy_stoptime")){
+//                funcName="stoptime";
+//            }else if(funcName.equals("_sysy_starttime")){
+//                funcName="starttime";
+//            }
             sb.append("declare ")
                     .append(this.getType().getReturnType())
                     .append(" @")
@@ -159,6 +168,14 @@ public class Function extends User {
     }
 
     public void remove() {
+        for(BasicBlock BB:getBbList()){
+            for(Instruction I:BB.getInstList()){
+                if(I instanceof Instructions.PHIInst){
+                    continue;
+                }
+                I.remove();
+            }
+        }
         funcNode.remove();
         dropUsesAsValue();
         dropUsesAsUser();
@@ -196,7 +213,7 @@ public class Function extends User {
             return (Function) cloneMap.get(this);
         }
         cloneMap.setInFunctionCopy(true);
-        Function ret=new Function(getType(),getName()+cloneMap.hashCode());
+        Function ret=new Function(getType(),getName()+"_"+cloneMap.hashCode());
         cloneMap.put(this,ret);
         for(Argument argument:getArguments()){
             Argument copy=argument.copy(cloneMap);
@@ -230,6 +247,7 @@ public class Function extends User {
         ir.Module.getInstance().rename(ret);
         return ret;
     }
+
     /**
      *
      * @return 调用该函数的函数列表
@@ -256,5 +274,49 @@ public class Function extends User {
 
     public void setSideEffect(boolean sideEffect) {
         this.sideEffect = sideEffect;
+    }
+
+    public boolean useGlobalVars(){
+        return useGlobalVars;
+    }
+
+    public void setUseGlobalVars(boolean useGlobalVars) {
+        this.useGlobalVars = useGlobalVars;
+    }
+
+    public DominatorTree getDominatorTree() {
+        if(dominatorTree == null){
+            dominatorTree = new DominatorTree(this);
+        }
+        return dominatorTree;
+    }
+
+    /**
+     * Auto Update DominatorTree
+     * @return
+     */
+    public DominatorTree getAndUpdateDominatorTree() {
+        if(dominatorTree == null){
+            dominatorTree = new DominatorTree(this);
+        }else {
+            dominatorTree.update(this);
+        }
+        return dominatorTree;
+    }
+
+    public void setStoreGlobalVars(HashSet<GlobalVariable> storeGlobalVars) {
+        this.storeGlobalVars = storeGlobalVars;
+    }
+
+    public HashSet<GlobalVariable> getStoreGlobalVars() { 
+        return storeGlobalVars;
+    }
+
+    public void setLoadGlobalVars(HashSet<GlobalVariable> loadGlobalVars) {
+        this.loadGlobalVars = loadGlobalVars;
+    }
+
+    public HashSet<GlobalVariable> getLoadGlobalVars() { 
+        return loadGlobalVars;
     }
 }

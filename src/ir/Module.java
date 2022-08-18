@@ -10,6 +10,7 @@ public class Module {
     private final ArrayList<GlobalVariable> globalVariables; //全局变量
     private final IList<Function, Module> funcList; //函数
     private static final Module module = new Module();
+    private static final boolean openComment=true;
 
     private Module() {
         this.globalVariables = new ArrayList<>();
@@ -88,13 +89,13 @@ public class Module {
             boolean init = true;
             for (BasicBlock BB : F.getBbList()) {
                 if (!init) {
-                    sb.append("\n").append(BB).append("     ").append(BB.getComment() != null ? BB.getComment() : "").append("\n");
+                    sb.append("\n").append(BB).append("     ").append(openComment && BB.getComment() != null ? BB.getComment() : "").append("\n");
                 } else {
-                    sb.append(BB).append("     ").append(BB.getComment() != null ? BB.getComment() : "").append("\n");
+                    sb.append(BB).append("     ").append(openComment && BB.getComment() != null ? BB.getComment() : "").append("\n");
                     init = false;
                 }
                 for (Instruction I : BB.getInstList()) {
-                    sb.append("  ").append(I).append("     ").append(I.getComment() != null ? I.getComment() : "").append("\n");
+                    sb.append("  ").append(I).append("     ").append(openComment && I.getComment() != null ? I.getComment() : "").append("\n");
                 }
             }
             sb.append("}").append("\n");

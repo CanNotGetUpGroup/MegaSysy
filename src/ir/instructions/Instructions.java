@@ -1,13 +1,19 @@
 package ir.instructions;
 
+import analysis.AliasAnalysis;
+import analysis.PointerInfo;
+import backend.machineCode.Instruction.Phi;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
 import org.antlr.v4.runtime.misc.Pair;
 import util.CloneMap;
+import util.Folder;
 
+import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 
 public abstract class Instructions {
     //===----------------------------------------------------------------------===//
@@ -78,6 +84,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new AllocaInst(getAllocatedType());
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -111,6 +122,11 @@ public abstract class Instructions {
             LoadInst ret = new LoadInst(getType(), getOperand(0).copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new LoadInst(getType(),getOperand(0));
         }
     }
 
@@ -147,6 +163,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new StoreInst(getOperand(0),getOperand(1));
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -154,8 +175,9 @@ public abstract class Instructions {
     //===----------------------------------------------------------------------===//
 
     public static class GetElementPtrInst extends Instruction {
-        private Type SourceElementType;
-        private Type ResultElementType;
+        private Type SourceElementType;//来源指针指向的类型
+        private Type ResultElementType;//取址后得到的类型
+        private Constant Init, ConstantValue;
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
@@ -191,6 +213,14 @@ public abstract class Instructions {
             for (var i = 1; i < getOperandList().size(); i++) {
                 sb.append(", ").append(getOperand(i).getType()).append(" ").append(getOperand(i).getName());
             }
+//            StringBuilder comment=new StringBuilder();
+//            for(Value v:getArrayIdx()){
+//                comment.append("[");
+//                if(v instanceof AllocaInst) comment.append(v.getVarName());
+//                else comment.append(v.getName());
+//                comment.append("]");
+//            }
+//            setComment(comment.toString());
             return sb.toString();
         }
 
@@ -255,6 +285,89 @@ public abstract class Instructions {
             return true;
         }
 
+        /**
+         * 根据gep的IdxList，计算gep的值
+         * 返回值为null时，表示当前不可求出Constant
+         */
+        public Constant getConstantValue() {
+            if (ConstantValue != null) return ConstantValue;
+            Value source = getOperand(0);
+            Constants.ConstantArray CA = null;
+            if (getOperand(1) instanceof Constants.ConstantInt) {
+                Constants.ConstantInt CI = (Constants.ConstantInt) getOperand(1);
+                if (getNumOperands()==2) {//%this = gep %prev 5
+                    if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
+                        CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+                    } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
+                        CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                        if(CA==null){
+                            ((GetElementPtrInst) source).getConstantValue();
+                            CA = (Constants.ConstantArray) ((GetElementPtrInst) source).Init;
+                        }
+                    }
+//                    assert CA != null;
+                    if(CA== null){
+//                        System.out.println("error!");
+                        return null;
+                    }
+                    ConstantValue = ((Constants.ConstantArray)((GlobalVariable)getArrayIdx().get(0))
+                            .getOperand(0)).getIndexConstant(CI.getVal());
+                    return ConstantValue;
+                }
+            } else {
+                return null;
+            }
+            if (source instanceof GlobalVariable) { //%this = gep @gv 0, 0
+                CA = (Constants.ConstantArray) ((GlobalVariable) source).getOperand(0);
+            } else if (source instanceof GetElementPtrInst) { //%this = gep %prev 0, 1
+                CA = (Constants.ConstantArray) ((GetElementPtrInst) source).getConstantValue();
+            }
+            Init = CA;
+            Constant tmp=CA;
+            if (CA == null) return null;
+            for (int i = 2; i < getNumOperands(); i++) {
+                Value V = getOperand(i);
+                if (V instanceof Constants.ConstantInt) {
+                    Constants.ConstantInt CI = (Constants.ConstantInt) V;
+                    int idx = CI.getVal();
+                    tmp = (Constant) ((Constants.ConstantArray) tmp).getElement(idx);
+                } else {
+                    return null;
+                }
+            }
+            ConstantValue = tmp;
+            return ConstantValue;
+        }
+
+        public ArrayList<Value> getArrayIdx(){
+//            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
+//                return AliasAnalysis.gepToArrayIdx.get(this);
+//            }
+            ArrayList<Value> ret=new ArrayList<>();
+            int dim=0;
+            if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
+                ret.add(getOperand(0));
+            }else if(getOperand(0) instanceof LoadInst){//数组参数
+                LoadInst LI=(LoadInst)getOperand(0);
+                AllocaInst AI=(AllocaInst)LI.getOperand(0);
+                ret.add(AI);
+                dim=1;
+            }else{
+                GetElementPtrInst gep=(GetElementPtrInst)getOperand(0);
+                ret=new ArrayList<>(gep.getArrayIdx());
+                dim=((Constants.ConstantInt)ret.get(1)).getVal();
+            }
+            if(getNumOperands()==3){
+                dim++;
+            }
+            ret.add(Constants.ConstantInt.get(dim));
+            if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
+                ret.add(getOperand(1));
+            }
+//            AliasAnalysis.gepToArrayIdx.put(this,ret);
+            return ret;
+        }
+
         @Override
         public GetElementPtrInst copy(CloneMap cloneMap) {
             if (cloneMap.get(this) != null) {
@@ -268,16 +381,21 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            ArrayList<Value> Idx = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                Idx.add(getOperand(i));
+            }
+            return new GetElementPtrInst(getSourceElementType(),getOperand(0),Idx,getNumOperands());
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               ICmpInst Class
     //===----------------------------------------------------------------------===//
 
-    /// This instruction compares its operands according to the predicate given
-    /// to the constructor. It only operates on integers or pointers. The operands
-    /// must be identical types.
-    /// Represent an integer comparison operator.
     public static class ICmpInst extends CmpInst {
         public ICmpInst(String name, Predicate pred, Value LHS, Value RHS) {
             super(Type.getInt1Ty(), Ops.ICmp, name, pred, LHS, RHS);
@@ -314,15 +432,17 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public ICmpInst shallowCopy() {
+            return new ICmpInst(getPredicate(), getOperand(0), getOperand(1));
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               FCmpInst Class
     //===----------------------------------------------------------------------===//
-    /// This instruction compares its operands according to the predicate given
-    /// to the constructor. It only operates on floating point values or packed
-    /// vectors of floating point values. The operands must be identical types.
-    /// Represents a floating point comparison operator.
+
     public static class FCmpInst extends CmpInst {
         public FCmpInst(String name, Predicate pred, Value LHS, Value RHS) {
             super(Type.getInt1Ty(), Ops.FCmp, name, pred, LHS, RHS);
@@ -359,17 +479,17 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public FCmpInst shallowCopy() {
+            return new FCmpInst(getPredicate(), getOperand(0), getOperand(1));
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               CallInst Class
     //===----------------------------------------------------------------------===//
-    //===----------------------------------------------------------------------===//
-    /// This class represents a function call, abstracting a target
-    /// machine's calling convention.  This class uses low bit of the SubClassData
-    /// field to indicate whether or not this is a tail call.  The rest of the bits
-    /// hold the calling convention of the call.
-    ///
+
     public static class CallInst extends Instruction {
         private FunctionType FTy;
         private ArrayList<Value> Attrs;
@@ -392,11 +512,11 @@ public abstract class Instructions {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             String funcName = getOperand(0).getName();
-            if (funcName.equals("_sysy_stoptime")) {
-                funcName = "stoptime";
-            } else if (funcName.equals("_sysy_startttime")) {
-                funcName = "starttime";
-            }
+//            if (funcName.equals("_sysy_stoptime")) {
+//                funcName = "stoptime";
+//            } else if (funcName.equals("_sysy_starttime")) {
+//                funcName = "starttime";
+//            }
             if (((FunctionType) getOperand(0).getType()).getReturnType().isVoidTy()) {
                 sb.append("call ").append(this.getType()).append(" @").append(funcName);
             } else {
@@ -443,12 +563,35 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        public boolean withoutGEP() {
+            Function F = (Function) this.getOperand(0);
+            if (F.hasSideEffect()||F.useGlobalVars()) {
+                return false;
+            }
+            for (Value val : this.getOperandList()) {
+                if (val instanceof GetElementPtrInst ||
+                        (val instanceof LoadInst && !val.getType().isInt32Ty() && !val.getType().isFloatTy())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            ArrayList<Value> args = new ArrayList<>();
+            for (int i = 1; i < getNumOperands(); i++) {
+                args.add(getOperand(i));
+            }
+            return new CallInst(FTy, getOperand(0), args);
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                                 ZExtInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents zero extension of integer types.
+
     public static class ZExtInst extends CastInst {
         /**
          * @param type 指令类型
@@ -473,12 +616,17 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new ZExtInst(getType(), getOperand(0));
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                                 SIToFPInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents a cast from signed integer to floating point.
+
     public static class SIToFPInst extends CastInst {
         /**
          * @param type 指令类型
@@ -503,12 +651,17 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new SIToFPInst(getType(), getOperand(0));
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                                 FPToSIInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents a cast from floating point to signed integer.
+
     public static class FPToSIInst extends CastInst {
         /**
          * @param type 指令类型
@@ -533,6 +686,11 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new FPToSIInst(getType(), getOperand(0));
+        }
     }
 
     //===----------------------------------------------------------------------===//
@@ -555,6 +713,7 @@ public abstract class Instructions {
 
         public PHIInst(Type ty, int block_number, String Name, BasicBlock InsertAtEnd) {
             super(ty, Ops.PHI, 0, InsertAtEnd);
+            getInstNode().insertAfter(InsertAtEnd.getInstList().getHead());
             setName(Name);
         }
 
@@ -571,12 +730,22 @@ public abstract class Instructions {
             return sb.toString();
         }
 
+        public void remove(){
+            for(BasicBlock BB:blocks){
+//                getParent().removePredecessor(BB);
+                BB.getPHIs().remove(this);
+            }
+            getInstNode().remove();
+            dropUsesAsValue();
+            dropUsesAsUser();
+        }
+
         public static PHIInst create(Type ty, int block_num) {
             return new PHIInst(ty, block_num);
         }
 
-        public static PHIInst create(Type ty, int block_num, String Name, BasicBlock InsertAtEnd) {
-            return new PHIInst(ty, block_num, Name, InsertAtEnd);
+        public static PHIInst create(Type ty, int block_num, String Name, BasicBlock InsertAtHead) {
+            return new PHIInst(ty, block_num, Name, InsertAtHead);
         }
 
         public static PHIInst create(Type ty, int block_num, String Name, Instruction InsertBefore) {
@@ -601,16 +770,25 @@ public abstract class Instructions {
             BB.getPHIs().add(this);
         }
 
+        /**
+         * WARNING:此处将phi从原来incomingBlock的PHIs种删除
+         */
         public void setIncomingBlock(int i, BasicBlock BB) {
             if (i > getNumOperands() || i < 0) return;
+            if(blocks.get(i)!=null)
+                blocks.get(i).getPHIs().remove(this);
             blocks.set(i, BB);
             BB.getPHIs().add(this);
         }
 
         public void replaceIncomingBlock(BasicBlock OLD, BasicBlock BB) {
+            if(blocks.contains(BB)){
+                removeIncomingValue(BB,true);
+            }
             int i = blocks.indexOf(OLD);
             if (i > getNumOperands() || i < 0) return;
             blocks.set(i, BB);
+            OLD.getPHIs().remove(this);
             BB.getPHIs().add(this);
         }
 
@@ -627,6 +805,10 @@ public abstract class Instructions {
         public Value getIncomingValue(int i) {
             if (i > getNumOperands()) return null;
             return getOperand(i);
+        }
+
+        public ArrayList<Value> getIncomingValues() {
+            return getOperandList();
         }
 
         public Value getIncomingValueByBlock(BasicBlock BB) {
@@ -648,33 +830,48 @@ public abstract class Instructions {
         }
 
         /**
-         * 删除来自某基本块的Value
+         * 删除来自某基本块的Value，注意会自动删除基本块的PHIs中对应的phi指令
          *
          * @param BB         来源基本块
          * @param removeThis 在phi指令没有Value后，是否将其删除
          */
         public void removeIncomingValue(BasicBlock BB, boolean removeThis) {
             removeOperand(blocks.indexOf(BB));
-            BB.getPHIs().remove(new Pair<>(this, blocks.indexOf(BB)));
             blocks.remove(BB);
+            BB.getPHIs().remove(this);
             if (removeThis && getNumOperands() == 0) {
                 replaceAllUsesWith(Constants.UndefValue.get(getType()));
                 remove();
             }
         }
 
+        public void replaceIncomingByBlock(BasicBlock oldBB,BasicBlock newBB,Value Val){
+            removeIncomingValue(oldBB,false);
+            addIncoming(Val,newBB);
+        }
+
         /**
          * 若phi都返回同一个Value，则返回这个Value，否则返回null
          * 注意：可能返回phi本身 %1 = phi [%1, %br1] [%2, %br2]
          */
-        public Value hasConstantValue() {
+        public Value hasConstantValue(boolean ignoreUndef) {
             Value ConstantValue = getIncomingValue(0);
+            boolean ignore=false;
             for (int i = 1, e = getNumOperands(); i != e; ++i)
                 if (getIncomingValue(i) != ConstantValue && getIncomingValue(i) != this) {
+                    if(ignoreUndef&&Constants.UndefValue.isUndefValue(ConstantValue)){
+                        //测例语义保证了不会出现undef，此处可以激进地忽略(中端测试可能无法通过)
+                        ignore=true;
+                        ConstantValue=getIncomingValue(i);
+                        continue;
+                    }
                     if (ConstantValue != this)
                         return null;
                     ConstantValue = getIncomingValue(i);
                 }
+            if(ignore){
+                System.out.println("ignore undef successfully");
+            }
             if (ConstantValue == this)
                 return Constants.UndefValue.get(getType());
             return ConstantValue;
@@ -730,14 +927,40 @@ public abstract class Instructions {
             }
         }
 
+        public boolean isSameWith(Instruction I){
+            if(this==I) return true;
+            if(!(I.getOp().equals(Ops.PHI))||getNumOperands()!=I.getNumOperands()||I.getType()!=getType()){
+                return false;
+            }
+            for(int i=0;i<getNumOperands();i++){
+                int valIdx=getOperandList().indexOf(I.getOperand(i));
+                if(valIdx==-1) return false;
+                if(!getIncomingBlock(valIdx).equals(((PHIInst)I).getIncomingBlock(i)))
+                    return false;
+            }
+            return true;
+        }
+
+        /**
+         * phi的复制比较复杂，可能造成循环，因此此处不进行incomingValues的copy
+         */
         @Override
         public PHIInst copy(CloneMap cloneMap) {
             if (cloneMap.get(this) != null) {
                 return (PHIInst) cloneMap.get(this);
             }
             PHIInst ret = new PHIInst(getType(), getNumOperands());
-            ret.setName(getName()+cloneMap.hashCode());
+            ret.setName(getName() + "_" + cloneMap.hashCode());
             cloneMap.put(this, ret);
+            return ret;
+        }
+
+        @Override
+        public Instruction shallowCopy() {
+            PHIInst ret = new PHIInst(getType(), getNumOperands());
+            for(int i=0;i<getNumOperands();i++){
+                ret.addIncoming(getOperand(i),getIncomingBlock(i));
+            }
             return ret;
         }
     }
@@ -746,9 +969,7 @@ public abstract class Instructions {
     //                               ReturnInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
-    /// Return a value (possibly void), from a function.  Execution
-    /// does not continue in this function any longer.
-    ///
+
     public static class ReturnInst extends Instruction {
         public ReturnInst(String name, Value retVal) {
             super(Type.getVoidTy(), Ops.Ret, name, retVal == null ? 0 : 1);
@@ -810,14 +1031,19 @@ public abstract class Instructions {
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public ReturnInst shallowCopy() {
+            Value retVal = getNumOperands() == 1 ? getOperand(0) : null;
+            return new ReturnInst(retVal);
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               BranchInst Class
     //===----------------------------------------------------------------------===//
     //===---------------------------------------------------------------------------
-    /// Conditional or Unconditional Branch instruction.
-    ///
+
     public static class BranchInst extends Instruction {
         /// Ops list - Branches are strange.  The operands are ordered:
         ///  [Cond, FalseDest,] TrueDest.
@@ -961,13 +1187,23 @@ public abstract class Instructions {
             }
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            BranchInst ret;
+            if (getNumOperands() == 1) {
+                ret = new BranchInst((BasicBlock) getOperand(0));
+            } else {
+                ret = new BranchInst(getTrueBlock(), getFalseBlock(), getCond());
+            }
+            return ret;
+        }
     }
 
     //===----------------------------------------------------------------------===//
     //                               SelectInst Class
     //===----------------------------------------------------------------------===//
-    /// This class represents the LLVM 'select' instruction.
-    ///
+
     public static class SelectInst extends Instruction {
         public SelectInst(Value C, Value S1, Value S2) {
             super(S1.getType(), Ops.Select, 3);
@@ -1016,12 +1252,20 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (SelectInst) cloneMap.get(this);
             }
-            SelectInst ret = new SelectInst(getCondition().copy(cloneMap),getTrueValue().copy(cloneMap),getFalseValue().copy(cloneMap));
+            SelectInst ret = new SelectInst(getCondition().copy(cloneMap), getTrueValue().copy(cloneMap), getFalseValue().copy(cloneMap));
             cloneMap.put(this, ret);
             return ret;
         }
+
+        @Override
+        public Instruction shallowCopy() {
+            return new SelectInst(getCondition(), getTrueValue(), getFalseValue());
+        }
     }
 
+    /**
+     * 考虑在float的memset使用，现已废弃
+     */
     public static class BitCastInst extends Instruction {
         private Type targetType;
 
@@ -1053,9 +1297,14 @@ public abstract class Instructions {
             if (cloneMap.get(this) != null) {
                 return (BitCastInst) cloneMap.get(this);
             }
-            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap),targetType);
+            BitCastInst ret = new BitCastInst(getOperand(0).copy(cloneMap), targetType);
             cloneMap.put(this, ret);
             return ret;
+        }
+
+        @Override
+        public BitCastInst shallowCopy() {
+            return new BitCastInst(getOperand(0), targetType);
         }
     }
 }

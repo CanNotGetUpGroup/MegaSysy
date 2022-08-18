@@ -152,8 +152,8 @@ public class MyIRBuilder {
         return insert(PHIInst.create(ty,block_num,Name,InsertBefore));
     }
 
-    public Instruction createPHI(Type ty, int block_num,String Name, BasicBlock InsertAtEnd){
-        return insert(PHIInst.create(ty,block_num,Name,InsertAtEnd));
+    public Instruction createPHI(Type ty, int block_num,String Name, BasicBlock InsertAtHead){
+        return insert(PHIInst.create(ty,block_num,Name,InsertAtHead));
     }
 
     //===--------------------------------------------------------------------===//
@@ -545,38 +545,6 @@ public class MyIRBuilder {
 
     public Value createICmpSLT(Value LHS, Value RHS) {
         return createICmp(Predicate.ICMP_SLT, LHS, RHS);
-    }
-
-    public Value createFCmpOEQ(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_OEQ, LHS, RHS);
-    }
-
-    public Value createFCmpOGT(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_OGT, LHS, RHS);
-    }
-
-    public Value createFCmpOGE(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_OGE, LHS, RHS);
-    }
-
-    public Value createFCmpOLT(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_OLT, LHS, RHS);
-    }
-
-    public Value createFCmpOLE(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_OLE, LHS, RHS);
-    }
-
-    public Value createFCmpONE(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_ONE, LHS, RHS);
-    }
-
-    public Value createFCmpORD(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_ORD, LHS, RHS);
-    }
-
-    public Value createFCmpUNO(Value LHS, Value RHS) {
-        return createFCmp(Predicate.FCMP_UNO, LHS, RHS);
     }
 
     public Value createFCmpUEQ(Value LHS, Value RHS) {

@@ -1,6 +1,7 @@
 package pass.passes;
 
 import analysis.DominatorTree;
+import analysis.LoopInfo;
 import ir.*;
 import ir.Module;
 import ir.instructions.Instructions.*;
@@ -26,17 +27,39 @@ import java.util.Set;
 public class SimplifyCFG extends FunctionPass {
     DominatorTree DT;
     Function F;
+    LoopInfo loopInfo;
+    private boolean eliminatePreHeader=false;//先报留preHeader信息
+
+    public SimplifyCFG(boolean eliminatePreHeader) {
+        this.eliminatePreHeader=eliminatePreHeader;
+    }
 
     @Override
     public void runOnFunction(Function F) {
         this.F=F;
-        DT = new DominatorTree(F);
+        F.getLoopInfo().computeLoopInfo(F);
+        loopInfo=F.getLoopInfo();
+        DT = F.getAndUpdateDominatorTree();
         boolean changed = mergeEmptyReturnBlocks(F);
         changed|=iterativelySimplify(F);
         if(!changed) return;
         do {
             changed = iterativelySimplify(F);
         } while (changed);
+    }
+
+    public boolean run(Function F) {
+        this.F=F;
+        F.getLoopInfo().computeLoopInfo(F);
+        loopInfo=F.getLoopInfo();
+        DT = F.getAndUpdateDominatorTree();
+        boolean changed = mergeEmptyReturnBlocks(F);
+        changed|=iterativelySimplify(F);
+        if(!changed) return false;
+        do {
+            changed = iterativelySimplify(F);
+        } while (changed);
+        return true;
     }
 
     /**
@@ -110,6 +133,7 @@ public class SimplifyCFG extends FunctionPass {
     }
 
     public boolean simplifyCFG(BasicBlock BB) {
+        if(!eliminatePreHeader&&loopInfo.isLoopPreHeader(BB)) return false;
         boolean ret = false;
         //化简终结指令
         ret = Folder.constantFoldTerminator(BB);
@@ -121,7 +145,9 @@ public class SimplifyCFG extends FunctionPass {
             BranchInst BI = (BranchInst) BB.getTerminator();
             if (BI.getNumOperands() == 1) {
                 //消除仅包含无条件分支的基本块
-                if (BB.getFirstNonPHI() == BB.getTerminator()) {
+                if (BB.getFirstNonPHI() == BB.getTerminator()
+//                        &&BB.getPredecessorsNum()<=2
+                ) {
                     ret|=removeEmptyUnCondBrBlock(BB);
                 }
             }
@@ -134,12 +160,12 @@ public class SimplifyCFG extends FunctionPass {
      * 合并无条件跳转指令且能合并的基本块
      */
     public boolean removeEmptyUnCondBrBlock(BasicBlock BB) {
-        if (BB == BB.getParent().getEntryBB()&&BB.getSuccessor(0).getPredecessorsNum()!=1) return false;
+        if (BB == BB.getParent().getEntryBB()) return false;
         BasicBlock Succ = BB.getSuccessor(0);
         if (BB == Succ) return false;
         //判断是否能合并
         BasicBlock OnlyBB = Succ.getOnlyPredecessor();
-        if (OnlyBB == null) {
+       if (OnlyBB == null) {
             Set<BasicBlock> PredBB = new HashSet<>(BB.getPredecessors());
             for (Instruction I : Succ.getInstList()) {
                 if (!(I instanceof PHIInst)) {
@@ -173,6 +199,7 @@ public class SimplifyCFG extends FunctionPass {
                     }
                 }
             }
+            //检查BB中的phi是否还有use
             for (Instruction I : BB.getInstList()) {
                 if (!(I instanceof PHIInst)) {
                     break;
@@ -205,7 +232,7 @@ public class SimplifyCFG extends FunctionPass {
             BB.getTerminator().remove();
             removeTerminator=true;
             Succ.getInstList().splice(Succ.getFirstNonPHI().getInstNode().getIterator(), BB.getInstList());
-        } else {
+        } else {//此处的phi在之前应该已经检查完毕，不存在use
             for (Instruction I : BB.getInstList()) {
                 if (I instanceof PHIInst) {
                     I.remove();

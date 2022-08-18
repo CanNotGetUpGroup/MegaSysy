@@ -27,10 +27,9 @@ public class PhiElimination {
         for (var f : funcList) {
             for (var mbb : f.getBbList()) {
 
-
-
                 for (var inst : mbb.getInstList()) {
                     if (inst instanceof Phi) {
+
                         var ir = ((Phi) inst).getIr();
                         var tempReg = new VirtualRegister(inst.isForFloat() ? Register.Content.Float : Register.Content.Int);
                         var dest = inst.getDest();
@@ -51,7 +50,7 @@ public class PhiElimination {
                                 }
                             }
                             if (inst.isForFloat()) {
-                                op = InstructionSelector.valueToFloatRegInsertBefore(mbb, val, node);
+                                op = InstructionSelector.valueToFloatRegInsertBefore(node.getParent().getVal(), val, node);
                             } else {
                                 op = InstructionSelector.valueToMCOperandInsertBefore(mbb, val, node);
                             }

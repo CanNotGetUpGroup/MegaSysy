@@ -4,7 +4,12 @@ import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.MCOperand;
+import backend.machineCode.Operand.MCRegister;
 import backend.machineCode.Operand.Register;
+
+import java.util.ArrayList;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Branch extends MachineInstruction {
     // 暂时没考虑过Thumb2指令集
@@ -13,6 +18,31 @@ public class Branch extends MachineInstruction {
 
     // TODO: 这里需要改改
     private MachineBasicBlock destBB;
+
+    public boolean isStoreLR() {
+        return storeLR;
+    }
+
+    public Register getDestReg() {
+        return destReg;
+    }
+
+    public MachineBasicBlock getDestBB() {
+        return destBB;
+    }
+
+    public MachineFunction getDestf() {
+        return destf;
+    }
+
+    public String getDestStr() {
+        return destStr;
+    }
+
+    public DestType getDestType() {
+        return destType;
+    }
+
     private MachineFunction destf;
     private String destStr;
     private Type type;
@@ -79,9 +109,17 @@ public class Branch extends MachineInstruction {
         this.type = type;
     }
 
+    public Branch(MachineBasicBlock parent, Branch br) {
+        super(parent, br);
+        this.destReg = br.getDestReg();
+        this.storeLR = br.isStoreLR();
+        destType = br.getDestType();
+        this.type = br.getType();
+    }
+
     @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
-        throw  new RuntimeException("Unfinished");
+        throw new RuntimeException("Unfinished");
     }
 
     @Override
@@ -99,5 +137,38 @@ public class Branch extends MachineInstruction {
         };
     }
 
+    @Override
+    public ArrayList<Register> getUse() {
+        var ans = new ArrayList<Register>();
+        if (type == Type.Call) {
+            ans.addAll(IntStream
+                    .range(0, 4)
+                    .mapToObj(i -> new MCRegister(Register.Content.Int, i))
+                    .collect(Collectors.toSet()));
+            ans.addAll(IntStream
+                    .range(0, 16)
+                    .mapToObj(i -> new MCRegister(Register.Content.Float, i))
+                    .collect(Collectors.toSet()));
+        }
+
+        return ans;
+    }
+
+    @Override
+    public ArrayList<Register> getDef() {
+        var ans = new ArrayList<Register>();
+        if (type == Type.Call) {
+            ans.addAll(IntStream
+                    .range(0, 4)
+                    .mapToObj(i -> new MCRegister(Register.Content.Int, i))
+                    .collect(Collectors.toSet()));
+            ans.addAll(IntStream
+                    .range(0, 16)
+                    .mapToObj(i -> new MCRegister(Register.Content.Float, i))
+                    .collect(Collectors.toSet()));
+        }
+
+        return ans;
+    }
 
 }

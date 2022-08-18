@@ -5,6 +5,9 @@ import backend.machineCode.MachineInstruction;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PushOrPop extends MachineInstruction {
 
     // TODO : 支持多个寄存器一起
@@ -14,7 +17,18 @@ public class PushOrPop extends MachineInstruction {
         this.type = type;
     }
 
+    public PushOrPop(MachineBasicBlock parent, PushOrPop inst) {
+        super(parent, inst);
+        this.op = inst.op;
+        this.type = inst.type;
+    }
+
     Register op;
+
+    public Type getType() {
+        return type;
+    }
+
     Type type;
 
     public enum Type {
@@ -24,7 +38,7 @@ public class PushOrPop extends MachineInstruction {
 
     @Override
     public String toString() {
-        return type.name() + " { " + op.toString() + " }";
+        return (isForFloat() ? "v" : "") + type.name() + condString() + '\t' + " { " + op.toString() + " }";
     }
 
     @Override
@@ -56,7 +70,8 @@ public class PushOrPop extends MachineInstruction {
 
     @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
-        throw new RuntimeException("Unfinished");
+        setForFloat(isForFloat, new ArrayList<>());
+        return this;
     }
 
     @Override

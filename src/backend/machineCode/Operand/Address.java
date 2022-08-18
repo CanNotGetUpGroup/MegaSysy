@@ -57,4 +57,10 @@ public class Address extends MCOperand{
             return "[ " + reg.toString() + " ]" ;
         return "[ " + reg.toString() + " , " +  offset.toString() + " ]" ;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        // 好像没什么问题
+        return this.toString().equals(obj.toString());
+    }
 }

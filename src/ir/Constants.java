@@ -23,11 +23,11 @@ public class Constants {
             super(ty);
             this.val = val;
             if(ty.isInt32Ty()) context.IntConstants.put(val, this);
+            context.Constant2Hash.put(this, val);
         }
 
         /**
          * 不带类型
-         * @return
          */
         @Override
         public String getName() {
@@ -43,7 +43,11 @@ public class Constants {
          * 获取一个值为v的ConstantInt对象，若MyContext中已存在，则直接返回
          */
         public static ConstantInt get(int v) {
-            return context.IntConstants.getOrDefault(v, new ConstantInt(Type.getInt32Ty(), v));
+            if(context.IntConstants.containsKey(v)){
+                return context.IntConstants.get(v);
+            }
+            return new ConstantInt(Type.getInt32Ty(),v);
+//            return context.IntConstants.getOrDefault(v, new ConstantInt(Type.getInt32Ty(), v));
         }
 
         public static ConstantInt get(Type ty, int v) {
@@ -61,7 +65,11 @@ public class Constants {
                     return context.int1_1;
                 }
             }
-            return context.IntConstants.getOrDefault(v, new ConstantInt(ty, v));
+            if(context.IntConstants.containsKey(v)){
+                return context.IntConstants.get(v);
+            }
+            return new ConstantInt(ty,v);
+//            return context.IntConstants.getOrDefault(v, new ConstantInt(ty, v));
         }
 
         /**
@@ -109,6 +117,7 @@ public class Constants {
             super(ty);
             this.val = val;
             context.FPConstants.put(val, this);
+            context.Constant2Hash.put(this,Float.valueOf(val).hashCode());
         }
 
         @Override
@@ -126,7 +135,11 @@ public class Constants {
          * 获取一个值为v的ConstantFP对象，若MyContext中已存在，则直接返回
          */
         public static ConstantFP get(float v) {
-            return context.FPConstants.getOrDefault(v, new ConstantFP(Type.getFloatTy(), v));
+            if(context.FPConstants.containsKey(v)){
+                return context.FPConstants.get(v);
+            }
+            return new ConstantFP(Type.getFloatTy(), v);
+//            return context.FPConstants.getOrDefault(v, new ConstantFP(Type.getFloatTy(), v));
         }
 
         /**
@@ -175,6 +188,7 @@ public class Constants {
             //存入MyContext
             ConstantArray tmp = new ConstantArray(ty,V);
             context.ArrayConstants.put(hash, tmp);
+            context.Constant2Hash.put(tmp,hash);
             return tmp;
         }
 
@@ -227,11 +241,11 @@ public class Constants {
         /**
          * 获取a[i]
          */
-        public Value getElement(int i){
-            if(i>getNumOperands()){
+        public Constant getElement(int i){
+            if(i>=getNumOperands()){
                 return Constant.getNullValue(getType().getKidType());
             }
-            return getOperand(i);
+            return (Constant) getOperand(i);
         }
 
         /**
@@ -252,6 +266,15 @@ public class Constants {
 //                }
 //            }
             return get(ty,V);
+        }
+
+        public Constant getIndexConstant(int idx){
+            Type eleTy=getType().getKidType();
+            if(!eleTy.isArrayTy()){
+                return getElement(idx);
+            }
+            int eleIdx=idx/getType().getEleSize();
+            return ((ConstantArray)getElement(eleIdx)).getIndexConstant(idx%getType().getEleSize());
         }
 
         public boolean isZero() {
@@ -289,11 +312,27 @@ public class Constants {
         public Value copy(CloneMap cloneMap) {
             return this;
         }
+
+        public ArrayList<Integer> getDims() { 
+            ArrayList<Integer> ret = new ArrayList<>();
+            ConstantArray cur = this;
+            while(true) { 
+                ret.add(cur.getArr().size());
+                // 添加短路条件 zeroinit？
+                if(cur.getArr().size()==0 || !(cur.getArr().get(0) instanceof ConstantArray)) {
+                    break;
+                }
+                cur = (ConstantArray) cur.getArr().get(0);
+            }
+            return ret;
+        }
     }
 
     public static class UndefValue extends Constant {
         public UndefValue(Type ty) {
             super(ty);
+            context.UndefConstants.put(ty,this);
+            context.Constant2Hash.put(this,ty.getHashcode()*31+1);
         }
 
         @Override
@@ -307,7 +346,11 @@ public class Constants {
         }
 
         public static UndefValue get(Type ty){
-            return context.UndefConstants.getOrDefault(ty, new UndefValue(ty));
+            if(context.UndefConstants.containsKey(ty)){
+                return context.UndefConstants.get(ty);
+            }
+            return new UndefValue(ty);
+//            return context.UndefConstants.getOrDefault(ty, new UndefValue(ty));
         }
 
         public static boolean isUndefValue(Value V){

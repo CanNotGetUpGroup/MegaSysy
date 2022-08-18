@@ -20,7 +20,7 @@ public class PointerInfo {
     public PointerInfo(Value pointer) {
         this.pointer = pointer;
         gepList=new ArrayList<>();
-        if(pointer instanceof GlobalVariable&&!globalStatuses.containsKey(pointer)){
+        if(pointer instanceof GlobalVariable){
             globalStatuses.put((GlobalVariable) pointer,new GlobalStatus());
         }
     }
@@ -51,6 +51,8 @@ public class PointerInfo {
                         isStored=true;
                     }else if(I instanceof Instructions.CallInst){
                         asParam=true;
+                        isLoaded=true;
+                        isStored=true;
                     }else if(I instanceof Instructions.GetElementPtrInst){
                         //当前V为数组，向下查找gep的load和store
                         gepList.add(I);
@@ -69,6 +71,8 @@ public class PointerInfo {
                         isStored=true;
                     }else if(I instanceof Instructions.CallInst){
                         asParam=true;
+                        isLoaded=true;
+                        isStored=true;
                     }else if(I instanceof Instructions.GetElementPtrInst){
                         //当前V为数组，向下查找gep的load和store
                         gepList.add(I);
@@ -112,7 +116,7 @@ public class PointerInfo {
     }
 
     public static class GlobalStatus{
-        private boolean HasMultipleAccessingFunctions;
+        private boolean HasMultipleAccessingFunctions;//是否只在一个函数中使用，用于判断是否可以本地化
         private Function AccessingFunction;
 
         public boolean isHasMultipleAccessingFunctions() {

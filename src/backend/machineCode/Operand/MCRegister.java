@@ -2,8 +2,18 @@ package backend.machineCode.Operand;
 
 public class MCRegister extends Register {
 
+    public int getId() {
+        return id;
+    }
+    public boolean isAllocated = false;
+
     private int id;
     private RegName name;
+
+    public static int maxRegNum(Content type){
+        if(type == Content.Int) return 12;
+        else return 32;
+    }
 
 
     private String strName;
@@ -74,6 +84,24 @@ public class MCRegister extends Register {
 
     public RegName getName() {
         return name;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(obj instanceof VirtualRegister){
+            var r = (VirtualRegister) obj;
+            if(r.getColorId() == -1){
+                return false;
+            } else {
+                return r.getContent() == this.getContent() && r.getColorId() == this.getId();
+            }
+        }
+        if (!(obj instanceof Register))
+//            throw new RuntimeException("can't compare");
+            return false;
+        if (!(obj instanceof MCRegister))
+            return false;
+        return getContent() == ((MCRegister) obj).getContent() && getId() == ((MCRegister) obj).getId();
     }
 
     @Override

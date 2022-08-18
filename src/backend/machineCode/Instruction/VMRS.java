@@ -20,6 +20,12 @@ public class VMRS extends MachineInstruction {
         setForFloat(true, null);
     }
 
+    public VMRS(MachineBasicBlock parent, VMRS inst) {
+        super(parent, inst);
+        this.op = inst.op;
+        this.dest = inst.dest;
+    }
+
     @Override
     public Register getDest() {
         return dest;
@@ -48,7 +54,7 @@ public class VMRS extends MachineInstruction {
 
     @Override
     public String toString() {
-        return "vmrs" + typeInfoString() + "\t" + dest + ", " + op;
+        return "vmrs" + condString() + typeInfoString() + "\t" + dest + ", " + op;
     }
 }
 

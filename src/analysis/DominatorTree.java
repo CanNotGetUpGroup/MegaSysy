@@ -14,19 +14,17 @@ public class DominatorTree {
     public Function Parent;
     public TreeNode Root;
     public HashMap<BasicBlock, TreeNode> DomTreeNodes;
-    public ArrayList<TreeNode> PostOrder;// 后序遍历CFG
-    public ArrayList<TreeNode> ReversePostOrder;// 逆后序遍历CFG
-    public ArrayList<BasicBlock> Vertex;
-    public HashMap<TreeNode, ArrayList<TreeNode>> PredecessorsOfCFG;
-    public HashMap<TreeNode, Set<TreeNode>> DominanceFrontier;
-    public ArrayList<TreeNode> JoinNodes;// CFG中拥有多个前驱的节点
+    private final ArrayList<TreeNode> PostOrder;// 后序遍历CFG
+    private final ArrayList<TreeNode> ReversePostOrder;// 逆后序遍历CFG
+    private final ArrayList<TreeNode> DTPostOrder;// 后序遍历DT
+    public HashMap<TreeNode, ArrayList<TreeNode>> DominanceFrontier;
+    private final ArrayList<TreeNode> JoinNodes;// CFG中拥有多个前驱的节点
 
     public DominatorTree(Function F) {
         DomTreeNodes = new HashMap<>();
         PostOrder = new ArrayList<>();
         ReversePostOrder = new ArrayList<>();
-        Vertex = new ArrayList<>();
-        PredecessorsOfCFG = new HashMap<>();
+        DTPostOrder = new ArrayList<>();
         DominanceFrontier = new HashMap<>();
         JoinNodes = new ArrayList<>();
 
@@ -41,7 +39,7 @@ public class DominatorTree {
         for (BasicBlock BB : Parent.getBbList()) {
             if (getNode(BB) == null) {
                 ret = true;
-                BB.remove();
+                BB.removeThisAndAllInst();
             }
         }
         return ret;
@@ -74,23 +72,12 @@ public class DominatorTree {
         removeUnreachableBB();
         calculateDomTree();
         calculateDomFrontier();
+        updateDFSNumbers();
     }
 
     public void update(Function F) {
         clear();
         computeOnFunction(F);
-    }
-
-    public void computeOnCFG(ArrayList<BasicBlock> BBs) {
-        if (BBs.isEmpty())
-            return;
-        Parent = BBs.get(0).getParent();
-        TreeNode root = new TreeNode(BBs.get(0));
-        Root = root;
-        DomTreeNodes.put(BBs.get(0), Root);
-        initTreeNode(root);
-        calculateDomTree();
-        calculateDomFrontier();
     }
 
     public void clear() {
@@ -99,8 +86,7 @@ public class DominatorTree {
         DomTreeNodes.clear();
         PostOrder.clear();
         ReversePostOrder.clear();
-        Vertex.clear();
-        PredecessorsOfCFG.clear();
+        DTPostOrder.clear();
         DominanceFrontier.clear();
         JoinNodes.clear();
     }
@@ -108,7 +94,7 @@ public class DominatorTree {
     public ArrayList<TreeNode> getPostOrder() {
         if (PostOrder.size() == 0) {
             Set<TreeNode> visited = new HashSet<>();
-            PostOrderDFS(Root, visited);
+            PostOrderDFS(Root, visited,PostOrder);
         }
         return PostOrder;
     }
@@ -116,24 +102,39 @@ public class DominatorTree {
     /**
      * 后序遍历
      */
-    private void PostOrderDFS(TreeNode p, Set<TreeNode> visited) {
+    private void PostOrderDFS(TreeNode p, Set<TreeNode> visited, ArrayList<TreeNode> PostOrder) {
         visited.add(p);
         for (var child : p.BB.getSuccessors()) {
             if (!visited.contains(getNode(child))) {
-                PostOrderDFS(getNode(child), visited);
+                PostOrderDFS(getNode(child), visited,PostOrder);
             }
         }
         p.setPostNumber(PostOrder.size());
         PostOrder.add(p);
     }
 
-    public void getReversePostOrder() {
+    public ArrayList<TreeNode> getReversePostOrder() {
         if (ReversePostOrder.size() == 0) {
             var tmp = getPostOrder();
             for (int i = tmp.size() - 1; i >= 0; i--) {
                 ReversePostOrder.add(tmp.get(i));
             }
         }
+        return ReversePostOrder;
+    }
+
+    public ArrayList<TreeNode> getDTPostOrder() {
+        if (DTPostOrder.size() == 0) {
+            DTPostOrderDFS(Root);
+        }
+        return DTPostOrder;
+    }
+
+    private void DTPostOrderDFS(TreeNode p) {
+        for (var child : p.Children) {
+            DTPostOrderDFS(child);
+        }
+        DTPostOrder.add(p);
     }
 
     /**
@@ -217,7 +218,7 @@ public class DominatorTree {
                 runner = pred;
                 while (runner != node.IDom) {
                     if (!DominanceFrontier.containsKey(runner)) {
-                        DominanceFrontier.put(runner, new HashSet<>());
+                        DominanceFrontier.put(runner, new ArrayList<>());
                     }
                     DominanceFrontier.get(runner).add(node);
                     runner = runner.IDom;
@@ -255,15 +256,10 @@ public class DominatorTree {
         public ArrayList<TreeNode> Children = new ArrayList<>();
         public int level;
 
-        public TreeNode Father;
-
-        public enum color {
-            WHITE, GRAY, BLACK
-        }
+        public TreeNode Father;//CFG中的前驱（只记录了一个）
 
         private int DFSInNum, DFSOutNum;
         private int PostNumber;// CFG前序遍历序号
-        private color VisitColor;
         private ArrayList<TreeNode> Predecessors = new ArrayList<>();
 
         public TreeNode(BasicBlock BB, TreeNode Father) {
@@ -298,12 +294,12 @@ public class DominatorTree {
         }
 
         public boolean dominatedBy(TreeNode TA) {
-            TreeNode IDom, TB = this;
-            while ((IDom = TB.IDom) != TB && IDom != null && IDom.level >= TA.level) {
-                TB = IDom;
-            }
-            return TB == TA;
-            // return this.DFSInNum>=other.DFSInNum&&this.DFSOutNum<=other.DFSOutNum;
+//            TreeNode IDom, TB = this;
+//            while ((IDom = TB.IDom) != TB && IDom != null && IDom.level >= TA.level) {
+//                TB = IDom;
+//            }
+//            return TB == TA;
+             return this.DFSInNum>=TA.DFSInNum&&this.DFSOutNum<=TA.DFSOutNum;
         }
 
         @Override
@@ -387,20 +383,16 @@ public class DominatorTree {
             PostNumber = postNumber;
         }
 
-        public color getVisitColor() {
-            return VisitColor;
-        }
-
-        public void setVisitColor(color visitColor) {
-            VisitColor = visitColor;
-        }
-
         public ArrayList<TreeNode> getPredecessors() {
             return Predecessors;
         }
 
         public void setPredecessors(ArrayList<TreeNode> predecessors) {
             Predecessors = predecessors;
+        }
+
+        public ArrayList<TreeNode> getChildren() {
+            return Children;
         }
     }
 }

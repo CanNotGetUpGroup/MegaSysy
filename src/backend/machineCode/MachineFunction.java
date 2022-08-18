@@ -1,6 +1,6 @@
 package backend.machineCode;
 
-import backend.machineCode.Operand.MCOperand;
+import analysis.LoopInfo;
 import backend.machineCode.Operand.Register;
 import ir.*;
 import util.IList;
@@ -25,22 +25,53 @@ public class MachineFunction implements Addressable{
 
     private int maxParaNumOnStack = 0;
 
-
-
-    public int getStackTop() {
-        return stackTop;
+    public int getSpiltNumOnStack() {
+        return spiltNumOnStack;
     }
 
-    public void setStackTop(int stackTop) {
-        this.stackTop = stackTop;
+    public void setSpiltNumOnStack(int spiltNumOnStack) {
+        this.spiltNumOnStack = spiltNumOnStack;
     }
 
-    public void addStackTop(int inc) {
-        this.stackTop += inc;
+    public void addSpliteNumOnStack(int inc){
+        this.spiltNumOnStack += inc;
     }
 
+    private int spiltNumOnStack = 0;
 
-    private int stackTop = 8;
+    public int getStackSize() {
+        return stackSize;
+    }
+    public void addStackSize(int inc){
+        this.stackSize += inc;
+    }
+    public void setStackSize(int stackSize) {
+        this.stackSize = stackSize;
+    }
+
+    private int stackSize = 0; // ir的store指令存的东西
+
+
+    public HashMap<Register, Integer> getStoredValueMap() {
+        return storedValueMap;
+    }
+
+    private HashMap<Register, Integer> storedValueMap = new HashMap<>();
+
+
+    public int getStoredRegisterNum() {
+        return storedRegisterNum;
+    }
+
+    public void setStoredRegisterNum(int storedRegisterNum) {
+        this.storedRegisterNum = storedRegisterNum;
+    }
+    public void addStoredRegisterNum(int storedRegisterNum) {
+        this.storedRegisterNum += storedRegisterNum;
+    }
+
+    int storedRegisterNum = 0;
+
 
 
     public void setDefined(boolean defined) {
@@ -54,6 +85,16 @@ public class MachineFunction implements Addressable{
     public boolean isLeaf() {
         return isLeaf;
     }
+
+    public LoopInfo getLoopInfo() {
+        return loopInfo;
+    }
+
+    public void setLoopInfo(LoopInfo loopInfo) {
+        this.loopInfo = loopInfo;
+    }
+
+    private LoopInfo loopInfo;
 
     public void setLeaf(boolean isLeaf) {
         this.isLeaf = isLeaf;
@@ -121,7 +162,15 @@ public class MachineFunction implements Addressable{
     }
 
     private HashMap<BasicBlock, MachineBasicBlock> bbMap;
-    private HashMap<Value, Register> valueMap;
+
+    private HashMap<Value, Register> valueMap = new HashMap<>();
+
+    public HashMap<Register, Integer> getAllocaMap() {
+        return allocaMap;
+    }
+
+
+    private HashMap<Register, Integer> allocaMap = new HashMap<>();// could simplify some address , some immediate number
 
     public HashMap<Value, Integer> getStackMap() {
         return stackMap;

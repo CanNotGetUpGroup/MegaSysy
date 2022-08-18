@@ -23,10 +23,13 @@ public abstract class Instruction extends User {
         ZExt, SIToFP, FPToSI, BitCast,
         //Other
         ICmp, FCmp, Call, Select, PHI,
+        //MemSSA
+        MemDef,MemUse,MemPHI
     }
 
     public BasicBlock getParent() {
 //        return Parent;
+        if(instNode.getParent()==null) return null;
         return instNode.getParent().getVal();
     }
 
@@ -54,6 +57,11 @@ public abstract class Instruction extends User {
         super(type, numOperands);
         this.op = op;
         instNode = new IListNode<>(this, MyIRBuilder.getInstance().BB.getInstList());
+    }
+
+    public Instruction(Type type,Ops op){
+        super(type,0);
+        this.op=op;
     }
 
     public Instruction(Type type, Ops op, String name, int numOperands) {
@@ -109,6 +117,15 @@ public abstract class Instruction extends User {
         };
     }
 
+    public static boolean isBinary(Ops op){
+        return op.ordinal() >= Ops.Add.ordinal()
+            && op.ordinal() <= Ops.Xor.ordinal();
+    }
+
+    public static boolean isCmp(Ops op){
+        return op.equals(Ops.ICmp)||op.equals(Ops.FCmp);
+    }
+
     /**
      * 从基本块中删除
      */
@@ -133,7 +150,22 @@ public abstract class Instruction extends User {
     public void setSuccessor(int idx,BasicBlock BB){
     }
 
+    public void replaceSuccessorWith(BasicBlock OldBB,BasicBlock newBB){
+        for(int i=0;i<getSuccessorsNum();i++){
+            if(getSuccessor(i)==OldBB){
+                setSuccessor(i,newBB);
+            }
+        }
+    }
+
     public Function getFunction(){
+        if(getParent()==null) return null;
         return getParent().getParent();
     }
+
+
+    /**
+     * 浅拷贝，Operand不拷贝
+     */
+    public abstract Instruction shallowCopy();
 }

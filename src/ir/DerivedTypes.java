@@ -135,6 +135,19 @@ public abstract class DerivedTypes {
             }
             return result;
         }
+
+        /**
+         * 返回一个维度表
+         */
+        public ArrayList<Integer> getDims() { 
+            ArrayList<Integer> ret = new ArrayList<>();
+            Type cur = this;
+            while(cur.isArrayTy()) { 
+                ret.add(((ArrayType)cur).getDim());
+                cur = ((ArrayType)cur).getKidType();
+            }
+            return ret;
+        }
     }
 
     /// Class to represent function types

@@ -2,6 +2,7 @@ package ir;
 
 import ir.instructions.Instructions.*;
 import org.antlr.v4.runtime.misc.Pair;
+import pass.PassManager;
 import util.CloneMap;
 import util.IList;
 import util.IListNode;
@@ -14,6 +15,7 @@ public class BasicBlock extends Value {
     private IListNode<BasicBlock, Function> bbNode;
     private IList<Instruction, BasicBlock> instList;
     private boolean isEntryBlock = false;
+    public boolean isCond;
 
     /**
      * 生成基本块对象
@@ -49,7 +51,7 @@ public class BasicBlock extends Value {
         bbNode.insertIntoListEnd(Parent.getBbList());
     }
 
-    public BasicBlock(String name, Function parent,BasicBlock insertAfter) {
+    public BasicBlock(String name, Function parent, BasicBlock insertAfter) {
         super(Type.getLabelTy(), name);
         Parent = parent;
         PHIs = new ArrayList<>();
@@ -73,6 +75,7 @@ public class BasicBlock extends Value {
     }
 
     public Function getParent() {
+        if(bbNode.getParent()==null) return null;
         return bbNode.getParent().getVal();
     }
 
@@ -100,6 +103,9 @@ public class BasicBlock extends Value {
     public void remove() {
         bbNode.remove();
         dropUsesAsValue();
+        for(PHIInst phi:new ArrayList<>(PHIs)){
+            phi.removeIncomingValue(this,false);
+        }
         PHIs.clear();
         getTerminator().dropUsesAsUser();
     }
@@ -108,9 +114,25 @@ public class BasicBlock extends Value {
     public void remove(boolean terminatorHasRemoved) {
         bbNode.remove();
         dropUsesAsValue();
+        for(PHIInst phi:new ArrayList<>(PHIs)){
+            phi.removeIncomingValue(this,false);
+        }
         PHIs.clear();
         if (!terminatorHasRemoved)
             getTerminator().dropUsesAsUser();
+    }
+
+    public void removeThisAndAllInst() {
+        bbNode.remove();
+        dropUsesAsValue();
+        for(PHIInst phi:new ArrayList<>(PHIs)){
+            phi.removeIncomingValue(this,false);
+        }
+        PHIs.clear();
+        for(Instruction I:getInstList()){
+            I.remove();
+        }
+//        getTerminator().dropUsesAsUser();
     }
 
     /**
@@ -154,7 +176,7 @@ public class BasicBlock extends Value {
             Phi.removeIncomingValue(Pred, true);
             if (numPred == 1)
                 continue;
-            Value PhiConstant = Phi.hasConstantValue();
+            Value PhiConstant = Phi.hasConstantValue(PassManager.ignoreUndef);
             if (PhiConstant != null) {
                 Phi.replaceAllUsesWith(PhiConstant);
                 Phi.remove();
@@ -172,6 +194,19 @@ public class BasicBlock extends Value {
             }
         }
         return B;
+    }
+
+    public void replacePredecessorWith(BasicBlock OldBB,BasicBlock newBB){
+        for(int i=0;i<getPredecessorsNum();i++){
+            if(getPredecessor(i)==OldBB){
+                OldBB.replaceSuccessorWith(this,newBB);
+                newBB.setSuccessor(0,this);
+            }
+        }
+    }
+
+    public void replaceSuccessorWith(BasicBlock OldBB,BasicBlock newBB){
+        getTerminator().replaceSuccessorWith(OldBB,newBB);
     }
 
     /**
@@ -217,7 +252,8 @@ public class BasicBlock extends Value {
      * @return 首条指令
      */
     public Instruction front() {
-        if(getInstList().getFirst()==null) return null;
+        if (getInstList().getFirst() == null)
+            return null;
         return getInstList().getFirst().getVal();
     }
 
@@ -258,7 +294,7 @@ public class BasicBlock extends Value {
             use.getU().setOperand(use.getOperandNo(), BB);
         }
         getUseList().clear();
-        for (var PI : PHIs) {
+        for (var PI : new ArrayList<>(PHIs)) {
             PI.replaceIncomingBlock(this, BB);
         }
         PHIs.clear();
@@ -266,9 +302,26 @@ public class BasicBlock extends Value {
 
     @Override
     public BasicBlock copy(CloneMap cloneMap) {
-        if(cloneMap.get(this)!=null){
+        if (cloneMap.get(this) != null) {
             return (BasicBlock) cloneMap.get(this);
         }
         return null;
+    }
+
+    /**
+     * 判断是否可以将代码提升到该bb
+     * 
+     * @return Return true if it is legal to hoist instructions into this block.
+     */
+    public boolean isLegalToHoistInto() {
+        var term = getTerminator();
+        // No terminator means the block is under construction.
+        if (term == null) {
+            return true;
+        }
+        // If the block has no successors, there can be no instructions to hoist.
+        assert (term.getSuccessors().size() > 0);
+        // Instructions should not be hoisted across exception handling boundaries.
+        return true;
     }
 }

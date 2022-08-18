@@ -4,8 +4,14 @@
 /.idea/
 /src/backend/test/*
 /MC/
+/1.zip
 /src/testcase.s
 /src/testcase.sy
 /src/windows_run.py
 /src/run.py
-/src/pass/test
+testcase.*
+.DS_Store
+/src/pass/test/*.txt
+testcase.*
+/FrontedTest/
+/src/pass/test/run_1.py

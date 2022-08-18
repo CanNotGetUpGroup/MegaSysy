@@ -34,6 +34,7 @@ public class Use {
     }
 
     public int getOperandNo() {
+//        return U.OperandList.indexOf(Val);
         return operandNo;
     }
 

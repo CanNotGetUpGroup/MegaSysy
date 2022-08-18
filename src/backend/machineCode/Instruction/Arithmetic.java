@@ -13,6 +13,11 @@ public class Arithmetic extends MachineInstruction {
     private Register destReg;
     private MCOperand op1;
     private MCOperand op2;
+
+    public Type getType() {
+        return type;
+    }
+
     private Type type;
 
     // TODO: 取余数
@@ -24,6 +29,9 @@ public class Arithmetic extends MachineInstruction {
         SDIV, // signed divide
         RSB, // reverse substract
         LSL, // Logical Shift Left
+        LSR, // Logical Shift Right
+        ASR, // Arithmetic Shift Right.
+        AND
     }
 
     public Arithmetic(MachineBasicBlock parent, Type type, Register destReg, Register op1, MCOperand op2) {
@@ -38,6 +46,14 @@ public class Arithmetic extends MachineInstruction {
         this.op1 = op1;
         this.op2 = op2;
         setForFloat(op1.isFloat());
+    }
+    public Arithmetic(MachineBasicBlock parent, Arithmetic arithmetic) {
+        super(parent, arithmetic);
+
+        this.type = arithmetic.getType();
+        this.destReg = arithmetic.getDest();
+        this.op1 = arithmetic.getOp1();
+        this.op2 = arithmetic.getOp2();
     }
 
     public Arithmetic(MachineBasicBlock parent, Type type, Register op1, MCOperand op2) {
@@ -84,7 +100,11 @@ public class Arithmetic extends MachineInstruction {
 
     @Override
     public String toString() {
-        return (isForFloat() ? "v" : "") + type.toString() + typeInfoString() + "\t" + destReg.toString() + ", " + op1.toString() + ", " + op2.toString();
+        return (isForFloat() ? "v" : "")
+                + type.toString()  + condString()+ (isSetState() ? "S" : "")
+                 + typeInfoString() + "\t"
+                + destReg.toString() + ", " + op1.toString() + ", " + op2.toString()
+                + (hasShift()? ", " + getShifter() : "");
     }
 
     @Override
@@ -92,8 +112,6 @@ public class Arithmetic extends MachineInstruction {
         setForFloat(isForFloat, new ArrayList<>(List.of("f32")));
         return this;
     }
-
-
 
 
     @Override

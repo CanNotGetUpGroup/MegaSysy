@@ -40,7 +40,7 @@ public class ImmediateNumber extends MCOperand {
     }
 
     static public boolean isLegalImm(int num) {
-        if (num < 0) num = -num;
+//        if (num < 0) num = -num;
         for (int i = 0; i < 16; i++) {
             int head = (num & 3) << 30;
             num = (num >>> 2) | head;
@@ -55,14 +55,14 @@ public class ImmediateNumber extends MCOperand {
 
     static public Register loadNumInsertBefore(MachineBasicBlock parent, Register reg, int num, IListNode<MachineInstruction, MachineBasicBlock> node) {
         if (isLegalImm(num)) {
-            new Move(parent, reg, new ImmediateNumber(num)).setForFloat(reg.isFloat(), new ArrayList<>(Arrays.asList("32"))).insertBefore(node);
+            new LoadImm(parent, reg, new ImmediateNumber(num)).setForFloat(reg.isFloat(), new ArrayList<>(Arrays.asList("32"))).insertBefore(node);
         } else {
             if (!reg.isFloat()) {
                 new LoadImm(parent, reg, num).insertBefore(node);
             } else {
                 var temp = new VirtualRegister();
                 new LoadImm(parent, temp, num).insertBefore(node);
-                new Move(parent, reg, temp).insertBefore(node);
+                new LoadImm(parent, reg, temp).insertBefore(node);
             }
 
         }

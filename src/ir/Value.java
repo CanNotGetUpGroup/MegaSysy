@@ -105,6 +105,22 @@ public abstract class Value {
         UseList.remove(U);
     }
 
+    /**
+     * 移除第一个U的Use，并使用OperandNo进行校验
+     * (需要User和OperandIdx才能确定Use)
+     */
+    public void removeUse(User U,int idx) {
+        for(Use use:UseList){
+            if(use.getU()==U&&use.getOperandNo()==idx){
+                UseList.remove(use);
+                return;
+            }
+        }
+    }
+
+    /**
+     * 移除所有U的Use
+     */
     public void removeUseByUser(User U) {
         UseList.removeIf(use -> use.getU() == (U));
     }
@@ -113,6 +129,7 @@ public abstract class Value {
      * 将所有引用this的operand转换为引用V，并清除this的UseList，为V的UseList加上对应的Use
      */
     public void replaceAllUsesWith(Value V) {
+        if(V==this) return;
         for(Use use:UseList){
             use.getU().setOperand(use.getOperandNo(),V);
         }
@@ -131,7 +148,7 @@ public abstract class Value {
      * 作为Value被删除时，删除所有use，将所有User中对应的value设为Undef
      */
     public void dropUsesAsValue(){
-        for(Use U:getUseList()){
+        for(Use U:new ArrayList<>(getUseList())){
             dropUse(U);
         }
     }
@@ -140,5 +157,8 @@ public abstract class Value {
 
     }
 
+    /**
+     * 深拷贝
+     */
     public abstract Value copy(CloneMap cloneMap);
 }

@@ -16,6 +16,7 @@ import java.util.*;
 /**
  * 《Engineering a compiler》8.7.1
  * 《Advanced Compiler Design and Implementation》15.2-15.3
+ * TODO:尝试内联递归函数（设置次数上限）
  */
 public class FuncInline extends ModulePass {
     int Threshold = 150;//内联的函数的行数阈值，超过该值放弃内联
@@ -79,6 +80,10 @@ public class FuncInline extends ModulePass {
 
             for (int i = 0; i < callInsts.size(); i++) {
                 CallInst CI = callInsts.get(i);
+                if(CI.getParent()==null){//已被删除
+                    callInsts.remove(i--);
+                    continue;
+                }
                 Function caller = CI.getFunction();
                 Function callee = CI.getCalledFunction();
 
@@ -92,6 +97,7 @@ public class FuncInline extends ModulePass {
                     System.out.println(callee + " didn't inline into " + caller);
                     continue;
                 }else{
+//                    System.out.println(callee + " inline into " + caller);
                     localChanged=true;
                     CG.getNode(callee).getCalledFunctions().forEach(calleeEE->{
                         CG.getNode(caller).addCalledFunction(calleeEE.a.copy(cloneMap),calleeEE.b);
@@ -101,7 +107,7 @@ public class FuncInline extends ModulePass {
                 }
             }
         } while (localChanged);
-        M.rename();
+//        M.rename();
     }
 
     /**
@@ -193,7 +199,7 @@ public class FuncInline extends ModulePass {
         leave.getInstList().splice(callInstIt,CI.getInstNode(),null);
         leave.setComment("leave inline "+CI);
         //将originBB的phi指令转换为leave的
-        for(PHIInst phiInst:originBB.getPHIs()){
+        for(PHIInst phiInst:new ArrayList<>(originBB.getPHIs())){
             phiInst.replaceIncomingBlock(originBB,leave);
         }
         originBB.getPHIs().clear();
@@ -223,6 +229,9 @@ public class FuncInline extends ModulePass {
     public boolean shouldInline(CallInst CI,CallGraph CG,boolean checkLineNum) {
         Function caller = CI.getFunction();
         Function F = CI.getCalledFunction();
+//        if(!(caller.getName().equals("asr5"))||F.getName().equals("F1")||F.getName().equals("F2")||F.getName().equals("my_fabs")){
+//            return false;
+//        }
         int cost = 0;
 
         //检查F是否自递归
