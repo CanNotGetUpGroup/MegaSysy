@@ -178,6 +178,7 @@ public abstract class Instructions {
         private Type SourceElementType;//来源指针指向的类型
         private Type ResultElementType;//取址后得到的类型
         private Constant Init, ConstantValue;
+        private ArrayList<Value> DimInfo=new ArrayList<>();
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
@@ -222,6 +223,10 @@ public abstract class Instructions {
 //            }
 //            setComment(comment.toString());
             return sb.toString();
+        }
+
+        public ArrayList<Value> getDimInfo() {
+            return DimInfo;
         }
 
         public static Type getIndexType(Type Type, ArrayList<Value> IdxList) {

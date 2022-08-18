@@ -36,7 +36,7 @@ public class IndVarReduction extends FunctionPass {
             canContinue = false;
             gvngcm.functionGVNGCM(F);
             redundant.runOnFunction(F);
-            Module.getInstance().rename(F);
+//            Module.getInstance().rename(F);
             LI = F.getLoopInfo();
             DT = F.getAndUpdateDominatorTree();
             LI.computeLoopInfo(F);
@@ -129,9 +129,11 @@ public class IndVarReduction extends FunctionPass {
                         incomingInst= (Instruction) builder.createBinary(Instruction.Ops.Shl, cycPhi, sum);
                         return incomingInst;
                     } else {
+//                        System.out.println("may be faster mul");
                         return null;
                     }
                 } else {
+//                    System.out.println("may be faster mul");
                     return null;
                 }
             }
@@ -152,10 +154,12 @@ public class IndVarReduction extends FunctionPass {
                             return builder.createBinary(Instruction.Ops.Shr, bias, sum);
                         }
                     } else {
+//                        System.out.println("may be faster div");
                         return null;
                     }
 //                    return null;
                 } else {
+//                    System.out.println("may be faster div");
                     return null;
                 }
             }
@@ -221,7 +225,7 @@ public class IndVarReduction extends FunctionPass {
     }
 
     /**
-     * TODO:快速幂
+     * TODO:快速幂，经测试并没有测相关用例
      */
     private Value binPow(Value a, Value b) {
         return null;

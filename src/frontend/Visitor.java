@@ -303,6 +303,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                                 Instruction ptr = builder.createGEP(gep, new ArrayList<>() {{
                                     add(ConstantInt.get(arr_site));
                                 }});
+                                //计算DimInfo
+                                ArrayType tmpAty=arrayType;
+                                Instructions.GetElementPtrInst tmpGep= (Instructions.GetElementPtrInst) ptr;
+                                int tmp_site=arr_site;
+                                while (tmpAty.getKidType().isArrayTy()){
+                                    tmpGep.getDimInfo().add(ConstantInt.get(tmp_site/tmpAty.getEleSize()));
+                                    tmp_site%=tmpAty.getEleSize();
+                                    tmpAty= (ArrayType) tmpAty.getKidType();
+                                }
+                                tmpGep.getDimInfo().add(ConstantInt.get(tmp_site));
                                 builder.createStore(curVal, ptr);
                             }
                         }
@@ -566,6 +576,16 @@ public class Visitor extends SysyBaseVisitor<Value> {
                                 Instruction ptr = builder.createGEP(gep, new ArrayList<>() {{
                                     add(ConstantInt.get(arr_site));
                                 }});
+                                //计算DimInfo
+                                ArrayType tmpAty=arrayType;
+                                Instructions.GetElementPtrInst tmpGep= (Instructions.GetElementPtrInst) ptr;
+                                int tmp_site=arr_site;
+                                while (tmpAty.getKidType().isArrayTy()){
+                                    tmpGep.getDimInfo().add(ConstantInt.get(tmp_site/tmpAty.getEleSize()));
+                                    tmp_site%=tmpAty.getEleSize();
+                                    tmpAty= (ArrayType) tmpAty.getKidType();
+                                }
+                                tmpGep.getDimInfo().add(ConstantInt.get(tmp_site));
                                 builder.createStore(curVal, ptr);
                             }
                         }

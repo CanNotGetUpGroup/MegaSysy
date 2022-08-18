@@ -3,6 +3,7 @@ package analysis;
 import ir.*;
 import analysis.MemoryAccess.*;
 import ir.instructions.Instructions;
+import org.antlr.v4.runtime.misc.Pair;
 import pass.PassManager;
 import pass.passes.Mem2Reg;
 import pass.passes.SimplifyCFG;
@@ -451,6 +452,51 @@ public class MemorySSA {
                 MemoryPhi Phi = (MemoryPhi) MA;
                 Phi.addIncoming(IncomingVal.get(Phi.getPointer()), BB);
             }
+        }
+    }
+
+    static class RenameArrayPassData {
+        public BasicBlock BB;
+        public BasicBlock Pred;
+        HashMap<Pair<Value,Value>,MemoryAccess> Val;//pointer and index
+
+        public RenameArrayPassData(BasicBlock BB, BasicBlock pred, HashMap<Pair<Value,Value>,MemoryAccess> val) {
+            this.BB = BB;
+            Pred = pred;
+            Val = val;
+        }
+    }
+
+    private void renameArrayBlock(BasicBlock BB, HashMap<Pair<Value,Value>,MemoryAccess> IncomingVal) {
+        LinkedList<MemoryAccess> accList = BlockToMemAccList.get(BB);
+        if (accList != null && !accList.isEmpty()) {
+//            for (MemoryAccess MA : accList) {
+//                if (MA instanceof MemoryDefOrUse) {
+//                    MemoryDefOrUse MUD = (MemoryDefOrUse) MA;
+//                    //call单独处理
+//                    if(MUD.getMemoryInstruction() instanceof Instructions.CallInst) {
+//                        Instructions.CallInst CI=(Instructions.CallInst)MUD.getMemoryInstruction();
+//                        MemoryAccess newDef=LiveOnEntry;
+//                        for(Value v:CI2Pointers.get(CI)){
+//                            //找到call定义的pointer中版本最后的
+//                            if(IncomingVal.get(v).getID()>newDef.getID()) newDef=IncomingVal.get(v);
+//                            IncomingVal.put(v,MA);
+//                        }
+//                        if(MUD.getDefiningAccess()==null){
+//                            MUD.setDefiningAccess(newDef);
+//                        }
+//                        continue;
+//                    }
+//                    if (MUD.getDefiningAccess() == null) {
+//                        MUD.setDefiningAccess(IncomingVal.get(MUD.getPointer()));
+//                    }
+//                    if (MUD instanceof MemoryDef) {
+//                        IncomingVal.put(MUD.getPointer(),MA);
+//                    }
+//                } else {
+//                    IncomingVal.put(MA.getPointer(),MA);
+//                }
+//            }
         }
     }
 
