@@ -247,6 +247,7 @@ public class Function extends User {
         ir.Module.getInstance().rename(ret);
         return ret;
     }
+
     /**
      *
      * @return 调用该函数的函数列表

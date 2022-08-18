@@ -10,10 +10,22 @@ import util.IListNode;
 
 import java.util.ArrayList;
 
-public abstract class MachineInstruction {
+public abstract class MachineInstruction implements Comparable{
     private MachineBasicBlock parent;
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
+
+    private static int c = 0;
+
+    private static int counter() {
+        return c++;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    private int id;
 
     public boolean isSetState() {
         return setState;
@@ -214,6 +226,9 @@ public abstract class MachineInstruction {
     public void insertBefore(IListNode<MachineInstruction, MachineBasicBlock> node) {
         this.getInstNode().insertBefore(node);
     }
+    public  void insertAfter(MachineInstruction node) {
+        this.getInstNode().insertAfter(node.getInstNode());
+    }
 
     public void insertBefore(MachineInstruction node) {
         this.getInstNode().insertBefore(node.getInstNode());
@@ -225,11 +240,13 @@ public abstract class MachineInstruction {
 
     public MachineInstruction(MachineBasicBlock parent) {
         this.parent = parent;
+        this.id = counter();
         instNode = new IListNode<>(this, parent.getInstList());
     }
 
     public MachineInstruction(MachineBasicBlock parent, MachineInstruction src) {
         this.parent = parent;
+        this.id = counter();
         instNode = new IListNode<>(this, parent.getInstList());
         this.shifter = src.getShifter();
         this.cond = src.getCond();
@@ -321,6 +338,13 @@ public abstract class MachineInstruction {
         throw new RuntimeException("Copy failed: " + src);
     }
 
+    @Override
+    public int compareTo(Object o) {
+        if(!(o instanceof MachineInstruction))
+            throw new RuntimeException("Can't compare");
+        var i = (MachineInstruction) o;
+        return i.getId() - getId();
+    }
 
     public static void main(String[] args) {
 

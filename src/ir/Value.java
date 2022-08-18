@@ -129,6 +129,7 @@ public abstract class Value {
      * 将所有引用this的operand转换为引用V，并清除this的UseList，为V的UseList加上对应的Use
      */
     public void replaceAllUsesWith(Value V) {
+        if(V==this) return;
         for(Use use:UseList){
             use.getU().setOperand(use.getOperandNo(),V);
         }
@@ -156,5 +157,8 @@ public abstract class Value {
 
     }
 
+    /**
+     * 深拷贝
+     */
     public abstract Value copy(CloneMap cloneMap);
 }

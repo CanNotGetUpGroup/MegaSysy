@@ -1,10 +1,6 @@
 package pass.passes;
 
-import java.lang.reflect.InvocationHandler;
-import java.security.DomainCombiner;
 import java.util.ArrayList;
-import java.util.HashSet;
-import util.CloneMap;
 import analysis.DominatorTree;
 import analysis.LoopInfo;
 import ir.Argument;
@@ -12,8 +8,6 @@ import ir.Constant;
 import ir.Function;
 import ir.Instruction;
 import ir.Loop;
-import ir.Type;
-import ir.Instruction.Ops;
 import ir.instructions.BinaryInstruction;
 import ir.instructions.CmpInst;
 import ir.instructions.Instructions.CallInst;
@@ -153,7 +147,7 @@ public class LICM extends FunctionPass {
                         }
                         if (isInvariant) {
                             Invariant.add(inst);
-//                            System.out.println("add invariant: " + inst);
+                            // System.out.println("add invariant: " + inst);
                             newInvariantAdded2Set = true;
                         }
                     } else if (inst instanceof CmpInst) {
@@ -177,7 +171,7 @@ public class LICM extends FunctionPass {
                         }
                         if (isInvariant) {
                             Invariant.add(inst);
-//                            System.out.println("add invariant: " + inst);
+                            // System.out.println("add invariant: " + inst);
                             newInvariantAdded2Set = true;
                         }
                     } else if (inst instanceof CallInst) {
@@ -204,7 +198,7 @@ public class LICM extends FunctionPass {
                         }
                         if (isInvariant) {
                             Invariant.add(inst);
-//                            System.out.println("add invariant: " + inst);
+                            // System.out.println("add invariant: " + inst);
                             newInvariantAdded2Set = true;
                         }
                     }

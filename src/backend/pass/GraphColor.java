@@ -14,27 +14,27 @@ import static backend.machineCode.Instruction.Arithmetic.Type.*;
 
 // ref "Iterated Register Coalescing" by LAL GEORGE and ANDREW W. APPEL
 public class GraphColor {
-    private ArrayList<MachineFunction> funcList;
+    private final ArrayList<MachineFunction> funcList;
 
     public GraphColor(ArrayList<MachineFunction> funcList) {
         this.funcList = funcList;
     }
 
-    HashSet<Register> simplifyWorklist; // list of low-degree non-move-related nodes.
-    HashSet<Register> freezeWorklist; // low-degree move-related nodes.
-    HashSet<Register> spillWorklist; // high-degree nodes.
-    HashSet<Register> spilledNodes; // nodes marked for spilling during this round; initially empty.
-    HashSet<Register> coalescedNodes; // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
-    HashSet<Register> coloredNodes; // nodes successfully colored.
+    Set<Register> simplifyWorklist; // list of low-degree non-move-related nodes.
+    Set<Register> freezeWorklist; // low-degree move-related nodes.
+    Set<Register> spillWorklist; // high-degree nodes.
+    Set<Register> spilledNodes; // nodes marked for spilling during this round; initially empty.
+    Set<Register> coalescedNodes; // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
+    Set<Register> coloredNodes; // nodes successfully colored.
     Deque<Register> selectStack; // stack containing temporaries removed from the graph.
 
-    HashSet<Move> coalescedMoves; // moves that have been coalesced.
-    HashSet<Move> constrainedMoves;// moves whose source and target interfere.
-    HashSet<Move> frozenMoves;// moves that will no longer be considered for coalescing.
-    HashSet<Move> worklistMoves; // moves enabled for possible coalescing.
-    HashSet<Move> activeMoves; //moves not yet ready for coalescing.
+    Set<Move> coalescedMoves; // moves that have been coalesced.
+    Set<Move> constrainedMoves;// moves whose source and target interfere.
+    Set<Move> frozenMoves;// moves that will no longer be considered for coalescing.
+    Set<Move> worklistMoves; // moves enabled for possible coalescing.
+    Set<Move> activeMoves; //moves not yet ready for coalescing.
 
-    HashSet<Map.Entry<Register, Register>> adjSet; // the set of interference edges (u, v) in the graph.
+    Set<Map.Entry<Register, Register>> adjSet; // the set of interference edges (u, v) in the graph.
     HashMap<Register, Set<Register>> adjList; // the set of interference edges (u, v) in the graph.
     Map<Register, Integer> degree; // an array containing the current degree of each node. Precolored nodes are initialized with a degree of ∞,
 
@@ -44,6 +44,8 @@ public class GraphColor {
     Map<Register, Integer> colorMap;
 
     Map<MachineBasicBlock, LiveInfo> liveInfoMap;
+
+    Register.Content curPassType;
 
     class LiveInfo {
         Set<Register> liveIn;
@@ -71,12 +73,12 @@ public class GraphColor {
                 var uses = inst.getUse();
 
                 for (var d : def) {
-                    if (!curLiveInfo.liveUse.contains(d)) {
+                    if (!curLiveInfo.liveUse.contains(d) && d.getContent() == curPassType) {
                         curLiveInfo.liveDef.add(d);
                     }
                 }
                 for (var use : uses)
-                    if (!curLiveInfo.liveDef.contains(use)) {
+                    if (!curLiveInfo.liveDef.contains(use) && use.getContent() == curPassType) {
                         curLiveInfo.liveUse.add(use);
                     }
             }
@@ -144,21 +146,28 @@ public class GraphColor {
                  instNode != instList.getHead(); instNode = instNode.getPrev()) {
                 if (instNode == null) break;
                 var inst = instNode.getVal();
-                if (inst instanceof Move && inst.getOp2() instanceof Register) {
+                if (inst instanceof Move && inst.getOp2() instanceof Register
+                        && inst.getUse().get(0).getContent() == curPassType &&
+                        inst.getDef().get(0).getContent() == curPassType) {
                     inst.getUse().forEach(live::remove);
                     for (var i : inst.getUse()) {
+                        if (i.getContent() != curPassType)
+                            continue;
                         moveList.putIfAbsent(i, new HashSet<>());
                         moveList.get(i).add((Move) inst);
                     }
 
                     for (var i : inst.getDef()) {
+                        if (i.getContent() != curPassType)
+                            continue;
                         moveList.putIfAbsent(i, new HashSet<>());
                         moveList.get(i).add((Move) inst);
                     }
 
                     worklistMoves.add((Move) inst);
                 }
-                var def = inst.getDef();
+                var def = inst.getDef()
+                        .stream().filter(x -> x.getContent() == curPassType).collect(Collectors.toSet());
                 live.addAll(def);
                 for (var d : def) {
                     for (var l : live) {
@@ -168,7 +177,7 @@ public class GraphColor {
                     live.remove(d);
                 }
 
-                live.addAll(inst.getUse());
+                live.addAll(inst.getUse().stream().filter(x -> x.getContent() == curPassType).collect(Collectors.toSet()));
             }
         }
     }
@@ -205,7 +214,7 @@ public class GraphColor {
 
     void makeWorkList(Set<Register> initial) {
         for (var reg : initial) {
-            if (degree.getOrDefault(reg, 0) >= MCRegister.maxRegNum(Register.Content.Int)) {
+            if (degree.getOrDefault(reg, 0) >= MCRegister.maxRegNum(curPassType)) {
                 // spillWorklist := spillWorklist ∪ {n}
                 spillWorklist.add(reg);
             } else if (isMoveRelated(reg)) {
@@ -222,7 +231,7 @@ public class GraphColor {
     //forall m ∈ Adjacent(n)
     //DecrementDegree(m)
     void Simplify() {
-        var reg = simplifyWorklist.iterator().next();
+        var reg = selectOne(simplifyWorklist);
         simplifyWorklist.remove(reg);
         if (reg == null)
             throw new RuntimeException("null register");
@@ -242,7 +251,7 @@ public class GraphColor {
     void DecrementDegree(Register reg) {
         var d = degree.get(reg);
         degree.put(reg, d - 1);
-        if (d == MCRegister.maxRegNum(Register.Content.Int)) {
+        if (d == MCRegister.maxRegNum(Register.Content.Float)) {
             var set = new HashSet<Register>();
             set.add(reg);
             set.addAll(getAdjacent(reg));
@@ -272,7 +281,7 @@ public class GraphColor {
     }
 
     void Coalesce() {
-        var m = worklistMoves.iterator().next();
+        var m = selectOne(worklistMoves);
         var x = getAlias(m.getDest());
         if (m.getOp2() instanceof ImmediateNumber) {
             worklistMoves.remove(m);
@@ -314,7 +323,7 @@ public class GraphColor {
     void addWorkList(Register reg) {
         if (reg == null) throw new RuntimeException("null reg");
         if (!reg.isPrecolored() && !isMoveRelated(reg)
-                && degree.getOrDefault(reg, 0) < MCRegister.maxRegNum(Register.Content.Int)) {
+                && degree.getOrDefault(reg, 0) < MCRegister.maxRegNum(curPassType)) {
             freezeWorklist.remove(reg);
             simplifyWorklist.add(reg);
         }
@@ -323,15 +332,15 @@ public class GraphColor {
     // function OK(t,r)
     //degree[t] < K ∨ t ∈ precolored ∨ (t, r) ∈ adjSet
     boolean OK(Register t, Register r) {
-        return degree.get(t) < MCRegister.maxRegNum(Register.Content.Int) || t.isPrecolored() || adjSet.contains(new AbstractMap.SimpleEntry<>(t, r));
+        return degree.get(t) < MCRegister.maxRegNum(curPassType) || t.isPrecolored() || adjSet.contains(new AbstractMap.SimpleEntry<>(t, r));
     }
 
     boolean conservative(Collection<Register> nodes) {
         int k = 0;
         for (var n : nodes) {
-            if (degree.get(n) > MCRegister.maxRegNum(Register.Content.Int)) k++;
+            if (degree.get(n) > MCRegister.maxRegNum(curPassType)) k++;
         }
-        return k < MCRegister.maxRegNum(Register.Content.Int);
+        return k < MCRegister.maxRegNum(curPassType);
     }
 
     Register getAlias(Register reg) {
@@ -354,7 +363,7 @@ public class GraphColor {
             addEdge(t, u);
             DecrementDegree(t);
         }
-        if (degree.getOrDefault(u, 0) >= MCRegister.maxRegNum(Register.Content.Int)
+        if (degree.getOrDefault(u, 0) >= MCRegister.maxRegNum(curPassType)
                 && freezeWorklist.contains(u)) {
             freezeWorklist.remove(u);
             spillWorklist.add(u);
@@ -362,7 +371,7 @@ public class GraphColor {
     }
 
     void freeze() {
-        var u = freezeWorklist.iterator().next();
+        var u = selectOne(freezeWorklist);
         freezeWorklist.remove(u);
         simplifyWorklist.add(u);
         FreezeMoves(u);
@@ -380,33 +389,29 @@ public class GraphColor {
             frozenMoves.add(m);
 
             var v = m.getDest().equals(u) ? m.getOp2() : m.getDest();
-            if (v != null && !isMoveRelated((Register) v) && degree.getOrDefault(v, 0) < MCRegister.maxRegNum(Register.Content.Int)) {
+            if (v != null && !isMoveRelated((Register) v) && degree.getOrDefault(v, 0) < MCRegister.maxRegNum(curPassType)) {
                 freezeWorklist.remove(v);
                 simplifyWorklist.add((Register) v);
             }
         }
     }
 
-    private Random rand = new Random();
-
     void SelectSpill() {
-        Double maxScore = 0.0;
-        Register m = spillWorklist.iterator().next();
+        double maxScore = 0.0;
+        Register m = selectOne(spillWorklist);
         for (var i : spillWorklist) {
             double curScore;
-             curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(1.4, loopDepth.getOrDefault(i, 0));
+            curScore = ((double) degree.getOrDefault(i, 0)) / Math.pow(2, loopDepth.getOrDefault(i, 0));
+
             if (substitutions.contains(i)) {
                 curScore = -1;
             }
-            if(curScore >= maxScore){
+            if (curScore >= maxScore) {
                 maxScore = curScore;
                 m = i;
             }
         }
 
-
-
-        // TODO: elected using favorite heuristic
         //Note: avoid choosing nodes that are the tiny live ranges
         //resulting from the fetches of previously spilled registers
 
@@ -416,14 +421,18 @@ public class GraphColor {
     }
 
     void AssignColors() {
-        for (int i = 0; i < MCRegister.maxRegNum(Register.Content.Int); i++) {
-            colorMap.put(new MCRegister(Register.Content.Int, i), i);
+
+        for (int i = 0; i < MCRegister.maxRegNum(curPassType); i++) {
+            colorMap.put(new MCRegister(curPassType, i), i);
+
         }
 
-
+        // select stack filter
         while (!selectStack.isEmpty()) {
             var n = selectStack.pop();
-            var okColors = IntStream.range(0, MCRegister.maxRegNum(Register.Content.Int)).boxed().collect(Collectors.toCollection(HashSet::new));
+            var okColors = IntStream.range(0, MCRegister.maxRegNum(curPassType)).boxed()
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+
             for (var w : adjList.getOrDefault(n, new HashSet<>())) {
                 var alias = getAlias(w);
                 if (coloredNodes.contains(alias) || alias.isPrecolored()) {
@@ -444,6 +453,15 @@ public class GraphColor {
         }
     }
 
+    MCRegister getMCReg(Register reg) {
+        if (reg instanceof MCRegister)
+            return (MCRegister) reg;
+        var vreg = (VirtualRegister) reg;
+        if (((VirtualRegister) reg).getColorId() == -1) {
+            throw new RuntimeException("Can't substitude");
+        }
+        return new MCRegister(vreg.getContent(), vreg.getColorId());
+    }
 
     void substituteAllRegister(MachineFunction func) {
         for (var bb : func.getBbList()) {
@@ -451,38 +469,97 @@ public class GraphColor {
                 var dest = i.getDest();
                 var op1 = i.getOp1();
                 var op2 = i.getOp2();
-                if (dest instanceof VirtualRegister) {
+                if (dest instanceof VirtualRegister && dest.getContent() == curPassType) {
                     int color = colorMap.get(getAlias(dest));
                     ((VirtualRegister) dest).setColorId(color);
-                    registerUsed.add(color);
+                    i.setDest(getMCReg(dest));
+                    registerUsed.add(new MCRegister(dest.getContent(), color));
                 }
-                if (op1 instanceof VirtualRegister) {
+                if (op1 instanceof VirtualRegister && ((VirtualRegister) op1).getContent() == curPassType) {
                     int color = colorMap.get(getAlias((Register) op1));
                     ((VirtualRegister) op1).setColorId(color);
-                    registerUsed.add(color);
+                    i.setOp1(getMCReg((VirtualRegister) op1));
+                    registerUsed.add(new MCRegister(((Register) op1).getContent(), color));
                 }
-                if (op2 instanceof VirtualRegister) {
+                if (op2 instanceof VirtualRegister && ((VirtualRegister) op2).getContent() == curPassType) {
                     int color = colorMap.get(getAlias((Register) op2));
                     ((VirtualRegister) op2).setColorId(color);
-                    registerUsed.add(color);
+                    i.setOp2(getMCReg((VirtualRegister) op2));
+                    registerUsed.add(new MCRegister(((Register) op2).getContent(), color));
                 } else if (op2 instanceof Address) {
                     var add = (Address) op2;
                     var reg = add.getReg();
-                    var off = add.getReg();
-                    if (reg instanceof VirtualRegister) {
+                    var off = add.getOffset();
+                    if (reg instanceof VirtualRegister && reg.getContent() == curPassType) {
                         int color = colorMap.get(getAlias(reg));
                         ((VirtualRegister) reg).setColorId(colorMap.get(getAlias(reg)));
-                        registerUsed.add(color);
+                        add.setReg(getMCReg(reg));
+                        registerUsed.add(new MCRegister(reg.getContent(), color));
                     }
-                    if (off instanceof VirtualRegister) {
-                        int color = colorMap.get(getAlias(off));
-                        ((VirtualRegister) off).setColorId(colorMap.get(getAlias(off)));
-                        registerUsed.add(color);
+                    if (off instanceof VirtualRegister && ((VirtualRegister) off).getContent() == curPassType) {
+                        int color = colorMap.get(getAlias((Register) off));
+                        ((VirtualRegister) off).setColorId(colorMap.get(getAlias((Register) off)));
+                        add.setOffset(getMCReg((Register) off));
+                        registerUsed.add(new MCRegister(((Register) off).getContent(), color));
                     }
                 }
             }
         }
     }
+
+    boolean isLegalOffset(Register reg, int offset) {
+        if (reg.isFloat()) {
+            return offset < 1024 && offset > -1024;
+        } else
+            return offset < 4096 && offset > -4096;
+    }
+
+    void getSubstitutionAfter(Register ori, Register substitution, int offset, MachineInstruction prevNode) {
+        Address addr;
+        if (isLegalOffset(ori, offset))
+            addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
+        else {
+            var addrReg = new VirtualRegister();
+            var iii = new LoadImm(prevNode.getParent(), addrReg, offset);
+            iii.getInstNode().insertAfter(prevNode.getInstNode());
+            prevNode = iii;
+            if (ori.isFloat()) {
+                // TODO: 这段没经过测试
+                var node = new Arithmetic(prevNode.getParent(), ADD, addrReg, new MCRegister(MCRegister.RegName.SP))
+                        .setForFloat(true);
+                node.insertAfter(prevNode);
+                prevNode = node;
+                addr = new Address(addrReg);
+            } else
+                addr = new Address(new MCRegister(MCRegister.RegName.SP), addrReg);
+        }
+        new LoadOrStore(prevNode.getParent(), LoadOrStore.Type.STORE, substitution, addr)
+                .setForFloat(ori.isFloat(), new ArrayList<>(List.of("32")))
+                .getInstNode().insertAfter(prevNode.getInstNode());
+    }
+
+    void getSubstitutionBefore(Register ori, Register substitution, int offset, MachineInstruction nextNode) {
+        Address addr;
+        if (isLegalOffset((Register) ori, offset))
+            addr = new Address(new MCRegister(MCRegister.RegName.SP), offset);
+        else {
+            var addrReg = new VirtualRegister();
+            var iii = new LoadImm(nextNode.getParent(), addrReg, offset);
+            iii.getInstNode().insertBefore(nextNode.getInstNode());
+            if (ori.isFloat()) {
+                new Arithmetic(nextNode.getParent(), ADD, addrReg, new MCRegister(MCRegister.RegName.SP))
+                        .setForFloat(true)
+                        .insertBefore(nextNode);
+                addr = new Address(addrReg);
+            } else
+                addr = new Address(new MCRegister(MCRegister.RegName.SP), addrReg);
+        }
+
+        new LoadOrStore(nextNode.getParent(), LoadOrStore.Type.LOAD, substitution, addr)
+                .setForFloat(ori.isFloat(), new ArrayList<>(List.of("32")))
+                .insertBefore(nextNode);
+    }
+
 
     void RewriteProgram(MachineFunction func) {
         int spilledNum = spilledNodes.size();
@@ -503,130 +580,53 @@ public class GraphColor {
                     var substitution = new VirtualRegister((dest).getContent());
                     substitutions.add(substitution);
                     var prevNode = inst;
-                    int offset = 4 * spillMap.get(dest) + func.getStackTop();
-                    Address addr;
-                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
-                    else {
-                        MachineInstruction temp;
-                        var addrReg = new VirtualRegister();
-                        if (ImmediateNumber.isLegalImm(offset))
-                            temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                        else {
-                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                            iii.getInstNode().insertAfter(prevNode.getInstNode());
-                            prevNode = iii;
-                            temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                        }
-                        temp.getInstNode().insertAfter(prevNode.getInstNode());
-                        prevNode = temp;
-                        addr = new Address(addrReg);
-                    }
+                    int offset = 4 * spillMap.get(dest) + func.getStackSize();
+                    getSubstitutionAfter(dest, substitution, offset, prevNode);
                     inst.setDest(substitution);
-                    new LoadOrStore(bb, LoadOrStore.Type.STORE, substitution, addr).setForFloat(dest.isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertAfter(prevNode.getInstNode());
                 }
                 if (op1 instanceof VirtualRegister && spillMap.containsKey(op1)) {
                     var substitution = new VirtualRegister(((VirtualRegister) op1).getContent());
                     substitutions.add(substitution);
-                    int offset = 4 * spillMap.get((VirtualRegister) op1) + func.getStackTop();
-                    Address addr;
-                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
-                    else {
-                        var addrReg = new VirtualRegister();
-                        MachineInstruction temp;
-                        if (ImmediateNumber.isLegalImm(offset))
-                            temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                        else {
-                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                            iii.getInstNode().insertBefore(inst.getInstNode());
-                            temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                        }
-                        temp.getInstNode().insertBefore(inst.getInstNode());
-                        addr = new Address(addrReg);
-                    }
+                    int offset = 4 * spillMap.get((VirtualRegister) op1) + func.getStackSize();
+                    getSubstitutionBefore((Register) op1, substitution, offset, inst);
 
                     inst.setOp1(substitution);
-                    new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr)
-                            .setForFloat(((VirtualRegister) op1).isFloat(), new ArrayList<>(List.of("32")))
-                            .getInstNode().insertBefore(inst.getInstNode());
                 }
                 if (op2 instanceof VirtualRegister && spillMap.containsKey(op2)) {
                     var substitution = new VirtualRegister(((VirtualRegister) op2).getContent());
                     substitutions.add(substitution);
-                    int offset = 4 * spillMap.get((VirtualRegister) op2) + func.getStackTop();
-                    Address addr;
-                    if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
-                    else {
-                        var addrReg = new VirtualRegister();
-                        MachineInstruction temp;
-                        if (ImmediateNumber.isLegalImm(offset))
-                            temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                        else {
-                            var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                            iii.getInstNode().insertBefore(inst.getInstNode());
-                            temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                        }
-                        temp.getInstNode().insertBefore(inst.getInstNode());
-                        addr = new Address(addrReg);
-                    }
+                    int offset = 4 * spillMap.get((VirtualRegister) op2) + func.getStackSize();
+                    getSubstitutionBefore((Register) op2, substitution, offset, inst);
+
                     inst.setOp2(substitution);
-                    new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).setForFloat(((VirtualRegister) op2).isFloat(), new ArrayList<>(List.of("32"))).getInstNode().insertBefore(inst.getInstNode());
                 } else if (op2 instanceof Address) {
                     var reg = ((Address) op2).getReg();
 
                     if (reg instanceof VirtualRegister && spillMap.containsKey(reg)) {
                         var substitution = new VirtualRegister(reg.getContent());
                         substitutions.add(substitution);
-                        int offset = 4 * spillMap.get(((Address) op2).getReg()) + func.getStackTop();
-                        Address addr;
-                        if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
-                        else {
-                            var addrReg = new VirtualRegister();
-                            MachineInstruction temp;
-                            if (ImmediateNumber.isLegalImm(offset))
-                                temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                            else {
-                                var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                                iii.getInstNode().insertBefore(inst.getInstNode());
-                                temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                            }
-                            temp.getInstNode().insertBefore(inst.getInstNode());
-                            addr = new Address(addrReg);
-                        }
+                        int offset = 4 * spillMap.get(reg) + func.getStackSize();
+                        getSubstitutionBefore(reg, substitution, offset, inst);
+
                         ((Address) op2).setReg(substitution);
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, substitution, addr).getInstNode().insertBefore(inst.getInstNode());
                     }
                     //  地址的第二个参数可能也是reg, 肯定还得是int
                     var offsetReg = ((Address) op2).getOffset();
                     if (offsetReg instanceof VirtualRegister && spillMap.containsKey(offsetReg)) {
                         var substitution = new VirtualRegister(((VirtualRegister) offsetReg).getContent());
                         substitutions.add(substitution);
-                        int offset = 4 * spillMap.get(offsetReg) + func.getStackTop();
-                        Address addr;
-                        // TODO: 1024 for coprocessor and 4096 for arm processor
-                        if (offset < 4095) addr = new Address(new MCRegister(MCRegister.RegName.r11), -offset);
-                        else {
-                            MachineInstruction temp;
-                            var addrReg = new VirtualRegister();
-                            if (ImmediateNumber.isLegalImm(offset))
-                                temp = new Arithmetic(inst.getParent(), SUB, addrReg, new MCRegister(Register.Content.Int, 11), offset);
-                            else {
-                                var iii = new LoadImm(inst.getParent(), addrReg, offset);
-                                iii.getInstNode().insertBefore(inst.getInstNode());
-                                temp = new Arithmetic(inst.getParent(), RSB, addrReg, addrReg, new MCRegister(MCRegister.RegName.r11));
-                            }
-                            temp.getInstNode().insertBefore(inst.getInstNode());
-                            addr = new Address(addrReg);
-                        }
+                        int offset = 4 * spillMap.get(offsetReg) + func.getStackSize();
+
+                        getSubstitutionBefore((Register) offsetReg, substitution, offset, inst);
+
                         ((Address) op2).setOffset(substitution);
-                        new LoadOrStore(bb, LoadOrStore.Type.LOAD, (VirtualRegister) substitution, addr).getInstNode().insertBefore(inst.getInstNode());
                     }
                 } // end of if op2 is address
             }
         }
 
-        func.addStackTop(4 * spilledNum);
+        func.addStackSize(4 * spilledNum);
         spilledNodes = new HashSet<>();
-//        initial := coloredNodes ∪ coalescedNodes ∪ newTemps coloredNodes := {}
         coalescedNodes = new HashSet<>();
     }
 
@@ -635,73 +635,74 @@ public class GraphColor {
 
         MachineBasicBlock firstBb = func.getBbList().getFirst().getVal();
         MachineInstruction newInst;
-        int saveOnStack = 7;
+
+        int saveOnStack = 9 + 16;
 
         // reserve space for temp variable on stack
-        for (var inst : firstBb.getInstList()) {
-            if (!inst.isPrologue()) {
-                int paraOnStack = func.getMaxParaNumOnStack();
-                // Push FP
-                newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.r11));
-                newInst.setPrologue(true);
-                newInst.getInstNode().insertBefore(inst.getInstNode());
+        int paraOnStack = func.getMaxParaNumOnStack();
 
-
-                // set Frame Pointer -> Fp = sp + 4
-                newInst = new Arithmetic(firstBb, ADD, new MCRegister(MCRegister.RegName.r11), new MCRegister(MCRegister.RegName.SP), new ImmediateNumber(4));
-                newInst.setPrologue(true);
-                newInst.getInstNode().insertBefore(inst.getInstNode());
-
-                // push callee save register
-                // TODO: only save those used
-
-                for (int i = 10; i >= 4; i--) {
-                    if (!registerUsed.contains(i)) {
-                        saveOnStack--;
-                        continue;
-                    }
-                    newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
-                    newInst.setPrologue(true);
-                    newInst.getInstNode().insertBefore(inst.getInstNode());
-                }
-                // will clean later
-                newInst = new Comment(firstBb, "for not on stack");
-                newInst.setPrologue(true);
-                newInst.insertBefore(inst.getInstNode());
-                newInst = new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), 4 * (7 - saveOnStack));
-                newInst.setPrologue(true);
-                newInst.getInstNode().insertBefore(inst.getInstNode());
-
-                // reserve for spilled
-                int offset = 4 * func.getSpiltNumOnStack() + 4 * paraOnStack;
-                if ((offset + func.getStackTop()) % 8 != 0) offset += 4;
-                MCOperand c;
-                if (ImmediateNumber.isLegalImm(offset)) c = new ImmediateNumber(offset);
-                else {
-                    c = new MCRegister(Register.Content.Int, 9);
-                    new LoadImm(firstBb, (Register) c, offset).getInstNode().insertBefore(inst.getInstNode());
-                }
-                new Arithmetic(firstBb, SUB, new MCRegister(MCRegister.RegName.SP), c).getInstNode().insertBefore(inst.getInstNode());
-                break;
+        // push callee save register
+        newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(MCRegister.RegName.LR));
+        newInst.setPrologue(true);
+        newInst.insertBefore(firstBb.getInstList().getFirst());
+        var insertPoint = newInst;
+        for (int i = 11; i >= 4; i--) {
+            if (!registerUsed.contains(new MCRegister(Register.Content.Int, i))) {
+                saveOnStack--;
+                continue;
             }
+            newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Int, i));
+            newInst.setPrologue(true);
+            newInst.insertAfter(insertPoint);
+            insertPoint = newInst;
         }
+        for (int i = 31; i >= 16; i--) {
+            if (!registerUsed.contains(new MCRegister(Register.Content.Float, i))) {
+                saveOnStack--;
+                continue;
+            }
+            newInst = new PushOrPop(firstBb, PushOrPop.Type.Push, new MCRegister(Register.Content.Float, i)).setForFloat(true);
+            newInst.setPrologue(true);
+            newInst.insertAfter(insertPoint);
+            insertPoint = newInst;
+        }
+
+
+        // reserve for spilled
+        if ((func.getStackSize() + saveOnStack * 4) % 8 != 0)
+            func.addStackSize(4);
+        func.addStoredRegisterNum(saveOnStack);
 
         // release stack
         for (var bb : func.getBbList()) {
             for (var inst : bb.getInstList()) {
                 if (inst.isEpilogue()) {
 
-                    new Arithmetic(firstBb, SUB,
-                            new MCRegister(MCRegister.RegName.SP),
-                            new MCRegister(MCRegister.RegName.r11),
-                            new ImmediateNumber(4 * (saveOnStack + 1)))
-                            .getInstNode().insertBefore(inst.getInstNode());
+                    new LoadImm(inst.getParent(),
+                            new MCRegister(Register.Content.Int, 3),
+                            func.getStackSize()).insertBefore(inst);
 
-                    registerUsed.add(11);
-                    for (int i = 4; i <= 11; i++) {
-                        if (!registerUsed.contains(i)) {
+                    new Arithmetic(firstBb, ADD,
+                            new MCRegister(MCRegister.RegName.SP),
+                            new MCRegister(MCRegister.RegName.SP),
+                            new MCRegister(Register.Content.Int, 3))
+                            .insertBefore(inst);
+
+                    for (int i = 16; i <= 31; i++) {
+                        var reg = new MCRegister(Register.Content.Float, i);
+                        if (!registerUsed.contains(reg)) {
                             continue;
                         }
+                        // TODO: leaf function
+                        newInst = new PushOrPop(bb, PushOrPop.Type.Pop, reg).setForFloat(true);
+                        newInst.setEpilogue(true);
+                        newInst.getInstNode().insertBefore(inst.getInstNode());
+                    }
+                    for (int i = 4; i <= 11; i++) {
+                        if (!registerUsed.contains(new MCRegister(Register.Content.Int, i))) {
+                            continue;
+                        }
+                        // TODO: leaf function
                         newInst = new PushOrPop(bb, PushOrPop.Type.Pop, new MCRegister(Register.Content.Int, i));
                         newInst.setEpilogue(true);
                         newInst.getInstNode().insertBefore(inst.getInstNode());
@@ -711,106 +712,150 @@ public class GraphColor {
         }
     }
 
-    HashSet<Register> spiltRegs = new HashSet<>();
-    HashSet<Register> substitutions = new HashSet<>();
-    HashSet<Integer> registerUsed = new HashSet<>();
+
+    static Random rand = new Random();
+
+    static <T> T selectOne(Set<T> set) {
+
+        int sz = set.size();
+        var list = new ArrayList<>(set);
+        var sorted = list.stream().sorted().collect(Collectors.toList());
+        return sorted.get(sz - 1);
+    }
+
+
+    Set<Register> substitutions = new HashSet<>();
+    Set<Register> registerUsed = new HashSet<>();
     HashMap<Register, Integer> loopDepth;
 
     public void run() {
         var MCdegree = new HashMap<Register, Integer>();
-        var MCUsed = new HashSet<Integer>();
+        var MCUsed = new HashSet<Register>();
         for (int i = 0; i < 20; i++) {
             MCdegree.put(new MCRegister(Register.Content.Int, i), Integer.MAX_VALUE);
         }
-        for (int i = 0; i < 4; i++) {
-            MCUsed.add(i);
+        for (int i = 0; i < 33; i++) {
+            MCdegree.put(new MCRegister(Register.Content.Float, i), Integer.MAX_VALUE);
         }
-        for (int i = 11; i < 20; i++) {
-            MCUsed.add(i);
+        for (int i = 0; i < 4; i++) {
+            MCUsed.add(new MCRegister(Register.Content.Int, i));
+        }
+        for (int i = 12; i < 20; i++) {
+            MCUsed.add(new MCRegister(Register.Content.Int, i));
+        }
+        for (int i = 0; i < 16; i++) {
+            MCUsed.add(new MCRegister(Register.Content.Float, i));
         }
 
         for (var f : funcList) {
             if (!f.isDefined()) continue;
-            int time = 0;
-            substitutions = new HashSet<>();
-            while (true) {
-                if (++time > 5) throw new RuntimeException("to many rewrite");
-                // initial all data structure
-                {
-                    loopDepth = new HashMap<>();
-                    simplifyWorklist = new HashSet<>(); // list of low-degree non-move-related nodes.
-                    freezeWorklist = new HashSet<>(); // low-degree move-related nodes.
-                    spillWorklist = new HashSet<>(); // high-degree nodes.
-                    spilledNodes = new HashSet<>(); // nodes marked for spilling during this round; initially empty.
-                    coalescedNodes = new HashSet<>(); // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
-                    coloredNodes = new HashSet<>(); // nodes successfully colored.
-                    selectStack = new ArrayDeque<>(); // stack containing temporaries removed from the graph.
+            registerUsed = new HashSet<>(MCUsed);
 
-                    coalescedMoves = new HashSet<>(); // moves that have been coalesced.
-                    constrainedMoves = new HashSet<>();// moves whose source and target interfere.
-                    frozenMoves = new HashSet<>();// moves that will no longer be considered for coalescing.
-                    worklistMoves = new HashSet<>(); // moves enabled for possible coalescing.
-                    activeMoves = new HashSet<>(); //moves not yet ready for coalescing.
+            for (int pass = 0; pass < 2; pass++) {
+                if (pass == 0)
+                    curPassType = Register.Content.Float;
+                else
+                    curPassType = Register.Content.Int;
 
-                    adjSet = new HashSet<>(); // the set of interference edges (u, v) in the graph.
-                    adjList = new HashMap<>(); // the set of interference edges (u, v) in the graph.
-                    degree = new HashMap<>(MCdegree); // an array containing the current degree of each node. Precolored nodes are initialized with a degree of ∞,
+                int time = 0;
+                substitutions = new HashSet<>();
+                while (true) {
+                    if (++time > 10) throw new RuntimeException("to many rewrite");
+                    // initial all data structure
 
-                    moveList = new HashMap<>(); // a mapping from node to the list of moves it is associated with.
-                    alias = new HashMap<>(); // when a move (u, v) has been coalesced, and v put in coalescedNodes, then alias(v) = u.
+                    {
+                        loopDepth = new HashMap<>();
+                        simplifyWorklist = new HashSet<>(); // list of low-degree non-move-related nodes.
+                        freezeWorklist = new HashSet<>(); // low-degree move-related nodes.
+                        spillWorklist = new HashSet<>(); // high-degree nodes.
+                        spilledNodes = new HashSet<>(); // nodes marked for spilling during this round; initially empty.
+                        coalescedNodes = new HashSet<>(); // registers that have been coalesced; when the move u:=v is coalesced, one of u or v is added to this set, and the other is put back on some worklist.
+                        coloredNodes = new HashSet<>(); // nodes successfully colored.
+                        selectStack = new ArrayDeque<>(); // stack containing temporaries removed from the graph.
 
-                    colorMap = new HashMap<>();
+                        coalescedMoves = new HashSet<>(); // moves that have been coalesced.
+                        constrainedMoves = new HashSet<>();// moves whose source and target interfere.
+                        frozenMoves = new HashSet<>();// moves that will no longer be considered for coalescing.
+                        worklistMoves = new HashSet<>(); // moves enabled for possible coalescing.
+                        activeMoves = new HashSet<>(); //moves not yet ready for coalescing.
 
-                    liveInfoMap = new HashMap<>();
-                    registerUsed = new HashSet<>(MCUsed); // id of MC Register have been used
-                }
-                LivenessAnalysis(f);
-                build(f);
+                        adjSet = new HashSet<>(); // the set of interference edges (u, v) in the graph.
+                        adjList = new HashMap<>(); // the set of interference edges (u, v) in the graph.
+                        degree = new HashMap<>(MCdegree); // an array containing the current degree of each node. Precolored nodes are initialized with a degree of ∞,
 
-                Set<Register> init = new HashSet<>();
-                for (var bb : f.getBbList()) {
-                    int bbDepth = bb.getLoopDepth();
-                    for (var i : bb.getInstList()) {
-                        init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
-                        init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister).collect(Collectors.toSet()));
-                        for(var u : i.getUse()){
-                            var depth = loopDepth.getOrDefault(u, 0);
-                            if(bbDepth > depth)
-                                depth = bbDepth;
-                            loopDepth.put(u , depth);
+                        moveList = new HashMap<>(); // a mapping from node to the list of moves it is associated with.
+                        alias = new HashMap<>(); // when a move (u, v) has been coalesced, and v put in coalescedNodes, then alias(v) = u.
+
+                        colorMap = new HashMap<>();
+
+                        liveInfoMap = new HashMap<>();
+                        // id of MC Register have been used
+                    }
+                    LivenessAnalysis(f);
+                    build(f);
+
+                    Set<Register> init = new HashSet<>();
+                    for (var bb : f.getBbList()) {
+                        int bbDepth = bb.getLoopDepth();
+                        for (var i : bb.getInstList()) {
+                            init.addAll(i.getDef().stream().filter(x -> x instanceof VirtualRegister && x.getContent() == curPassType).collect(Collectors.toSet()));
+                            init.addAll(i.getUse().stream().filter(x -> x instanceof VirtualRegister && x.getContent() == curPassType).collect(Collectors.toSet()));
+                            for (var u : i.getUse()) {
+                                var depth = loopDepth.getOrDefault(u, 0);
+                                if (bbDepth > depth) {
+                                    depth = bbDepth;
+                                }
+                                loopDepth.put(u, depth);
+                            }
+                            for (var u : i.getDef()) {
+                                var depth = loopDepth.getOrDefault(u, 0);
+                                if (bbDepth > depth) {
+                                    depth = bbDepth;
+                                }
+                                loopDepth.put(u, depth);
+                            }
                         }
                     }
-                }
-                makeWorkList(init);
-                do {
-                    if (!simplifyWorklist.isEmpty())
-                        Simplify();
-                    else if (!worklistMoves.isEmpty())
-                        Coalesce();
-                    else if (!freezeWorklist.isEmpty())
-                        freeze();
-                    else if (!spillWorklist.isEmpty()) {
+                    makeWorkList(init);
+                    do {
+                        if (!simplifyWorklist.isEmpty())
+                            Simplify();
+                        else if (!worklistMoves.isEmpty())
+                            Coalesce();
+                        else if (!freezeWorklist.isEmpty())
+                            freeze();
+                        else if (!spillWorklist.isEmpty()) {
+                            SelectSpill();
+                        }
+                    } while (!simplifyWorklist.isEmpty() || !worklistMoves.isEmpty() || !freezeWorklist.isEmpty() || !spillWorklist.isEmpty());
+                    AssignColors();
+                    if (spilledNodes.isEmpty()) {
+                        substituteAllRegister(f);
 
-                        SelectSpill();
+                        break;
                     }
-                } while (!simplifyWorklist.isEmpty() || !worklistMoves.isEmpty() || !freezeWorklist.isEmpty() || !spillWorklist.isEmpty());
-                AssignColors();
-                if (spilledNodes.isEmpty()) {
-                    substituteAllRegister(f);
-                    setStack(f);
-                    break;
+                    System.out.println("Rewrite, spill : " + spilledNodes.size());
+                    RewriteProgram(f);
                 }
-                System.out.println("Rewrite");
-                RewriteProgram(f);
+            }
+            setStack(f);
+            setUnknownStackSize(f);
+        }
+
+    }
+
+    void setUnknownStackSize(MachineFunction f) {
+        for (var bb : f.getBbList()) {
+            for (var i : bb.getInstList()) {
+
+                if (i instanceof LoadImm && i.getOp2() instanceof StackOffsetNumber) {
+                    i.setOp2(new ImmediateNumber(((StackOffsetNumber) i.getOp2()).getValue()));
+                }
             }
         }
     }
 
     public static void main(String[] args) {
-        HashMap<Register, Integer> map = new HashMap<>();
-        map.put(new MCRegister(Register.Content.Int, 0), 1);
-        System.out.println(map.containsKey(new MCRegister(Register.Content.Int, 0)));
-
     }
 
 }

@@ -5,7 +5,7 @@ import java.util.Objects;
 import static backend.machineCode.Operand.Register.Type.VIRTUAL;
 
 public class VirtualRegister extends Register {
-    private static int c = 0;
+
 
     public int getColorId() {
         return colorId;
@@ -17,6 +17,8 @@ public class VirtualRegister extends Register {
 
     private int colorId = -1;
 
+    private static int c = 0;
+
     private static int counter() {
         return c++;
     }
@@ -25,18 +27,18 @@ public class VirtualRegister extends Register {
         return name;
     }
 
-    private String name;
+    private final String name;
 
     public VirtualRegister() {
         super(VIRTUAL);
         this.id = counter();
-        name = "v" + id;
+        name = "v" + (isFloat() ? "f" : "i") + id;
     }
 
     public VirtualRegister(Content content) {
         super(VIRTUAL, content);
         this.id = counter();
-        name = "v" + id;
+        name = "v" + (isFloat() ? "f" : "i") + id;
     }
 
 
@@ -50,10 +52,11 @@ public class VirtualRegister extends Register {
                 return r.getId() == getColorId() && r.getContent() == getContent();
         }
         if (!(obj instanceof Register))
-            throw new RuntimeException("can't compare" + obj + " " + this);
+            return false;
+            // throw new RuntimeException("can't compare" + obj + " " + this);
 
         var reg = (VirtualRegister) obj;
-        return reg.getType() == getType() && Objects.equals(reg.getName(), getName());
+        return reg.getContent() == getContent() && Objects.equals(reg.getName(), getName());
     }
 
     @Override

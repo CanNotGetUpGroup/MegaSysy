@@ -2,11 +2,12 @@ package backend.machineCode.Operand;
 
 import java.util.Objects;
 
-public class Register extends MCOperand {
+public class Register extends MCOperand implements Comparable {
 
     public enum Type{
         VIRTUAL,
-        MACHINE
+        MACHINE,
+        PlaceHolder
     }
 
     public enum Content {
@@ -21,7 +22,7 @@ public class Register extends MCOperand {
         return content;
     }
 
-    private Content content;
+    private final Content content;
 
     Register(Type type){
         super(MCOperand.Type.Reg);
@@ -60,5 +61,16 @@ public class Register extends MCOperand {
     @Override
     public int hashCode() {
         return Objects.hash(id, type, content);
+    }
+
+    public int getId(){
+        return id;
+    }
+
+    @Override
+    public int compareTo(Object o) {
+        if(!(o instanceof Register))
+            throw new RuntimeException("Can't compare");
+        return ((Register) o).getId() - getId();
     }
 }
