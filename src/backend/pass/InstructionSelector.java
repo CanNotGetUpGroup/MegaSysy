@@ -573,6 +573,19 @@ public class InstructionSelector {
 
                 new Arithmetic(mbb, type, dest, op1, op2).pushBacktoInstList();
             }
+            case Shl, Shr ->{
+                Register op1 = valueToReg(mbb, ir.getOperand(0));
+                MCOperand op2 = valueToMCOperand(mbb, ir.getOperand(1));
+
+                Register dest = new VirtualRegister();
+                valueMap.put(ir, dest);
+                new Arithmetic(mbb, switch (ir.getOp()){
+                    case Shl -> Arithmetic.Type.LSL;
+                    case Shr -> Arithmetic.Type.ASR;
+                    default -> null;
+                }, dest, op1, op2).pushBacktoInstList();
+
+            }
             case Mul -> {
                 var irOp1 = ir.getOperand(0);
                 var irOp2 = ir.getOperand(1);
