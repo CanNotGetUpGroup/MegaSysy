@@ -20,7 +20,7 @@ import java.util.Objects;
 import org.antlr.v4.runtime.misc.Pair;
 
 public class PeepHole extends MCPass{
-    private static final boolean PEEPHOLE_DEBUG = true;
+    private static final boolean PEEPHOLE_DEBUG = false;
 
     public PeepHole() {
         super();
@@ -151,6 +151,7 @@ public class PeepHole extends MCPass{
             for (var bb : f.getBbList()) {
                 var lastDef = new HashMap<MCOperand,MachineInstruction>();
                 var lastUse = new HashMap<MachineInstruction, MachineInstruction>();
+                var bbout = funcLivenessMap.get(bb).out;
                 blockLiveRange(bb, lastDef, lastUse);
 
                 for (var next : bb.getInstList()) {
@@ -159,6 +160,17 @@ public class PeepHole extends MCPass{
                     var i = iNode.getVal();
 
                     var iLastUse = lastUse.get(i);
+                    var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
+                    var isLastDef = i.getDef().stream().anyMatch(def -> lastDef.get(def).equals(i));
+                    var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
+                    if(isIDefbbOut) iLastUse = i;
+
+                    if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null) {
+                        // i.delete();
+                        // done = false;
+                        // if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: remove useless instr");
+                        // continue;
+                    }
 
                     // *********************************************************************************************************************************************
                     // add/sub ldr/str/move
@@ -175,8 +187,7 @@ public class PeepHole extends MCPass{
                         if(next instanceof LoadOrStore && Objects.equals(iLastUse, next)) {
                             boolean isSameDest = ((Address)next.getOp2()).getReg().equals(i.getDest());
                             boolean isImmOffset = ((Address)next.getOp2()).getOffset() instanceof ImmediateNumber;
-                            // TODO: bb间的usedef存在问题，只开放r0不会遇到bug，待修复
-                            if(isSameDest && isImmOffset && i.getDest().getId() == 0) {
+                            if(isSameDest && isImmOffset) {
                                 int nextImm = ((ImmediateNumber)((Address)next.getOp2()).getOffset()).getValue();
                                 if((isAdd && nextImm+iImm < 4096) || (!isAdd && nextImm-iImm >= 0)) {
                                     var nImm = isAdd ? new ImmediateNumber(nextImm+iImm) : new ImmediateNumber(nextImm-iImm);
@@ -185,6 +196,7 @@ public class PeepHole extends MCPass{
                                     i.delete();
                                     done = false;
                                     if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: add/sub ldr/str");
+                                    continue;
                                 }
                             }
                         } else if (next instanceof Move) {
@@ -212,6 +224,7 @@ public class PeepHole extends MCPass{
                                             i.delete();
                                             done = false;
                                             if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: add/sub move");
+                                            continue;
                                         }
                                     }
                                 }
@@ -238,6 +251,7 @@ public class PeepHole extends MCPass{
                                 i.delete();
                                 done = false;
                                 if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
+                                continue;
                             }
                     }
                 }
@@ -316,8 +330,9 @@ public class PeepHole extends MCPass{
             if(i instanceof Branch ||
                     (i instanceof LoadOrStore && ((LoadOrStore)i).getType() == LoadOrStore.Type.STORE) ||
                     i instanceof PushOrPop ||
-                    i instanceof Comment
-                    ) {  // 这里的SideEffect比较激进 可能有问题？
+                    i instanceof Comment ||
+                    i instanceof Cmp
+                    ) {  // 这里的SideEffect比较激进 可能有问题？ 818 加了个cmp
                 lastUse.put(i, i);
             } else {
                 lastUse.put(i, null);
