@@ -54,7 +54,7 @@ public class Compiler {
 
         if (O2) {
             //TODO：优化掉undef
-            PassManager.ignoreUndef = true;
+            PassManager.ignoreUndef = false;
             PassManager.initialization();
             PassManager.initializationMC();
         }
@@ -66,7 +66,7 @@ public class Compiler {
 
         mc.performanceRun();
 
-        PassManager.runMC(mc);
+//        PassManager.runMC(mc);
 
         pw.println(mc.toArm());
         pw.flush();

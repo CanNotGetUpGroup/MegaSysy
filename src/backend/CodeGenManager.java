@@ -65,8 +65,6 @@ public class CodeGenManager {
         var clean = new Clean(funcList);
         clean.run();
 
-//        var peepHole = new PeepHole(funcList);
-//       peepHole.run();
     }
 
     private void halfRun22() {
@@ -134,20 +132,25 @@ public class CodeGenManager {
 
         if (true) {
             //TODO：优化掉undef
-            PassManager.ignoreUndef = true;
+            PassManager.ignoreUndef = false;
             PassManager.initialization();
             PassManager.initializationMC();
         }
         PassManager.run(module);
-
+        pw1.println(module.toLL());
+        pw1.flush();
 
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
 
-        mc.performanceRun();
+        mc.halfRun1(true);
+        pw2.println(mc.toArm());
+        pw2.flush();
 
-        PassManager.runMC(mc);
+        mc.halfRun2();
 
+//        PassManager.runMC(mc);
+        boolean debugMode = true;
         pw3.println(mc.toArm());
         pw3.flush();
     }

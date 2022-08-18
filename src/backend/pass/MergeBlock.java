@@ -1,19 +1,18 @@
 package backend.pass;
 
+import backend.CodeGenManager;
 import backend.machineCode.Instruction.*;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
+import ir.Module;
+import pass.MCPass;
 
 import java.util.ArrayList;
 
 import static backend.machineCode.Instruction.Branch.Type.Block;
 
-public class MergeBlock {
+public class MergeBlock extends MCPass {
     private ArrayList<MachineFunction> funcList;
-
-    public MergeBlock(ArrayList<MachineFunction> funcList) {
-        this.funcList = funcList;
-    }
 
 
     void run() {
@@ -44,25 +43,25 @@ public class MergeBlock {
                     boolean needState = false;
                     for (var inst = srcInst.getInstNode().getNext().getVal();
                          inst != null; inst = inst.getInstNode().getNext().getVal()) {
-                        if(instructionSetState(inst))
+                        if (instructionSetState(inst))
                             break;
-                        if(inst.getCond() != null){
+                        if (inst.getCond() != null) {
                             needState = true;
                             break;
                         }
                     }
-                    if(needState && setState)
+                    if (needState && setState)
                         continue;
 
                     if (srcInst.getCond() != null) {
-                        if(hasCond)
+                        if (hasCond)
                             continue;
 
                     } else { // srcInst doesn't have condition
-                        for(var i : bb.getInstList()){
+                        for (var i : bb.getInstList()) {
                             var newInst = MachineInstruction.copyMCInstruction(srcBB, i);
                             newInst.insertBefore(srcInst);
-                            if(newInst instanceof Branch && ((Branch) newInst).getType() == Block ){
+                            if (newInst instanceof Branch && ((Branch) newInst).getType() == Block) {
                                 var dest = ((Branch) newInst).getDestBB();
 //                                dest.addPredInst(new );
                             }
@@ -71,14 +70,24 @@ public class MergeBlock {
                         srcInst.delete();
                     }
                 }
-                if(bb.getPredInst().isEmpty())
+                if (bb.getPredInst().isEmpty())
                     bb.getBbNode().remove();
             }
         }
     }
 
-    boolean instructionSetState(MachineInstruction i){
+    boolean instructionSetState(MachineInstruction i) {
         return i instanceof LoadOrStore || i.isSetState() || i instanceof Cmp || i instanceof VMRS;
     }
 
+    @Override
+    public void runOnCodeGen(CodeGenManager CGM) {
+        this.funcList = CGM.getFuncList();
+        run();
+    }
+
+    @Override
+    public void runOnModule(Module M) {
+        throw new RuntimeException("MergeBB : shouldn't call");
+    }
 }
