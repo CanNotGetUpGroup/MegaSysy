@@ -64,7 +64,7 @@ public class GVNGCM extends ModulePass {
             new DeadCodeEmit().functionDCE(F);
             if(GCMOpen)
                 functionGCM(F);
-            shouldContinue |= new SimplifyCFG(PassManager.eliminatePreHeader).run(F);
+            shouldContinue |= new SimplifyCFG(aggressive).run(F);
         }
         Module.getInstance().rename(F);
     }
