@@ -55,6 +55,7 @@ public class Compiler {
         if (O2) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
+            PassManager.debug=false;
             PassManager.initialization();
             PassManager.initializationMC();
         }

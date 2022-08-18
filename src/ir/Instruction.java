@@ -15,7 +15,7 @@ public abstract class Instruction extends User {
         Ret, Br,
         // Unary
         // Binary
-        Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, SRem, FRem, And, Or, Xor,
+        Add, FAdd, Sub, FSub, Mul, FMul, SDiv, FDiv, Shl, Shr, SRem, FRem, And, Or, Xor,
         // Memory
         Alloca, Load, Store, GetElementPtr, Fence,
         // Cast
