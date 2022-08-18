@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import pass.PassManager;
+import pass.passes.IndVarReduction;
 import pass.passes.SimplifyCFG;
 
 import java.io.*;
@@ -25,7 +26,7 @@ public class Compiler {
         FileWriter fw = new FileWriter(args[2]);
         PrintWriter pw = new PrintWriter(fw);
 
-        String[] str = {"float.sy"};
+        String[] str = {};
         for (String s : str) {
             if (args[3].endsWith(s)) {
 //                InputStream in=new FileInputStream(args[3]);
@@ -55,6 +56,8 @@ public class Compiler {
         if (O2) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
+            PassManager.debug=false;
+            IndVarReduction.backEndTest=true;
             PassManager.initialization();
             PassManager.initializationMC();
         }
@@ -66,7 +69,7 @@ public class Compiler {
 
         mc.performanceRun();
 
-//        PassManager.runMC(mc);
+        PassManager.runMC(mc);
 
         pw.println(mc.toArm());
         pw.flush();

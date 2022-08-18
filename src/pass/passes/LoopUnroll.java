@@ -16,7 +16,7 @@ import java.util.*;
 public class LoopUnroll extends FunctionPass {
     private DominatorTree DT;
     private final int maxLoop = 5;
-    private final int maxInstNum = 900;
+    private final int maxInstNum = 500;
     private LoopInfo LI;
     private final MyIRBuilder builder = MyIRBuilder.getInstance();
     private Function F;
@@ -35,15 +35,19 @@ public class LoopUnroll extends FunctionPass {
 
         do{
             continueUnroll=false;
-            lcssa.runOnFunction(F);
             F.getLoopInfo().computeLoopInfo(F);
             LI = F.getLoopInfo();
             this.F = F;
+
+            lcssa.runOnFunction(F);
+//            simplifyCFG.runOnFunction(F);
+            Module.getInstance().rename(F);
+
             ArrayList<Loop> loops = LI.getTopLevelLoops();
             if (loops.isEmpty()) return;
             DT = F.getAndUpdateDominatorTree();
-            new LCSSA().runOnFunction(F);
             Queue<Loop> WorkList = new LinkedList<>();
+            simplifyCFG.runOnFunction(F);
 
             for (Loop l : loops) {
                 LoopUtils.addLoopToWorkList(l, WorkList);
@@ -52,17 +56,22 @@ public class LoopUnroll extends FunctionPass {
                 Loop L = WorkList.poll();
                 if(!constant){
                     tryToUnrollLoop(L);
+                    simplifyCFG.runOnFunction(F);
+                    Module.getInstance().rename(F);
+                    gvngcm.functionGVNGCM(F);
+                    Module.getInstance().rename(F);
                 }else{//常数次展开
-                    if(tryToConstantUnrollLoop(L)){
+                    if(tryToConstantUnrollLoop(L)){//没有展开成功不要simplifyCFG，会破坏掉LCSSA
                         continueUnroll=true;
+                        Module.getInstance().rename();
                         System.out.println("unroll "+L.getTripCount()+" loop");
+                        simplifyCFG.runOnFunction(F);
+                        Module.getInstance().rename(F);
+                        gvngcm.functionGVNGCM(F);
+                        Module.getInstance().rename(F);
+                        break;
                     }
                 }
-                simplifyCFG.runOnFunction(F);
-                Module.getInstance().rename(F);
-                gvngcm.functionGVNGCM(F);
-                Module.getInstance().rename(F);
-                if(continueUnroll) break;
             }
         }while (constant&&continueUnroll);
     }
@@ -94,7 +103,7 @@ public class LoopUnroll extends FunctionPass {
                 }
             }
         }
-        if (tripCount == 1000000007 || tripCount == 0 || instNum * tripCount > maxInstNum) {
+        if (tripCount == 1000000007 || tripCount == 0 || (tripCount!=300&&instNum * tripCount > maxInstNum)) {
             return false;
         }
         return ConstantUnroll(L);
@@ -415,8 +424,8 @@ public class LoopUnroll extends FunctionPass {
 
         headerIsTrueBB = latchBr.getTrueBlock().equals(Header);
         exitLatchPredIndex = Header.getPredecessors().indexOf(LatchBB);
-        latchBr.removeAllOperand();//删除latch的后继
-        latchBr.getInstNode().remove();//只是从列表里删除
+        latchBr.remove();//记得维护PHIs
+//        LatchBB.getPHIs().clear();
         return true;
     }
 
@@ -466,11 +475,13 @@ public class LoopUnroll extends FunctionPass {
                     LoopUtils.remapInst(I, LastValMap);
                 }
             }
+
+            Module.getInstance().rename(F);
         }
 
-        // 更新 LCSSA phi
+        //储存一下ExitBB的incomingVal
         if (tripCount > 1) {
-        for (var exitBB : L.getExitBlocks()) {
+            for (var exitBB : L.getExitBlocks()) {
                 for (var inst : exitBB.getInstList()) {
                     if (!(inst instanceof PHIInst)) {
                         break;
@@ -483,7 +494,7 @@ public class LoopUnroll extends FunctionPass {
                             .contains(((Instruction) incomingVal).getParent()))) {
                         incomingVal = LastValMap.get(incomingVal);
                     }
-                    phi.CoReplaceOperandByIndex(latchIndex, incomingVal);
+                    phi.CoReplaceOperandByIndex(latchIndex,incomingVal);
                 }
             }
         }
@@ -504,6 +515,22 @@ public class LoopUnroll extends FunctionPass {
         var last = latches.get(latches.size() - 1);
         builder.setInsertPoint(last);
         builder.createBr(ExitBB);
+
+        // 更新 LCSSA phi
+        if (tripCount > 1) {
+            for (var exitBB : L.getExitBlocks()) {
+                for (var inst : exitBB.getInstList()) {
+                    if (!(inst instanceof PHIInst)) {
+                        break;
+                    }
+                    var phi = (PHIInst) inst;
+                    var latchIndex = phi.getBlocks().indexOf(LatchBB);
+                    if(latchIndex==-1) continue;
+                    phi.setIncomingBlock(latchIndex,last);
+                }
+            }
+        }
+
         LI.removeLoop(L);
         return true;
     }

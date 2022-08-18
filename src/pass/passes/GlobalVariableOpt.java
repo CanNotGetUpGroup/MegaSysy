@@ -46,7 +46,6 @@ public class GlobalVariableOpt extends ModulePass {
             if(GS.getAccessingFunction().getName().equals("main")){
                 Type ty = GV.getElementType();
                 if(!ty.isArrayTy()){//不对数组进行本地化
-//                    System.out.println("localize");
                     builder.setInsertPoint(GS.getAccessingFunction().getEntryBB());
                     Instructions.AllocaInst AI= (Instructions.AllocaInst) builder.createAlloca(ty);
                     AI.setVarName("global_"+GV.getName().substring(1));
@@ -60,6 +59,7 @@ public class GlobalVariableOpt extends ModulePass {
                     }
                     builder.setInsertPoint(I);
                     builder.createStore(GV.getOperand(0),AI);
+//                    System.out.println(GV.toString()+" be localized");
                     GV.replaceAllUsesWith(AI);
                     GV.remove();
                     return true;

@@ -86,6 +86,11 @@ public class BinaryInstruction extends Instruction {
             case FRem:
                 sb.append("frem ");
                 break;
+            case Shl:
+                sb.append("shl ");
+                break;
+            case Shr:
+                sb.append("ashr ");
         }
         sb.append(getType()).append(" ");
         sb.append(getOperand(0).getName()).append(", ");
