@@ -410,8 +410,52 @@ public class PeepHole extends MCPass{
                     }
                     // *********************************************************************************************************************************************
                     // mla/mls
-                    // mul a b c
+                    // mul a b c 不考虑muls
                     // add/sub d a e -> mla/mls d b c e
+                    if(!i.hasShift() && !next.hasShift() &&
+                        !i.isForFloat() && !next.isForFloat() && 
+                        i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.MUL) &&
+                        next instanceof Arithmetic && (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
+                        !(next.getOp2() instanceof ImmediateNumber) &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        var type = ((Arithmetic)next).getType();
+                        var mulRes = i.getDest();
+                        boolean success = false;
+                        if(type.equals(Arithmetic.Type.ADD)) {
+                            // add d a e -> mla d b c e
+                            if(next.getOp1().equals(mulRes)) {
+                                var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp2());
+                                mla.setCond(next.getCond());
+                                mla.insertAfter(next);
+                                success = true;
+                            }
+                            // add d e a -> mla d b c e
+                            else if (next.getOp2().equals(mulRes)) {
+                                var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
+                                mla.setCond(next.getCond());
+                                mla.insertAfter(next);
+                                success = true;
+                            }
+                        }else if(type.equals(Arithmetic.Type.SUB)) {
+                            // sub d e a -> mls d b c e
+                            if(next.getOp2().equals(mulRes)) {
+                                var mls = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
+                                mls.setCond(next.getCond());
+                                mls.setMls(true);
+                                mls.insertAfter(next);
+                                success = true;
+                            }
+                        }
+
+                        if(success) {
+                            i.delete();
+                            next.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mla/mls");
+                            continue;
+                        }
+                    }
 
                     // *********************************************************************************************************************************************
                     // subsub
