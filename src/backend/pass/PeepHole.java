@@ -540,9 +540,6 @@ public class PeepHole extends MCPass{
         lastUse.clear();
 
         for(var i : bb.getInstList()) {
-            if(i instanceof Ubfx && i.getDest().toString().equals("r4")) {
-                System.out.println("");
-            }
             for(var use : i.getUse()) {
                 if(lastDef.containsKey(use)) {
                     lastUse.put(lastDef.get(use), i);

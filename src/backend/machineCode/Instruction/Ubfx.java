@@ -12,12 +12,14 @@ public class Ubfx extends MachineInstruction {
     private Register dest;
 
     @Override
-    public Register getOp1() {
+    public MCOperand getOp1() {
         return op;
     }
 
-    public void setOp1(Register op) {
-        this.op = op;
+    @Override
+    public void setOp1(MCOperand op) {
+        assert op instanceof Register;
+        this.op = (Register)op;
     }
 
     private Register op;
