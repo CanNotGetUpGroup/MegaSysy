@@ -160,7 +160,7 @@ public class PeepHole extends MCPass{
 
                     var iLastUse = lastUse.get(i);
                     var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
-                    var isLastDef = i.getDef().stream().anyMatch(def -> lastDef.get(def).equals(i));
+                    var isLastDef = i.getDef().stream().anyMatch(def -> (lastDef.get(def) != null && lastDef.get(def).equals(i)));
                     var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
                     if(isIDefbbOut) iLastUse = i;
 
