@@ -59,6 +59,8 @@ public class GVNGCM extends ModulePass {
         boolean shouldContinue = true;
         while (shouldContinue) {
             clear();
+            MemorySSA.arraySSA=!aggressive;
+//            MemorySSA.arraySSA=false;
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().functionDCE(F);
@@ -385,6 +387,7 @@ public class GVNGCM extends ModulePass {
             array.add(definingAccess.getID());
             if(definingAccess instanceof MemoryAccess.MemoryDef&&
                     ((MemoryAccess.MemoryDef) definingAccess).getMemoryInstruction() instanceof StoreInst){
+                //ArraySSA不能保证store的一定是load的位置
                 StoreInst SI=(StoreInst)((MemoryAccess.MemoryDef)definingAccess).getMemoryInstruction();
                 Pair<Integer,ArrayList<Integer>> storeHash=getHash(SI.getOperand(1));
                 if(loadHash.a.equals(storeHash.a)){
@@ -395,8 +398,12 @@ public class GVNGCM extends ModulePass {
                             break;
                         }
                     }
-                    if(same)
+                    if(same){
+                        if(PassManager.debug){
+//                            System.out.println(LI+" is replaced with "+SI.getOperand(0));
+                        }
                         return getHash(SI.getOperand(0));
+                    }
                 }
             }
         }
@@ -549,7 +556,7 @@ public class GVNGCM extends ModulePass {
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
             while (curBB != I.getParent()) {
                 if(DT.getNode(curBB)==null||curBB==DT.Root.BB){
-                    System.out.println("curBB shouldn't be null!");
+//                    System.out.println("curBB shouldn't be null!");
                 }
                 curBB = DT.getNode(curBB).IDom.BB;
                 int curLoopDepth = F.getLoopInfo().getLoopDepthForBB(curBB);

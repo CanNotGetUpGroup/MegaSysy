@@ -1,9 +1,6 @@
 package pass.passes;
 
-import ir.BasicBlock;
-import ir.Function;
-import ir.Instruction;
-import ir.Value;
+import ir.*;
 import ir.instructions.Instructions;
 import pass.FunctionPass;
 
@@ -16,9 +13,7 @@ public class EliminateDimInfo extends FunctionPass {
         for(BasicBlock BB:F.getBbList()){
             for(Instruction I:BB.getInstList()){
                 if(I instanceof Instructions.GetElementPtrInst){
-                    for(Value v:((Instructions.GetElementPtrInst) I).getDimInfoDirectly().getOperandList()){
-                        v.dropUsesAsValue();
-                    }
+                    ((Instructions.GetElementPtrInst) I).getDimInfoDirectly().removeAllOperand();
                 }
             }
         }

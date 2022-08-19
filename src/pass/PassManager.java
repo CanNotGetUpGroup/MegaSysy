@@ -62,7 +62,7 @@ public class PassManager {
 //         passes.add(new LoopUnroll(false));
         passes.add(new LoopRedundant());
 
-        aggressive = true;// 激进的GVN，消除掉数组参数的alloca
+        aggressive = true;// 激进的GVN，消除掉数组参数的alloca，并关闭ArraySSA
         eliminatePreHeader = true;// 完成了循环优化，删掉preHeader
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new GVNGCM(aggressive));

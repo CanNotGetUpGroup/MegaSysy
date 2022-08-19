@@ -14,10 +14,10 @@ import java.security.PublicKey;
 import java.util.*;
 
 /**
- * 粒度不够细，没有精确到具体的array（如对b[i]赋值后，导致无法识别a[i]的版本）
- * TODO:精确到数组元素
+ * 精确到数组元素的SSA(ArraySSA)
  */
 public class MemorySSA {
+    public static boolean arraySSA=true;
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
     private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToPhi;
     //指令移动后可能失效
@@ -36,6 +36,13 @@ public class MemorySSA {
     HashMap<Instructions.LoadInst,Integer> LoadLoopUp=new HashMap<>();
     ArrayList<Instructions.LoadInst> Loads=new ArrayList<>();
 
+    //这里DimInfo判断是否相等，需要GVNGCM多跑几遍来确保准确
+    private final HashMap<Value,HashMap<DimInfo,ArrayList<BasicBlock>>> Mem2Defs=new HashMap<>();
+    private final HashMap<Value,ArrayList<DimInfo>> Pointer2DimInfo=new HashMap<>();
+    private final HashMap<Value,HashMap<DimInfo,HashMap<BasicBlock,MemoryAccess>>> Mem2Phi=new HashMap<>();
+    private final HashMap<Value,DimInfo> MemAcc2Dim=new HashMap<>();
+    private static final DimInfo nullDimInfo=new DimInfo("notDim");
+
     public MemorySSA(Function F, DominatorTree DT) {
         this.F = F;
         this.DT = DT;
@@ -49,6 +56,8 @@ public class MemorySSA {
     }
 
     public void clear(){
+        Pointer2DimInfo.clear();
+        Mem2Defs.clear();
         BlockToMemAccList.forEach((bb,accesses)->{
             accesses.forEach(MemoryAccess::remove);
         });
@@ -82,14 +91,50 @@ public class MemorySSA {
         return defs.indexOf(dominator)<defs.indexOf(dominated);
     }
 
-    public void buildMemorySSA() {
+    private void getAllDimInfo(){
         for(GlobalVariable g:F.getParent().getGlobalVariables()){
             Pointer2Defs.put(g,new ArrayList<>());
+            Mem2Defs.put(g,new HashMap<>());
+            ArrayList<DimInfo> dimInfos=new ArrayList<>();
+            if(g.getOperand(0).getType().isArrayTy()){
+                dfsUse(g,dimInfos);
+            }else{
+                dimInfos.add(nullDimInfo);
+            }
+            Pointer2DimInfo.put(g,dimInfos);
         }
         for(Instruction I:F.getEntryBB().getInstList()){
             if(!(I instanceof Instructions.AllocaInst)) break;
             Pointer2Defs.put(I,new ArrayList<>());
+            Mem2Defs.put(I,new HashMap<>());
+            ArrayList<DimInfo> dimInfos=new ArrayList<>();
+            Type allocaTy=((Instructions.AllocaInst) I).getAllocatedType();
+            if(allocaTy.isArrayTy()||allocaTy.isPointerTy()){
+                dfsUse(I,dimInfos);
+            }else{
+                dimInfos.add(nullDimInfo);
+            }
+            Pointer2DimInfo.put(I,dimInfos);
         }
+    }
+
+    private void dfsUse(Value v,ArrayList<DimInfo> arrayList){
+        for (Use use : v.getUseList()) {
+            //只考虑本函数内的user
+            if((use.getU() instanceof Instructions.GetElementPtrInst
+                    ||(v instanceof Instructions.AllocaInst&&use.getU() instanceof Instructions.LoadInst))
+                    &&((Instruction) use.getU()).getFunction().equals(F)){
+                if(use.getU() instanceof Instructions.GetElementPtrInst&&
+                        !((Instructions.GetElementPtrInst) use.getU()).getDimInfoDirectly().getOperandList().isEmpty()){
+                    arrayList.add(((Instructions.GetElementPtrInst) use.getU()).getDimInfoDirectly());
+                }
+                dfsUse(use.getU(),arrayList);
+            }
+        }
+    }
+
+    public void buildMemorySSA() {
+        getAllDimInfo();
         //先生成MemoryDef和MemoryUse，但不为他们指定definingAccess
         for (BasicBlock BB : F.getBbList()) {
             LinkedList<MemoryAccess> Accesses = null;
@@ -111,25 +156,45 @@ public class MemorySSA {
                 }
             }
         }
-        Pointer2Defs.forEach((pointer,defs)->{
-            ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
-            placePHINodes(DT, defs,pointer, PHIBasicBlocks);
-        });
-
         Set<BasicBlock> Visited = new HashSet<>();
-        HashMap<Value,MemoryAccess> IncomingValues=new HashMap<>();
-//        for(GlobalVariable g:F.getParent().getGlobalVariables()){
-//            IncomingValues.put(g,LiveOnEntry);
-//        }
-//        for(Instruction I:F.getEntryBB().getInstList()){
-//            if(!(I instanceof Instructions.AllocaInst)) break;
-//            IncomingValues.put(I,LiveOnEntry);
-//        }
-        Pointer2Defs.keySet().forEach((pointer)->{
-            IncomingValues.put(pointer,LiveOnEntry);
-        });
+        if(!arraySSA){
+            Pointer2Defs.forEach((pointer, defs) -> {
+                ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
+                placePHINodes(DT, defs, pointer, PHIBasicBlocks);
+            });
 
-        RenamePass(DT, IncomingValues, Visited);
+            HashMap<Value, MemoryAccess> IncomingValues = new HashMap<>();
+            Pointer2Defs.keySet().forEach((pointer) -> {
+                IncomingValues.put(pointer, LiveOnEntry);
+            });
+
+            RenamePass(DT, IncomingValues, Visited);
+        }else{
+            //ArraySSA def
+            Mem2Defs.forEach((pointer,dimInfos)->{
+                dimInfos.forEach((dim,defs)->{
+                    ArrayList<BasicBlock> PHIBasicBlocks = new ArrayList<>();
+                    placeArrayPHINodes(DT, defs,pointer,dim, PHIBasicBlocks);
+                });
+            });
+
+            HashMap<Value,HashMap<DimInfo,MemoryAccess>> IncomingValues=new HashMap<>();
+            Pointer2DimInfo.forEach((pointer,dimInfos)->{
+                IncomingValues.put(pointer,new HashMap<>());
+                dimInfos.forEach((dim)->{
+                    IncomingValues.get(pointer).put(dim,LiveOnEntry);
+                });
+            });
+//            Mem2Defs.forEach((pointer,dimInfos)->{
+//                if(!IncomingValues.containsKey(pointer)){
+//                    IncomingValues.put(pointer,new HashMap<>());
+//                    dimInfos.keySet().forEach((dim)->{
+//                        IncomingValues.get(pointer).put(dim,LiveOnEntry);
+//                    });
+//                }
+//            });
+            RenameArrayPass(DT,IncomingValues,Visited);
+        }
 
         //Load MemPhi
         for(Instructions.LoadInst LI:Loads){
@@ -194,12 +259,7 @@ public class MemorySSA {
             }
         }
         //升序排列，便于处理
-        IDFBlocks.sort(new Comparator<BasicBlock>() {
-            @Override
-            public int compare(BasicBlock o1, BasicBlock o2) {
-                return BBNumbers.get(o1)-BBNumbers.get(o2);
-            }
-        });
+        IDFBlocks.sort(Comparator.comparingInt(BBNumbers::get));
 
         //插入phi
         for (BasicBlock BB : IDFBlocks) {
@@ -235,6 +295,36 @@ public class MemorySSA {
             getOrAddDefList(BB).addFirst(memPhi);
             memPhi.setPointer(LI);
             PhiToLoad.put(memPhi,LoadLoopUp.get(LI));
+        }
+    }
+
+    public void placeArrayPHINodes(DominatorTree DT, ArrayList<BasicBlock> DefiningBlocks,
+                              Value pointer,DimInfo dimInfo, ArrayList<BasicBlock> IDFBlocks) {
+        if(DefiningBlocks==null) return;
+        Mem2Reg.IDFCalculate(DT, DefiningBlocks, null, IDFBlocks);
+
+        if(BBNumbers.size()==0){
+            int ID=0;
+            for(BasicBlock basicBlock:DT.Parent.getBbList()){
+                BBNumbers.put(basicBlock,ID++);
+            }
+        }
+        //升序排列，便于处理
+        IDFBlocks.sort(Comparator.comparingInt(BBNumbers::get));
+
+        //插入phi
+        for (BasicBlock BB : IDFBlocks) {
+            MemoryPhi memPhi = new MemoryPhi(BB, ID++);
+            memPhi.setPointer(pointer);
+            memPhi.setDimInfo(dimInfo);
+            getOrAddAccessList(BB).addFirst(memPhi);
+            getOrAddDefList(BB).addFirst(memPhi);
+
+            HashMap<DimInfo,HashMap<BasicBlock,MemoryAccess>> ptrPhis = Mem2Phi.getOrDefault(pointer,new HashMap<>());
+            HashMap<BasicBlock,MemoryAccess> dimPhis=ptrPhis.getOrDefault(dimInfo,new HashMap<>());
+            dimPhis.put(BB,memPhi);
+            ptrPhis.put(dimInfo,dimPhis);
+            Mem2Phi.put(pointer,ptrPhis);
         }
     }
 
@@ -455,49 +545,153 @@ public class MemorySSA {
         }
     }
 
+    private void renameArraySuccessorPhis(BasicBlock BB, HashMap<Value,HashMap<DimInfo,MemoryAccess>> IncomingVal) {
+        for (BasicBlock Succ : BB.getSuccessors()) {
+            LinkedList<MemoryAccess> accList = BlockToMemAccList.get(Succ);
+            if (accList == null || accList.isEmpty() || !(accList.getFirst() instanceof MemoryPhi))
+                continue;
+            for(MemoryAccess MA:accList){
+                if(!(MA instanceof MemoryPhi)){
+                    break;
+                }
+                MemoryPhi Phi = (MemoryPhi) MA;
+                Phi.addIncoming(IncomingVal.get(Phi.getPointer()).get(Phi.getDimInfo()), BB);
+            }
+        }
+    }
+
     static class RenameArrayPassData {
         public BasicBlock BB;
         public BasicBlock Pred;
-        HashMap<Pair<Value,Value>,MemoryAccess> Val;//pointer and index
+        HashMap<Value,HashMap<DimInfo,MemoryAccess>> Val;
 
-        public RenameArrayPassData(BasicBlock BB, BasicBlock pred, HashMap<Pair<Value,Value>,MemoryAccess> val) {
+        public RenameArrayPassData(BasicBlock BB, BasicBlock pred, HashMap<Value,HashMap<DimInfo,MemoryAccess>> val) {
             this.BB = BB;
             Pred = pred;
             Val = val;
         }
     }
 
-    private void renameArrayBlock(BasicBlock BB, HashMap<Pair<Value,Value>,MemoryAccess> IncomingVal) {
+    public void RenameArrayPass(DominatorTree DT, HashMap<Value,HashMap<DimInfo,MemoryAccess>> IncomingVal
+            , Set<BasicBlock> Visited) {
+        DominatorTree.TreeNode Root = DT.Root;
+        boolean AlreadyVisited = !Visited.add(Root.BB);
+        if (AlreadyVisited)
+            return;
+        renameArrayBlock(Root.BB, IncomingVal);
+        renameArraySuccessorPhis(Root.BB, IncomingVal);
+        dfsArrayRename(new RenameArrayPassData(Root.BB,null, IncomingVal),Visited);
+    }
+
+    public void dfsArrayRename(RenameArrayPassData RPD, Set<BasicBlock> Visited) {
+        BasicBlock Pred = RPD.BB;
+        if (Pred.getSuccessorsNum()!=0) {
+            for (BasicBlock BB : Pred.getSuccessors()) {
+                //注意复杂hash结构的复制问题
+                HashMap<Value,HashMap<DimInfo,MemoryAccess>> IncomingVal = new HashMap<>();
+                RPD.Val.forEach((pointer,hash)->{
+                    IncomingVal.put(pointer,new HashMap<>(hash));
+                });
+                boolean AlreadyVisited = !Visited.add(BB);
+                if (AlreadyVisited) {
+                    LinkedList<MemoryAccess> BlockDefs=BlockToMemDefList.get(BB);
+                    if (BlockDefs != null) {
+                        for(MemoryAccess MA:BlockDefs){
+                            //处理callInst
+                            if(MA instanceof MemoryDef){
+                                if(((MemoryDef)MA).getMemoryInstruction() instanceof Instructions.CallInst){
+                                    Instructions.CallInst CI=(Instructions.CallInst)((MemoryDef)MA).getMemoryInstruction();
+                                    //call就不考虑dimInfo了
+                                    for(Value v:CI2Pointers.get(CI)){
+                                        HashMap<DimInfo,MemoryAccess> ArrDimInfo=IncomingVal.get(v);
+                                        ArrDimInfo.keySet().forEach(((dimInfo) -> {
+                                            IncomingVal.get(v).put(dimInfo,MA);
+                                        }));
+                                        IncomingVal.put(v,ArrDimInfo);
+                                    }
+                                    continue;
+                                }
+                            }
+                            IncomingVal.get(MA.getPointer()).put(MA.getDimInfo(),MA);
+                        }
+                    }
+                    continue;
+                } else{
+                    renameArrayBlock(BB, IncomingVal);
+                }
+                renameArraySuccessorPhis(BB, IncomingVal);
+                dfsArrayRename(new RenameArrayPassData(BB,Pred,IncomingVal),Visited);
+            }
+        }
+    }
+
+    private void renameArrayBlock(BasicBlock BB, HashMap<Value,HashMap<DimInfo,MemoryAccess>> IncomingVal) {
         LinkedList<MemoryAccess> accList = BlockToMemAccList.get(BB);
         if (accList != null && !accList.isEmpty()) {
-//            for (MemoryAccess MA : accList) {
-//                if (MA instanceof MemoryDefOrUse) {
-//                    MemoryDefOrUse MUD = (MemoryDefOrUse) MA;
-//                    //call单独处理
-//                    if(MUD.getMemoryInstruction() instanceof Instructions.CallInst) {
-//                        Instructions.CallInst CI=(Instructions.CallInst)MUD.getMemoryInstruction();
+            for (MemoryAccess MA : accList) {
+                if (MA instanceof MemoryDefOrUse) {
+                    MemoryDefOrUse MUD = (MemoryDefOrUse) MA;
+                    //call单独处理
+                    if(MUD.getMemoryInstruction() instanceof Instructions.CallInst) {
+                        Instructions.CallInst CI=(Instructions.CallInst)MUD.getMemoryInstruction();
 //                        MemoryAccess newDef=LiveOnEntry;
-//                        for(Value v:CI2Pointers.get(CI)){
-//                            //找到call定义的pointer中版本最后的
+                        for(Value v:CI2Pointers.get(CI)){
+                            //找到call定义的pointer中版本最后的
 //                            if(IncomingVal.get(v).getID()>newDef.getID()) newDef=IncomingVal.get(v);
-//                            IncomingVal.put(v,MA);
-//                        }
-//                        if(MUD.getDefiningAccess()==null){
-//                            MUD.setDefiningAccess(newDef);
-//                        }
-//                        continue;
-//                    }
-//                    if (MUD.getDefiningAccess() == null) {
-//                        MUD.setDefiningAccess(IncomingVal.get(MUD.getPointer()));
-//                    }
-//                    if (MUD instanceof MemoryDef) {
-//                        IncomingVal.put(MUD.getPointer(),MA);
-//                    }
-//                } else {
-//                    IncomingVal.put(MA.getPointer(),MA);
-//                }
-//            }
+                            for(DimInfo dimInfo:Pointer2DimInfo.get(v)){
+                                IncomingVal.get(v).put(dimInfo,MA);
+                            }
+                        }
+                        if(MUD.getDefiningAccess()==null){
+                            MUD.setDefiningAccess(LiveOnEntry);
+                        }
+                        continue;
+                    }
+                    if (MUD.getDefiningAccess() == null) {
+                        if(IncomingVal.get(MUD.getPointer())==null){
+                            System.out.println("err");
+                        }
+                        MUD.setDefiningAccess(IncomingVal.get(MUD.getPointer()).get(MUD.getDimInfo()));
+                    }
+                    //判断哪些dimInfo被当前的覆盖了
+                    if (MUD instanceof MemoryDef) {
+                        for(DimInfo dimInfo:Pointer2DimInfo.get(MUD.getPointer())){
+                            if(dominateDimInfo(MUD.getDimInfo(),dimInfo))
+                                IncomingVal.get(MUD.getPointer()).put(dimInfo,MUD);
+                        }
+                    }
+                } else {
+                    for(DimInfo dimInfo:Pointer2DimInfo.get(MA.getPointer())){
+                        if(dominateDimInfo(MA.getDimInfo(),dimInfo))
+                            IncomingVal.get(MA.getPointer()).put(dimInfo,MA);
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * a[2][i] dominate a[2][j]
+     * a[1][i] !dominate a[2][j]
+     * a[1][i][2] !dominate a[1][i][1]
+     * 在fuzzyIdx之前都相同的话，就认为dominate
+     */
+    private boolean dominateDimInfo(DimInfo dim1,DimInfo dim2){
+        if(dim1.equals(dim2)) return true;
+        if(dim1.getNumOperands()!=dim2.getNumOperands()) return false;//TODO:保险起见这里还是true？
+        int fuzzyIdx=dim1.getNumOperands();
+        for(int i=0;i<dim1.getNumOperands();i++){
+            if(!(dim1.getOperand(i) instanceof Constants.ConstantInt)
+                    &&!dim1.getOperand(i).equals(dim2.getOperand(i))){
+                fuzzyIdx=i;
+            }
+        }
+        for(int i=0;i<fuzzyIdx;i++){
+            if(!dim1.getOperand(i).equals(dim2.getOperand(i))){
+                return false;
+            }
+        }
+        return true;
     }
 
     public LinkedList<MemoryAccess> getOrAddAccessList(BasicBlock BB) {
@@ -528,17 +722,6 @@ public class MemorySSA {
                     }
                     Instructions.CallInst CI=(Instructions.CallInst)I;
                     CI2Pointers.put(CI,new ArrayList<>());
-//                    for(GlobalVariable g:F.getParent().getGlobalVariables()){
-//                        if(AliasAnalysis.callAlias(g,CI)){
-//                            CI2Pointers.get(CI).add(g);
-//                        }
-//                    }
-//                    for(Instruction inst:F.getEntryBB().getInstList()){
-//                        if(!(inst instanceof Instructions.AllocaInst)) break;
-//                        if(AliasAnalysis.callAlias(inst,CI)){
-//                            CI2Pointers.get(CI).add(inst);
-//                        }
-//                    }
                     Pointer2Defs.keySet().forEach((pointer)->{
                         if(AliasAnalysis.callAlias(pointer,CI)){
                             CI2Pointers.get(CI).add(pointer);
@@ -552,6 +735,14 @@ public class MemorySSA {
                         ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(v,new ArrayList<>());
                         defs.add(I.getParent());
                         Pointer2Defs.put(v,defs);
+                        //call就不考虑dimInfo了要重构的有点多
+                        HashMap<DimInfo,ArrayList<BasicBlock>> ArrDimInfo=Mem2Defs.getOrDefault(v,new HashMap<>());
+                        Pointer2DimInfo.get(v).forEach(((dimInfo) -> {
+                            ArrayList<BasicBlock> dimBlocks=ArrDimInfo.getOrDefault(dimInfo,new ArrayList<>());
+                            dimBlocks.add(I.getParent());
+                            ArrDimInfo.put(dimInfo,dimBlocks);
+                        }));
+                        Mem2Defs.put(v,ArrDimInfo);
                     }
                     break;
                 }
@@ -568,6 +759,24 @@ public class MemorySSA {
                     defs.add(I.getParent());
                     Pointer2Defs.put(ptr,defs);
                     ret.setPointer(ptr);
+                    //ArraySSA def
+                    DimInfo dimInfo;
+                    if(I.getOperand(1) instanceof Instructions.GetElementPtrInst){
+                        dimInfo=((Instructions.GetElementPtrInst) I.getOperand(1)).getAndUpdateDimInfo();
+                    }else{
+                        dimInfo=nullDimInfo;
+                    }
+                    ret.setDimInfo(dimInfo);
+                    MemAcc2Dim.put(ret,dimInfo);
+                    //TODO:ptr形式的phi是否会破坏dimInfo?
+                    HashMap<DimInfo,ArrayList<BasicBlock>> ArrDimInfo=Mem2Defs.getOrDefault(ptr,new HashMap<>());
+                    ArrayList<BasicBlock> ArrDefs=ArrDimInfo.getOrDefault(dimInfo,new ArrayList<>());
+                    ArrDefs.add(I.getParent());
+                    ArrDimInfo.put(dimInfo,ArrDefs);
+                    Mem2Defs.put(ptr,ArrDimInfo);
+                    ArrayList<DimInfo> dims=Pointer2DimInfo.getOrDefault(ptr,new ArrayList<>());
+                    dims.add(dimInfo);
+                    Pointer2DimInfo.put(ptr,dims);
                 }
             }
             case Load -> {
@@ -579,14 +788,23 @@ public class MemorySSA {
                 if(ptr==null){
                     ptr=I.getOperand(0);
                 }
-//                ArrayList<BasicBlock> loads=Pointer2Uses.getOrDefault(ptr,new ArrayList<>());
-//                loads.add(I.getParent());
-//                Pointer2Uses.put(ptr,loads);
                 ArrayList<BasicBlock> defs=Pointer2Defs.getOrDefault(ptr,new ArrayList<>());
                 Pointer2Defs.put(ptr,defs);
                 Loads.add((Instructions.LoadInst) I);
                 LoadLoopUp.put((Instructions.LoadInst) I,Loads.size()-1);
                 ret.setPointer(ptr);
+                //calculate dim info
+                DimInfo dimInfo;
+                if(I.getOperand(0) instanceof Instructions.GetElementPtrInst){
+                    dimInfo=((Instructions.GetElementPtrInst) I.getOperand(0)).getAndUpdateDimInfo();
+                }else{
+                    dimInfo=nullDimInfo;
+                }
+                ret.setDimInfo(dimInfo);
+                MemAcc2Dim.put(ret,dimInfo);
+                ArrayList<DimInfo> dims=Pointer2DimInfo.getOrDefault(ptr,new ArrayList<>());
+                dims.add(dimInfo);
+                Pointer2DimInfo.put(ptr,dims);
             }
         }
         if (ret != null) {

@@ -171,7 +171,7 @@ public abstract class Instructions {
         private Type SourceElementType;//来源指针指向的类型
         private Type ResultElementType;//取址后得到的类型
         private Constant Init, ConstantValue;
-        private User DimInfo=new User(Type.getVoidTy(),"gepIndex:");
+        private final DimInfo DimInfo=new DimInfo("gepIndex:");
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
@@ -221,7 +221,7 @@ public abstract class Instructions {
         /**
          * 默认parentGep是没有DimInfo的，DimInfo只在最下层
          */
-        public User getAndUpdateDimInfo() {
+        public DimInfo getAndUpdateDimInfo() {
             verifyAndUpdateDimInfo();
             return DimInfo;
         }
@@ -229,7 +229,7 @@ public abstract class Instructions {
         /**
          * 直接获取DimInfo，不更新
          */
-        public User getDimInfoDirectly(){
+        public DimInfo getDimInfoDirectly(){
             return DimInfo;
         }
 
