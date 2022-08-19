@@ -107,6 +107,8 @@ public class MergeBlock extends MCPass {
                     if (i instanceof Comment) continue;
                     instruction_num++;
                     if (i.getCond() != null) hasCond = true;
+                    if(i instanceof Branch && ((Branch) i).getType() == Call)
+                        hasCond = true;
                     // TODO: check
                     if (instructionSetState(i)) setState = true;
                 }
