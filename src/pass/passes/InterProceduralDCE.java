@@ -7,10 +7,16 @@ import java.util.HashSet;
 import ir.Argument;
 import ir.Constant;
 import ir.Function;
-// import ir.GlobalVariable;
+import ir.GlobalVariable;
+import ir.Instruction;
 import ir.Module;
+import ir.User;
+import ir.Value;
+import ir.instructions.Instructions.BranchInst;
 import ir.instructions.Instructions.CallInst;
+import ir.instructions.Instructions.GetElementPtrInst;
 import ir.instructions.Instructions.ReturnInst;
+import ir.instructions.Instructions.StoreInst;
 import pass.ModulePass;
 
 /**
@@ -94,8 +100,7 @@ import pass.ModulePass;
 public class InterProceduralDCE extends ModulePass {
 
     private DeadCodeEmit deadCodeEmit = new DeadCodeEmit();
-    private HashSet<Function> optedRetFuncs = new HashSet<Function>();
-    private HashSet<Function> outputFuncs = new HashSet<Function>(); // 我们认为只有通过use关系向下搜索能够搜索到putch,putarray,putint,br,ret,call的全局变量是"有用"的全局变量
+    private HashSet<Function> optedRetFuncs = new HashSet<>();
 
     public InterProceduralDCE() {
         super();
@@ -114,23 +119,30 @@ public class InterProceduralDCE extends ModulePass {
                     || name.equals("putfarray")) {
                 outputFuncs.add(func);
             }
+            if (name.equals("getch") || name.equals("getarray") || name.equals("getint") || name.equals("getfloat")
+                    || name.equals("getfarray")) {
+                inputFuncs.add(func);
+            }
         }
         do {
             removeUselessArg(M);
             deadCodeEmit.runOnModule(M);
         } while (removeUselessRet(M) || removeUselessGlobalVariable(M));
+        for (var gv : uselessGvList) {
+            gv.remove();
+        }
     }
 
     /**
      * 对于Function Arguments
      * 默认它是活跃的，不能删去，经过算法判定为死参数才能删除
      * 
-     * @trival 鉴于死代码删除时已经把过程内无用代码删去了，那么我们认为一个参数如果它的uselist为空，就说明该参数是无用参数
-     * @advanced This pass deletes dead arguments from internal functions. Dead
-     *           argument elimination removes arguments which are directly dead, as
-     *           well as arguments only passed into function calls as dead arguments
-     *           of other functions. This pass also deletes dead arguments in a
-     *           similar way. -- llvm
+     * @ trival 鉴于死代码删除时已经把过程内无用代码删去了，那么我们认为一个参数如果它的uselist为空，就说明该参数是无用参数
+     * @ advanced This pass deletes dead arguments from internal functions. Dead
+     * argument elimination removes arguments which are directly dead, as
+     * well as arguments only passed into function calls as dead arguments
+     * of other functions. This pass also deletes dead arguments in a
+     * similar way. -- llvm
      * 
      * @implNote 这个递归分析给我整麻了，死参数分析还不一定有测试点...
      *           - 遍历每一个func的argument
@@ -147,7 +159,6 @@ public class InterProceduralDCE extends ModulePass {
      *           - 那么此时我们判定该argument为死参数
      * 
      * @param M module
-     * @return 是否做了remove操作
      */
     private void removeUselessArg(Module M) {
         HashSet<Argument> analysisSet = new HashSet<>();
@@ -242,6 +253,7 @@ public class InterProceduralDCE extends ModulePass {
                 var call = (CallInst) user;
                 Constant nullArg = Constant.getNullValue(call.getArgs().get(idx).getType());
                 call.CoReplaceOperandByIndex(idx + 1, nullArg);
+                System.out.println("remove dead arg " + arg.getName() + " in func " + func.getName());
             }
         }
     }
@@ -324,6 +336,7 @@ public class InterProceduralDCE extends ModulePass {
                             if (!inst.getOperandList().isEmpty()) {
                                 Constant ret = Constant.getNullValue(((ReturnInst) inst).getOperand(0).getType());
                                 inst.removeAllOperand();
+                                System.out.println("remove useless ret in func " + func.getName());
                                 if (ret != null) {
                                     inst.addOperand(ret);
                                 }
@@ -335,6 +348,15 @@ public class InterProceduralDCE extends ModulePass {
         }
         return doneRemove;
     }
+
+    private HashSet<Function> outputFuncs = new HashSet<>(); // 我们认为只有通过use关系向下搜索能够搜索到putch,putarray,putint,br,ret,call的全局变量是"有用"的全局变量
+    private HashSet<Function> inputFuncs = new HashSet<>();
+    private HashSet<Value> relatedValues = new HashSet<>();
+    private HashSet<Function> relatedFunc = new HashSet<>();
+    private HashSet<Value> inputRelated = new HashSet<>();
+    private HashSet<Instruction> relatedInst = new HashSet<>();
+    private ArrayList<CallInst> inputFuncCall = new ArrayList<>();
+    private ArrayList<GlobalVariable> uselessGvList = new ArrayList<>();
 
     /**
      * 对于Global variable
@@ -348,9 +370,119 @@ public class InterProceduralDCE extends ModulePass {
      */
     private boolean removeUselessGlobalVariable(Module M) {
         boolean doneRemove = false;
-        // for (GlobalVariable gv : M.getGlobalVariables()) {
+        for (GlobalVariable gv : M.getGlobalVariables()) {
+            initRelated();
+            findRelatedUsers(gv);
+            for (var call : inputFuncCall) {
+                findInputCallRelated(call);
+            }
+            if (isUselessGlobalVariable()) {
+                doneRemove = removeGV();
+            }
+        }
+        return doneRemove;
+    }
 
-        // }
+    private void initRelated() {
+        relatedValues.clear();
+        relatedFunc.clear();
+        relatedInst.clear();
+        inputRelated.clear();
+    }
+
+    private void findRelatedUsers(Value value) {
+        if (relatedValues.contains(value)) {
+            return;
+        }
+        /*
+         * store @a pointer
+         * a和pointer有关联
+         */
+        if (value instanceof StoreInst) {
+            if (((StoreInst) value).getOperand(1) instanceof GetElementPtrInst) {
+                findRelatedUsers(((StoreInst) value).getOperand(0));
+                Value storeAddr = ((StoreInst) value).getOperand(1);
+                var gep = (GetElementPtrInst) storeAddr;
+                var gepAddr = gep.getOperand(0);
+                while (gepAddr instanceof GetElementPtrInst) {
+                    GetElementPtrInst preGep = (GetElementPtrInst) gepAddr;
+                    gepAddr = preGep.getOperand(0);
+                }
+                findRelatedUsers(gepAddr);
+            } else {
+                findRelatedUsers(((StoreInst) value).getOperand(1));
+                findRelatedUsers(((StoreInst) value).getOperand(0));
+            }
+        }
+        if (value instanceof ReturnInst || value instanceof CallInst || value instanceof BranchInst) {
+            if (value instanceof CallInst) {
+                if (!inputFuncs.contains(((CallInst) value).getCalledFunction())) {
+                    relatedInst.add((Instruction) value);
+                } else {
+                    inputFuncCall.add((CallInst) value);
+                }
+            }else{
+                relatedInst.add((Instruction) value);
+            }
+        }
+        if (value instanceof CallInst) {
+            relatedFunc.add(((CallInst) value).getCalledFunction());
+        }
+        relatedValues.add(value);
+        value.getUseList().forEach(use -> {
+            findRelatedUsers(use.getU());
+        });
+    }
+
+    private void findInputCallRelated(User user) {
+        inputRelated.add(user);
+        for (var op : user.getOperandList()) {
+            if (op instanceof User) {
+                findInputCallRelated((User) op);
+            }
+        }
+    }
+
+    private boolean isUselessGlobalVariable() {
+        for (Function f : outputFuncs) {
+            if (relatedFunc.contains(f)) {
+                return false;
+            }
+        }
+        for (Function f : relatedFunc) {
+            if (!inputFuncs.contains(f)) {
+                return false;
+            }
+        }
+        if (!relatedInst.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean removeGV() {
+        boolean doneRemove = false;
+        for (var value : relatedValues) {
+            if (!inputRelated.contains(value)) {
+                if (value instanceof Instruction) {
+                    if (!(value instanceof CallInst)) {
+                        doneRemove = true;
+                        Instruction inst = (Instruction) value;
+                        inst.remove();
+                        System.out.println("remove gv related: " + value.getName());
+                    }
+                }
+                if (relatedFunc.isEmpty()) {
+                    if (value instanceof GlobalVariable) {
+                        GlobalVariable gv = (GlobalVariable) value;
+                        if (!uselessGvList.contains(gv)) {
+                            doneRemove = true;
+                            uselessGvList.add(gv);
+                        }
+                    }
+                }
+            }
+        }
         return doneRemove;
     }
 }
