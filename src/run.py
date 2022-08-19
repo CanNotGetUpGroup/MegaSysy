@@ -14,9 +14,9 @@ for file in os.listdir(functional_testcase):
     if os.path.splitext(file)[1] == ".sy":
         functional_file_list.append(os.path.splitext(file)[0])
 
-for file in functional_file_list:
-    print(functional_testcase+file+".sy:")
-    a=os.system("java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy")
+# for file in functional_file_list:
+#     print(functional_testcase+file+".sy:")
+#     a=os.system("java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy")
 
 performance_testcase=testcase+"/performance/"
 performance_out_pass=out_directory+"/performance/"
