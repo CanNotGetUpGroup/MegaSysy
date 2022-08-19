@@ -489,6 +489,7 @@ public class LoopInfo {
     private void getTripCount(Loop L,Value compareBias){
         var stepInst=L.getStepInst();
         var latchCmp=L.getLatchCmpInst();
+        L.setBias(compareBias);
         if (stepInst.getOp().equals(Instruction.Ops.Add) &&
                 L.getStep() instanceof Constants.ConstantInt && L.getIndVarInit() instanceof Constants.ConstantInt &&
                 L.getIndVarEnd() instanceof Constants.ConstantInt && compareBias instanceof Constants.ConstantInt) {
@@ -506,7 +507,7 @@ public class LoopInfo {
                 }
                 case ICMP_SGT -> {
                     if (step < 0) {
-                        tripCount = init > end ? (int)Math.ceil((double)(init - end)/step):0;
+                        tripCount = init > end ? (int)Math.ceil((double)(init - end)/-step):0;
                     }
                 }
                 case ICMP_SLE -> {
@@ -516,7 +517,7 @@ public class LoopInfo {
                 }
                 case ICMP_SGE -> {
                     if (step < 0) {
-                        tripCount = init >= end ? (int)Math.ceil((double)(init - end + 1)/step):0;
+                        tripCount = init >= end ? (int)Math.ceil((double)(init - end + 1)/-step):0;
                     }
                 }
                 case ICMP_NE -> {

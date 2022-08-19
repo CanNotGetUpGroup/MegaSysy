@@ -31,7 +31,7 @@ public class testLoopUnroll {
         lcssa.runOnModule(module);
         loopUnroll.runOnModule(module);
         gvngcm.runOnModule(module);
-        new LoopUnroll(false).runOnModule(module);
+        new LoopUnroll(true).runOnModule(module);
 
 //        new SimplifyCFG(false).runOnModule(module);
 //        new LCSSA().runOnModule(module);
