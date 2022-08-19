@@ -412,6 +412,11 @@ public class PeepHole extends MCPass{
                     // mla/mls
                     // mul a b c
                     // add/sub d a e -> mla/mls d b c e
+
+                    // *********************************************************************************************************************************************
+                    // subsub
+                    // sub a b a
+                    // sub b b a    ->     mov b a
                 }
             }
         }
