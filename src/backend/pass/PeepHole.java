@@ -35,13 +35,13 @@ public class PeepHole extends MCPass{
 
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
-                if (lastInst instanceof Branch && lastInst.getCond() == null) {
-                    if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
+               if (lastInst instanceof Branch && lastInst.getCond() == null) {
+                   if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
                         lastInst.delete();
                         done = false;
                         if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
-                    }
-                }
+                   }
+               }
 
 
                 for (var next : bb.getInstList()) {
@@ -153,7 +153,6 @@ public class PeepHole extends MCPass{
                 var lastUse = new HashMap<MachineInstruction, MachineInstruction>();
                 var bbout = funcLivenessMap.get(bb).out;
                 blockLiveRange(bb, lastDef, lastUse);
-
                 for (var next : bb.getInstList()) {
                     var iNode = next.getInstNode().getPrev();
                     if (iNode == null) continue;
@@ -165,12 +164,21 @@ public class PeepHole extends MCPass{
                     var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
                     if(isIDefbbOut) iLastUse = i;
 
-                    if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null) {
-                        // i.delete();
-                        // done = false;
-                        // if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: remove useless instr");
-                        // continue;
+                    if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null && !i.isForFloat()) { // float不杀
+                        i.delete();
+                        done = false;
+                        if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: remove useless instr");
                     }
+                }
+
+                for (var next : bb.getInstList()) {
+                    var iNode = next.getInstNode().getPrev();
+                    if (iNode == null) continue;
+                    var i = iNode.getVal();
+
+                    var iLastUse = lastUse.get(i);
+                    var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
+                    if(isIDefbbOut) iLastUse = i;
 
                     // *********************************************************************************************************************************************
                     // add/sub ldr/str/move
@@ -320,11 +328,15 @@ public class PeepHole extends MCPass{
                         boolean isDestOp2 = i.getDest().equals(next.getOp2());
                         boolean isNewImmLegal = ImmediateNumber.isLegalImm(val+1);
                         if(isMvn && isDestOp2 && isNewImmLegal) {
+                            MachineInstruction n;
                             if(((Arithmetic)next).getType().equals(Arithmetic.Type.ADD)){
-                                new Arithmetic(bb, Arithmetic.Type.SUB, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1)).insertBefore(next);
+                                n = new Arithmetic(bb, Arithmetic.Type.SUB, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1));
+                                n.insertAfter(next);
                             } else {
-                                new Arithmetic(bb, Arithmetic.Type.ADD, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1)).insertBefore(next);
+                                n = new Arithmetic(bb, Arithmetic.Type.ADD, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1));
+                                n.insertAfter(next);
                             }
+                            lastUse.put(n, lastUse.get(next)); // Maintenance lastUse
                             i.delete();
                             next.delete();
                             done = false;
@@ -392,7 +404,7 @@ public class PeepHole extends MCPass{
                         i.getCond() == null && next.getCond() == null &&
                         i instanceof LoadImm &&
                         i.getOp2() instanceof ImmediateNumber &&
-                        next instanceof Arithmetic && 
+                        next instanceof Arithmetic &&
                         Objects.equals(iLastUse, next)
                     ) {
                         var type = ((Arithmetic)next).getType();
@@ -413,7 +425,7 @@ public class PeepHole extends MCPass{
                     // mul a b c 不考虑muls
                     // add/sub d a e -> mla/mls d b c e
                     if(!i.hasShift() && !next.hasShift() &&
-                        !i.isForFloat() && !next.isForFloat() && 
+                        !i.isForFloat() && !next.isForFloat() &&
                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.MUL) &&
                         next instanceof Arithmetic && (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
                         !(next.getOp2() instanceof ImmediateNumber) &&
@@ -427,13 +439,15 @@ public class PeepHole extends MCPass{
                             if(next.getOp1().equals(mulRes)) {
                                 var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp2());
                                 mla.setCond(next.getCond());
-                                mla.insertAfter(next);
+                                lastUse.put(mla, lastUse.get(next)); // Maintenance lastUse
+                                mla.insertBefore(next);
                                 success = true;
                             }
                             // add d e a -> mla d b c e
                             else if (next.getOp2().equals(mulRes)) {
                                 var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
                                 mla.setCond(next.getCond());
+                                lastUse.put(mla, lastUse.get(next)); // Maintenance lastUse
                                 mla.insertAfter(next);
                                 success = true;
                             }
@@ -443,6 +457,7 @@ public class PeepHole extends MCPass{
                                 var mls = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
                                 mls.setCond(next.getCond());
                                 mls.setMls(true);
+                                lastUse.put(mls, lastUse.get(next)); // Maintenance lastUse
                                 mls.insertAfter(next);
                                 success = true;
                             }
@@ -525,20 +540,27 @@ public class PeepHole extends MCPass{
         lastUse.clear();
 
         for(var i : bb.getInstList()) {
+            if(i instanceof Ubfx && i.getDest().toString().equals("r4")) {
+                System.out.println("");
+            }
             for(var use : i.getUse()) {
                 if(lastDef.containsKey(use)) {
                     lastUse.put(lastDef.get(use), i);
                 }
                     
             }
-            for(var def : i.getDef()) {
-                lastDef.put(def, i);
+            if(i.getCond() == null) {
+                for(var def : i.getDef()) {
+                    lastDef.put(def, i);
+                }
             }
+            
             if(i instanceof Branch ||
                     (i instanceof LoadOrStore && ((LoadOrStore)i).getType() == LoadOrStore.Type.STORE) ||
                     i instanceof PushOrPop ||
                     i instanceof Comment ||
-                    i instanceof Cmp
+                    i instanceof Cmp ||
+                    i.getCond() != null
                     ) {  // 这里的SideEffect比较激进 可能有问题？ 818 加了个cmp
                 lastUse.put(i, i);
             } else {

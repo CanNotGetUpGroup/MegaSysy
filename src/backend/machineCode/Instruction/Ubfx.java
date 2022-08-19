@@ -79,4 +79,18 @@ public class Ubfx extends MachineInstruction {
 
         return sb.toString();
     }
+
+    @Override
+    public ArrayList<Register> getUse() {
+        var ans = new ArrayList<Register>();
+        ans.add(op);
+        return ans;
+    }
+
+    @Override
+    public ArrayList<Register> getDef() {
+        var ans = new ArrayList<Register>();
+        ans.add(dest);
+        return ans;
+    }
 }
