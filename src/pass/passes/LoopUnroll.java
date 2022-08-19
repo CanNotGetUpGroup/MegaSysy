@@ -35,13 +35,14 @@ public class LoopUnroll extends FunctionPass {
 
         do{
             continueUnroll=false;
+            F.getLoopInfo().computeLoopInfo(F);
+            LI = F.getLoopInfo();
+            this.F = F;
+
             lcssa.runOnFunction(F);
 //            simplifyCFG.runOnFunction(F);
             Module.getInstance().rename(F);
 
-            F.getLoopInfo().computeLoopInfo(F);
-            LI = F.getLoopInfo();
-            this.F = F;
             ArrayList<Loop> loops = LI.getTopLevelLoops();
             if (loops.isEmpty()) return;
             DT = F.getAndUpdateDominatorTree();

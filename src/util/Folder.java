@@ -253,6 +253,14 @@ public class Folder {
         if (Match.compare(Y, M1)) {
             return X;
         }
+        // X * C -> X << c(可能会阻止加法融合为乘法)
+//        if(Y instanceof ConstantInt){
+//            int C=((ConstantInt) Y).getVal();
+//            if(C>0&&(C&(C-1))==0){
+//                Constants.ConstantInt cc= Constants.ConstantInt.get(Integer.bitCount(C-1));
+//                return BinaryInstruction.create(Ops.Shl,X,cc,InsertBefore);
+//            }
+//        }
         // (X / Y) * Y || Y * (X / Y) 需要考虑整除
 //        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
 //        if(Match.compare(X,new MatchBin(MA,MY,Ops.SDiv))

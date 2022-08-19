@@ -110,7 +110,7 @@ public class MachineBasicBlock implements Addressable {
         while (instList.getLast() != null && head != instList.getLast()) {
             head = head.getNext();
             var i = head.getVal();
-            if (!(i instanceof Comment))
+//            if (!(i instanceof Comment))
                 sb.append("\t").append(i.toString()).append("\n");
         }
         return sb.toString();
