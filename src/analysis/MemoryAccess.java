@@ -1,14 +1,8 @@
 package analysis;
 
 import ir.*;
-import ir.instructions.Instructions;
-import pass.PassManager;
-import pass.test.testPass;
 import util.CloneMap;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 
 /**
@@ -19,7 +13,7 @@ public class MemoryAccess extends Instruction {
     private BasicBlock BB;//不使用Instruction的getParent，因为需要将其插入ilist
     private int ID;
     private Value pointer;//对应的alloca或global variable（callInst没有单独的pointer，而是通过MemorySSA中的CI2Pointers获取）
-    private Value index;//在数组中对应的索引,由于是SSA可以认为index不同就是索引不同
+    private User dimInfo;//在数组中对应的索引,由于是SSA可以认为index不同就是索引不同
 
     public MemoryAccess(Ops op, BasicBlock BB) {
         super(Type.getVoidTy(), op);
@@ -68,12 +62,12 @@ public class MemoryAccess extends Instruction {
         this.pointer = pointer;
     }
 
-    public Value getIndex() {
-        return index;
+    public User getDimInfo() {
+        return dimInfo;
     }
 
-    public void setIndex(Value index) {
-        this.index = index;
+    public void setDimInfo(User dimInfo) {
+        this.dimInfo = dimInfo;
     }
 
     /**

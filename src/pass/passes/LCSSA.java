@@ -79,7 +79,8 @@ public class LCSSA extends FunctionPass {
                 // 遍历inst的use, 如果use是loop外的，则加入set
                 for (var use : inst.getUseList()) {
                     var user = use.getU();
-                    assert user instanceof Instruction;
+                    if(!(user instanceof Instruction)) continue;
+//                    assert user instanceof Instruction;
                     var userInst = (Instruction) user;
                     var userBB = userInst.getParent();
                     // userInst是phi指令需要特判,userBB取值是phi指令的IncomingBlock
@@ -124,6 +125,7 @@ public class LCSSA extends FunctionPass {
         // 维护 inst指令 在循环外的 user
         ArrayList<Use> usesList = new ArrayList<>(inst.getUseList());
         for (var use : usesList) {
+            if(!(use.getU() instanceof Instruction)) continue;
             var userInst = (Instruction) use.getU();
             var userBB = userInst.getParent();
             if (userInst instanceof PHIInst) { // 循环外的use为PHI时,如果是刚放置的phi,则不需要替换

@@ -1,19 +1,12 @@
 package ir.instructions;
 
-import analysis.AliasAnalysis;
-import analysis.PointerInfo;
-import backend.machineCode.Instruction.Phi;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
-import org.antlr.v4.runtime.misc.Pair;
 import util.CloneMap;
-import util.Folder;
 
-import javax.print.attribute.standard.NumberUp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 
 public abstract class Instructions {
     //===----------------------------------------------------------------------===//
@@ -178,7 +171,7 @@ public abstract class Instructions {
         private Type SourceElementType;//来源指针指向的类型
         private Type ResultElementType;//取址后得到的类型
         private Constant Init, ConstantValue;
-        private ArrayList<Value> DimInfo=new ArrayList<>();
+        private User DimInfo=new User(Type.getVoidTy(),"gepIndex:");
 
         public GetElementPtrInst(Type type, String name, int numOperands) {
             super(type, Ops.GetElementPtr, name, numOperands);
@@ -214,19 +207,59 @@ public abstract class Instructions {
             for (var i = 1; i < getOperandList().size(); i++) {
                 sb.append(", ").append(getOperand(i).getType()).append(" ").append(getOperand(i).getName());
             }
-//            StringBuilder comment=new StringBuilder();
-//            for(Value v:getArrayIdx()){
-//                comment.append("[");
-//                if(v instanceof AllocaInst) comment.append(v.getVarName());
-//                else comment.append(v.getName());
-//                comment.append("]");
-//            }
-//            setComment(comment.toString());
+            StringBuilder comment=new StringBuilder();
+            for(Value v:DimInfo.getOperandList()){
+                comment.append("[");
+                if(v instanceof AllocaInst) comment.append(v.getVarName());
+                else comment.append(v.getName());
+                comment.append("]");
+            }
+            setComment(comment.toString());
             return sb.toString();
         }
 
-        public ArrayList<Value> getDimInfo() {
+        /**
+         * 默认parentGep是没有DimInfo的，DimInfo只在最下层
+         */
+        public User getAndUpdateDimInfo() {
+            verifyAndUpdateDimInfo();
             return DimInfo;
+        }
+
+        /**
+         * 直接获取DimInfo，不更新
+         */
+        public User getDimInfoDirectly(){
+            return DimInfo;
+        }
+
+        /**
+         * 函数内联可能导致DimInfo出现在上层gep
+         */
+        private void verifyAndUpdateDimInfo(){
+            //检查是否是最底层gep
+            for(Use use:getUseList()){
+                User user=use.getU();
+                if(user instanceof GetElementPtrInst){
+                    return ;
+                }
+            }
+            //向上查找gep
+            Value address=getOperand(0);
+            while (address instanceof GetElementPtrInst){
+                GetElementPtrInst gepAddress=(GetElementPtrInst)address;
+                //父gep存在DimInfo，转移到当前DimInfo
+                if(!gepAddress.getAndUpdateDimInfo().getOperandList().isEmpty()){
+                    ArrayList<Value> ops=new ArrayList<>(gepAddress.DimInfo.getOperandList());
+                    for (int i=ops.size()-1;i>=0;i--) {
+                        Value value=ops.get(i);
+                        value.removeUseByUser(gepAddress);
+                        DimInfo.addOperandAtHead(value);
+                    }
+                    gepAddress.setComment("");
+                }
+                address=((GetElementPtrInst) address).getOperand(0);
+            }
         }
 
         public static Type getIndexType(Type Type, ArrayList<Value> IdxList) {
@@ -352,6 +385,9 @@ public abstract class Instructions {
             int dim=0;
             if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
                 ret.add(getOperand(0));
+                if(getOperand(0) instanceof Argument){
+                    dim=1;
+                }
             }else if(getOperand(0) instanceof LoadInst){//数组参数
                 LoadInst LI=(LoadInst)getOperand(0);
                 AllocaInst AI=(AllocaInst)LI.getOperand(0);
@@ -366,9 +402,9 @@ public abstract class Instructions {
                 dim++;
             }
             ret.add(Constants.ConstantInt.get(dim));
-            if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
+//            if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
                 ret.add(getOperand(1));
-            }
+//            }
 //            AliasAnalysis.gepToArrayIdx.put(this,ret);
             return ret;
         }
@@ -383,6 +419,9 @@ public abstract class Instructions {
                 Idx.add(getOperand(i).copy(cloneMap));
             }
             GetElementPtrInst ret = new GetElementPtrInst(getSourceElementType(), getOperand(0).copy(cloneMap), Idx, getNumOperands());
+            for(Value v:DimInfo.getOperandList()){
+                ret.DimInfo.addOperand(v.copy(cloneMap));
+            }
             cloneMap.put(this, ret);
             return ret;
         }
@@ -393,7 +432,9 @@ public abstract class Instructions {
             for (int i = 1; i < getNumOperands(); i++) {
                 Idx.add(getOperand(i));
             }
-            return new GetElementPtrInst(getSourceElementType(),getOperand(0),Idx,getNumOperands());
+            var ret = new GetElementPtrInst(getSourceElementType(),getOperand(0),Idx,getNumOperands());
+            ret.getAndUpdateDimInfo().addAllOperand(getAndUpdateDimInfo().getOperandList());
+            return ret;
         }
     }
 

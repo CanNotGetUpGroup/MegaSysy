@@ -356,8 +356,11 @@ public class GVNGCM extends ModulePass {
         ArrayList<Integer> array = new ArrayList<>();
         ArrayList<Value> arrayIdx = GEP.getArrayIdx();
         //需要区分argument还是它的alloca
-        if(aggressive&&arrayIdx.size()==1&&AliasAnalysis.isParamOrArgument(arrayIdx.get(0))){
-            return getHash(arrayIdx.get(0));
+        if(aggressive){
+            if(arrayIdx.get(1).equals(Constants.ConstantInt.get(1))&&
+                    arrayIdx.get(2).equals(Constants.ConstantInt.get(0))&&
+                    AliasAnalysis.isParamOrArgument(arrayIdx.get(0)))
+                return getHash(arrayIdx.get(0));
         }
         for (Value v : arrayIdx) {
             array.add(getHash(v).a);
@@ -546,7 +549,7 @@ public class GVNGCM extends ModulePass {
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
             while (curBB != I.getParent()) {
                 if(DT.getNode(curBB)==null||curBB==DT.Root.BB){
-//                    System.out.println("curBB shouldn't be null!");
+                    System.out.println("curBB shouldn't be null!");
                 }
                 curBB = DT.getNode(curBB).IDom.BB;
                 int curLoopDepth = F.getLoopInfo().getLoopDepthForBB(curBB);

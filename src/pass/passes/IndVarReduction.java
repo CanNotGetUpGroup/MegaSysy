@@ -11,6 +11,7 @@ import pass.PassManager;
 import util.LoopUtils;
 import util.Match;
 import util.MyIRBuilder;
+import util.SymbolTable;
 
 import java.util.*;
 
@@ -26,6 +27,7 @@ public class IndVarReduction extends FunctionPass {
     private final MyIRBuilder builder = MyIRBuilder.getInstance();
     public static boolean backEndTest;//根据前后端测试调整右移策略
     private Instruction incomingInst;
+    private Instruction otherStore;
 
     @Override
     public void runOnFunction(Function F) {
@@ -64,7 +66,7 @@ public class IndVarReduction extends FunctionPass {
 
         ArrayList<Value> inst2reduce = new ArrayList<>();
         cycleInstLoopUp.keySet().forEach((I) -> {
-            Instruction reduce = (Instruction) reduceInst(I, tripCount);
+            Instruction reduce = (Instruction) reduceInst(I, tripCount,loop);
             if (reduce != null) {
                 inst2reduce.add(reduce);
                 Instructions.PHIInst phi = (Instructions.PHIInst) cycleInstLoopUp.get(I).a;
@@ -83,31 +85,35 @@ public class IndVarReduction extends FunctionPass {
 //                }
                 incomingInst.COReplaceOperand(phi, preIncoming);
 //                phi.replaceAllUsesWith(reduce);
-                for(Instruction i:loop.getExitBlocks().get(0).getInstList()){
-                    if(!(i instanceof Instructions.PHIInst)){
-                        break;
-                    }
-                    for(Value v:((Instructions.PHIInst) i).getIncomingValues()){
-                        if(v.equals(preIncoming)||v.equals(I)){
-                            i.COReplaceOperand(v,reduce);
+                if(!reduce.getType().isVoidTy()){
+                    for (Instruction i : loop.getExitBlocks().get(0).getInstList()) {
+                        if (!(i instanceof Instructions.PHIInst)) {
+                            break;
+                        }
+                        for (Value v : ((Instructions.PHIInst) i).getIncomingValues()) {
+                            if (v.equals(preIncoming) || v.equals(I)) {
+                                i.COReplaceOperand(v, reduce);
+                            }
                         }
                     }
+                    I.replaceAllUsesWith(reduce);
+                }else{
+                    otherStore.remove();
                 }
+                I.remove();
                 if (PassManager.debug) {
                     System.out.println("reduce " + I + " to " + reduce);
                 }
-                I.replaceAllUsesWith(reduce);
-                I.remove();
             }
         });
 
         return !inst2reduce.isEmpty();
     }
 
-    public Value reduceInst(Instruction I, Value TripCount) {
-        if (!Instruction.isBinary(I.getOp())) {
-            return null;
-        }
+    public Value reduceInst(Instruction I, Value TripCount, Loop loop) {
+//        if (!Instruction.isBinary(I.getOp())) {
+//            return null;
+//        }
         Instructions.PHIInst cycPhi = (Instructions.PHIInst) cycleInstLoopUp.get(I).a;
         Value cycOp = cycleInstLoopUp.get(I).b;
         // bin (cycPhi,cycOp)->bin (cycPhi,bin (cycOp,TripCount)) cycPhi在后来会替换成init值
@@ -163,6 +169,20 @@ public class IndVarReduction extends FunctionPass {
                     return null;
                 }
             }
+//            case GetElementPtr -> {//改用memset貌似没效果
+//                builder.setInsertPoint(loop.getPreHeader().getTerminator());
+//                ArrayList<Value> Args = new ArrayList<>();
+//                incomingInst=builder.createGEP(I.getOperand(0),new ArrayList<>(){{
+//                    add(cycPhi);
+//                }});
+//                //TODO:添加ArraySSA的信息
+////                incomingInst.addOperand(I.getOperand(I.getNumOperands()-2));
+//                Args.add(incomingInst);
+//                Args.add(cycOp);
+//                sum=builder.createBinary(Instruction.Ops.Mul,TripCount, Constants.ConstantInt.get(4));
+//                Args.add(sum);
+//                return builder.createCall(SymbolTable.getInstance().getFunction("memset"), Args);
+//            }
             default -> {
                 return null;
             }
@@ -239,6 +259,42 @@ public class IndVarReduction extends FunctionPass {
         cycleInstLoopUp.clear();
         for (BasicBlock BB : loop.getBbList()) {
             for (Instruction I : BB.getInstList()) {
+                if(I instanceof Instructions.GetElementPtrInst){
+                    boolean ret=true;
+                    Value v = I.getOperand(1);
+                    if(v.equals(loop.getIndVar())){
+                        Value other=null;
+                        for(Use use:I.getUseList()){
+                            Instruction user= (Instruction) use.getU();
+                            // 只看gep在循环内的操作
+                            Loop userLoop=LI.getLoopForBB(user.getParent());
+                            if(userLoop==loop){
+                                if(user instanceof Instructions.StoreInst){
+                                    other=user.getOperand(0);
+                                    otherStore=user;
+                                }else{
+                                    ret=false;
+                                    break;
+                                }
+                            }else if(loop.getSubLoops().contains(userLoop)){
+                                ret=false;
+                                break;
+                            }
+                        }
+                        if (!(other instanceof Instruction)
+                                || (LI.getLoopDepthForBB(((Instruction) other).getParent()) < loop.getLoopDepth())) {
+                            //需要支配latch
+                            if (!DT.dominates(I.getParent(), loop.getSingleLatchBlock())) {
+                                ret = false;
+                            }
+                            if (ret) {
+                                cycleInstLoopUp.put(I, new Pair<>(v, other));
+                                break;
+                            }
+                        }
+                    }
+                    if(!ret) break;
+                }
                 if (isLoopInfoInst(I, loop) || I instanceof Instructions.BranchInst) {
                     continue;
                 }

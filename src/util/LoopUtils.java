@@ -74,6 +74,11 @@ public class LoopUtils {
             }
             if(I instanceof Instructions.PHIInst&&LastValMap.get(((Instructions.PHIInst) I).getIncomingBlock(i))!=null){
                 ((Instructions.PHIInst) I).setIncomingBlock(i, (BasicBlock) LastValMap.get(((Instructions.PHIInst) I).getIncomingBlock(i)));
+            }else if(I instanceof Instructions.GetElementPtrInst){
+                for(int j = 0; j<((Instructions.GetElementPtrInst) I).getDimInfoDirectly().getNumOperands(); j++){
+                    Value eop=((Instructions.GetElementPtrInst) I).getDimInfoDirectly().getOperand(j);
+                    ((Instructions.GetElementPtrInst) I).getDimInfoDirectly().CoReplaceOperandByIndex(j,eop);
+                }
             }
         }
     }
