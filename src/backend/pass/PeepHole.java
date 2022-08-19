@@ -235,7 +235,7 @@ public class PeepHole extends MCPass{
                     // mov a 2
                     // cmp b a  -> cmp b 2
                     if(!i.hasShift() && !next.hasShift() &&
-                        i instanceof Move &&
+                        (i instanceof Move || i instanceof LoadImm) &&
                         i.getOp2() instanceof ImmediateNumber &&
                         Objects.equals(iLastUse, next) &&
                         next instanceof Cmp &&
@@ -244,15 +244,62 @@ public class PeepHole extends MCPass{
                             var imm = ((ImmediateNumber)i.getOp2()).getValue();
                             if(ImmediateNumber.isLegalImm(imm)) {
                                 if(i.getDest().equals(next.getOp1())) {
-                                    next.setOp1(new ImmediateNumber(imm));
+                                    // next.setOp1(next.getOp2());
+                                    // next.setOp2(new ImmediateNumber(-imm)); // need cmn
                                 } else {
                                     next.setOp2(new ImmediateNumber(imm));
+                                    i.delete();
+                                    done = false;
+                                    if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
+                                    continue;
                                 }
-                                i.delete();
+                                
+                            }
+                    }
+                    // *********************************************************************************************************************************************
+                    // move replace
+                    // mov a b
+                    // .......
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i instanceof Move &&
+                        !i.isForFloat() &&
+                        !(i.getOp2() instanceof ImmediateNumber) &&
+                        Objects.equals(iLastUse, next) &&
+                        !(next instanceof Branch)) {
+                        var src = i.getOp2();
+                        var dst = i.getDest();
+                        boolean success = false;
+                        if(next.getOp1() != null && next.getOp1().equals(dst)) {next.setOp1(src); success = true;}
+                        else if(next.getOp2().equals(dst)) {next.setOp2(src); success = true;}
+                        else if(next.getOp2() != null && next.getOp2() instanceof Address) {
+                            Address addr = (Address)next.getOp2();
+                            if(addr.getReg().equals(dst)) {addr.setReg((Register)src); success = true;}
+                        }
+                        if(success) {
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: move replace");
+                            continue;
+                        }
+                    }
+                    // *********************************************************************************************************************************************
+                    // move replace 2
+                    // ....... dst ia a            ... dst is b
+                    // mov b a             ->  
+                    if(i instanceof Arithmetic || i instanceof Move || i instanceof LoadImm || 
+                        (i instanceof LoadOrStore && ((LoadOrStore) i).getType().equals(LoadOrStore.Type.LOAD))) {
+                        if(!i.hasShift() && !next.hasShift() &&
+                            next instanceof Move && 
+                            !next.isForFloat() &&
+                            Objects.equals(iLastUse, next)) {
+                            if(i.getDest() != null && i.getDest().equals(next.getOp2())) {
+                                i.setDest(next.getDest());
+                                next.delete();
                                 done = false;
-                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: move replace 2");
                                 continue;
                             }
+                        }
                     }
                 }
             }
