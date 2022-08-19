@@ -301,6 +301,45 @@ public class PeepHole extends MCPass{
                             }
                         }
                     }
+                     // *********************************************************************************************************************************************
+                     // mvnadd2sub
+                     // mvn a imm
+                     // add/sub z b a  -> sub/add z b imm+1
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        i instanceof LoadImm &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        next instanceof Arithmetic && 
+                        (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB))
+                    ) {
+                        var val = ~(((ImmediateNumber)i.getOp2()).getValue());
+                        boolean isMvn = ImmediateNumber.isLegalImm(val);
+                        boolean isDestOp2 = i.getDest().equals(next.getOp2());
+                        boolean isNewImmLegal = ImmediateNumber.isLegalImm(val+1);
+                        if(isMvn && isDestOp2 && isNewImmLegal) {
+                            if(((Arithmetic)next).getType().equals(Arithmetic.Type.ADD)){
+                                new Arithmetic(bb, Arithmetic.Type.SUB, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1)).insertBefore(next);
+                            } else {
+                                new Arithmetic(bb, Arithmetic.Type.ADD, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1)).insertBefore(next);
+                            }
+                            i.delete();
+                            next.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mvnadd2sub");
+                            continue;
+                        }
+                    }
+
+                     // *********************************************************************************************************************************************
+                     // addldrstrshift
+                     // add a b c shift
+                     // ldr z a           -> ldr z b c shift
+
+
+                     // *********************************************************************************************************************************************
+                     // loadImmArith
+                     // mov a imm   @LoadImm
+                     // add z b a               -> add z b imm
                 }
             }
         }
