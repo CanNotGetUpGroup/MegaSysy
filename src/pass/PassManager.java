@@ -50,7 +50,7 @@ public class PassManager {
         passes.add(new GVNGCM(aggressive));
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG(eliminatePreHeader));
-//        passes.add(new LoopUnroll(true));// 常量循环消除
+        passes.add(new LoopUnroll(true));// 常量循环消除
         passes.add(new LocalArrayPromote());
         passes.add(new InterProceduralDCE());
         passes.add(new GlobalVariableOpt());
@@ -59,7 +59,7 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new EliminateAlloca());// 由于GVN需要使用alloca，因此最后再删除
-        if(debug){
+        if (debug) {
             passes.add(new VerifyFunction());
         }
     }

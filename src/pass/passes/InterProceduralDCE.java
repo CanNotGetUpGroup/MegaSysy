@@ -110,7 +110,8 @@ public class InterProceduralDCE extends ModulePass {
     public void runOnModule(Module M) {
         for (var func : M.getFuncList()) {
             var name = func.getName();
-            if (name.equals("putch") || name.equals("putarray") || name.equals("putint") || name.equals("putfloat")) {
+            if (name.equals("putch") || name.equals("putarray") || name.equals("putint") || name.equals("putfloat")
+                    || name.equals("putfarray")) {
                 outputFuncs.add(func);
             }
         }
@@ -131,7 +132,7 @@ public class InterProceduralDCE extends ModulePass {
      *           of other functions. This pass also deletes dead arguments in a
      *           similar way. -- llvm
      * 
-     * @implNote 这个递归分析给我整麻了，死参数分析还不一定有点...
+     * @implNote 这个递归分析给我整麻了，死参数分析还不一定有测试点...
      *           - 遍历每一个func的argument
      *           - 建立一个分析栈,维护在分析此argument时递归分析的其他参数
      *           - 如果已经被判定过生死,跳过,否则进入第三步
@@ -148,8 +149,7 @@ public class InterProceduralDCE extends ModulePass {
      * @param M module
      * @return 是否做了remove操作
      */
-    private boolean removeUselessArg(Module M) {
-        boolean doneRemove = false;
+    private void removeUselessArg(Module M) {
         HashSet<Argument> analysisSet = new HashSet<>();
         HashMap<Argument, Boolean> isDeadArg = new HashMap<>();
         for (var func : M.getFuncList()) {
@@ -172,11 +172,9 @@ public class InterProceduralDCE extends ModulePass {
             for (var arg : func.getArguments()) {
                 if (isDeadArg.get(arg)) {
                     removeDeadArg(arg);
-                    doneRemove = true;
                 }
             }
         }
-        return doneRemove;
     }
 
     private void analysisArgUse(Argument arg, HashSet<Argument> analysisSet, HashMap<Argument, Boolean> isDeadArg) {
@@ -187,7 +185,16 @@ public class InterProceduralDCE extends ModulePass {
         }
         for (var use : arg.getUseList()) {
             var user = use.getU();
-            if (!(user instanceof CallInst)) {
+            if (user instanceof CallInst) {
+                CallInst call = (CallInst) user;
+                var callFunc = call.getCalledFunction();
+                var name = callFunc.getName();
+                if (name.equals("putch") || name.equals("putarray") || name.equals("putint") || name.equals("putfloat")
+                        || name.equals("putfarray")) {
+                    isDeadArg.put(arg, false);
+                    return;
+                }
+            } else {
                 isDeadArg.put(arg, false);
                 return;
             }
@@ -207,7 +214,7 @@ public class InterProceduralDCE extends ModulePass {
                 idx++;
             }
             // 分析call对应的func在idx位置的arg是不是dead的
-            var func = ((CallInst) user).getFunction();
+            var func = ((CallInst) user).getCalledFunction();
             var newArg = func.getArguments().get(idx);
             if (!analysisSet.contains(newArg)) {
                 if (isDeadArg.containsKey(newArg)) {
