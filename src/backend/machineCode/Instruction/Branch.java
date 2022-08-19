@@ -111,6 +111,8 @@ public class Branch extends MachineInstruction {
 
     public Branch(MachineBasicBlock parent, Branch br) {
         super(parent, br);
+        this.destBB = br.getDestBB();
+        this.destStr = br.destStr;
         this.destReg = br.getDestReg();
         this.storeLR = br.isStoreLR();
         destType = br.getDestType();
