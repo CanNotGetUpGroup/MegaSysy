@@ -117,6 +117,7 @@ public class Branch extends MachineInstruction {
         this.storeLR = br.isStoreLR();
         destType = br.getDestType();
         this.type = br.getType();
+        this.destf = br.destf;
     }
 
     @Override
@@ -136,7 +137,7 @@ public class Branch extends MachineInstruction {
             case LABEL -> inst + "\t" + destBB.getLabel();
             case FUNC -> inst + "\t" + destf.getLabel();
             case String -> inst + "\t" + destStr;
-        };
+        } + "@" + this.getType();
     }
 
     @Override

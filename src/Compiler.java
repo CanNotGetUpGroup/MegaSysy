@@ -69,7 +69,7 @@ public class Compiler {
 
         mc.performanceRun();
 
-//        PassManager.runMC(mc);
+        PassManager.runMC(mc);
 
         pw.println(mc.toArm());
         pw.flush();
