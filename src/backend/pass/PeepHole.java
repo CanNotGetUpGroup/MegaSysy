@@ -239,21 +239,23 @@ public class PeepHole extends MCPass{
                         i.getOp2() instanceof ImmediateNumber &&
                         Objects.equals(iLastUse, next) &&
                         next instanceof Cmp &&
-                        (i.getDest().equals(next.getOp1()) || i.getDest().equals(next.getOp2())) &&
+                        i.getDest().equals(next.getOp2()) &&
                         !next.getOp1().equals(next.getOp2())) { // to avoid cmp a a
                             var imm = ((ImmediateNumber)i.getOp2()).getValue();
+                            boolean success = false;
                             if(ImmediateNumber.isLegalImm(imm)) {
-                                if(i.getDest().equals(next.getOp1())) {
-                                    // next.setOp1(next.getOp2());
-                                    // next.setOp2(new ImmediateNumber(-imm)); // need cmn
-                                } else {
-                                    next.setOp2(new ImmediateNumber(imm));
-                                    i.delete();
-                                    done = false;
-                                    if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
-                                    continue;
-                                }
-                                
+                                next.setOp2(new ImmediateNumber(imm));
+                                success = true;
+                            } else if(ImmediateNumber.isLegalImm(-imm)) {
+                                next.setOp2(new ImmediateNumber(-imm));
+                                ((Cmp)next).setCmn(true);
+                                success = true;
+                            }
+                            if(success) {
+                                i.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
+                                continue;  
                             }
                     }
                     // *********************************************************************************************************************************************
@@ -310,7 +312,8 @@ public class PeepHole extends MCPass{
                         i instanceof LoadImm &&
                         i.getOp2() instanceof ImmediateNumber &&
                         next instanceof Arithmetic && 
-                        (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB))
+                        (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
+                        Objects.equals(iLastUse, next)
                     ) {
                         var val = ~(((ImmediateNumber)i.getOp2()).getValue());
                         boolean isMvn = ImmediateNumber.isLegalImm(val);
@@ -334,12 +337,81 @@ public class PeepHole extends MCPass{
                      // addldrstrshift
                      // add a b c shift
                      // ldr z a           -> ldr z b c shift
-
+                     if( i.hasShift() && !next.hasShift() &&
+                         !i.isForFloat() && !next.isForFloat() &&
+                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
+                         next instanceof LoadOrStore && ((LoadOrStore)next).getType().equals(LoadOrStore.Type.LOAD) &&
+                         Objects.equals(iLastUse, next)
+                     ) {
+                        var addr = (Address)next.getOp2();
+                        boolean isDestAddr = i.getDest().equals(addr.getReg()) && addr.hasConstOffset() && ((ImmediateNumber)addr.getOffset()).getValue() == 0;
+                        if(isDestAddr) {
+                            addr.setReg((Register)i.getOp1());
+                            addr.setOffset((Register)i.getOp2());
+                            next.setShifter(i.getShifter());
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: addldrstrshift1");
+                            continue;
+                        }
+                     }
+                     // add a b c shift
+                     // mov d e                   mov d e
+                     // str d [a]             ->  str d [b c shift]       !! b != d
+                     var nextnextNode = next.getInstNode().getNext();
+                     if(nextnextNode != null) {
+                        var nextnext = nextnextNode.getVal();
+                        if(i.hasShift() && !next.hasShift() && !nextnext.hasShift() &&
+                        !i.isForFloat() && !next.isForFloat() && !nextnext.isForFloat() &&
+                        i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
+                        (next instanceof Move || next instanceof LoadImm) &&  
+                        nextnext instanceof LoadOrStore && ((LoadOrStore)nextnext).getType().equals(LoadOrStore.Type.STORE) &&
+                        Objects.equals(iLastUse, nextnext)
+                        ) {
+                            var addr = (Address)nextnext.getOp2();
+                            boolean isSameData = next.getDest().equals(nextnext.getOp1());
+                            boolean isSameDst = i.getDest().equals(addr.getReg()) && addr.hasConstOffset() && ((ImmediateNumber)addr.getOffset()).getValue() == 0;
+                            boolean notEditData = !i.getOp1().equals(next.getDest()) && !i.getOp2().equals(next.getDest());
+                            if(isSameData && isSameDst && notEditData) {
+                                addr.setReg((Register)i.getOp1());
+                                addr.setOffset((Register)i.getOp2());
+                                nextnext.setShifter(i.getShifter());
+                                i.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: addldrstrshift2");
+                                continue;
+                            }
+                        }
+                     }
 
                      // *********************************************************************************************************************************************
-                     // loadImmArith
+                     // loadImm replace
                      // mov a imm   @LoadImm
                      // add z b a               -> add z b imm
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        i instanceof LoadImm &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        next instanceof Arithmetic && 
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        var type = ((Arithmetic)next).getType();
+                        var typeOk = type.equals(Arithmetic.Type.ADD) || type.equals(Arithmetic.Type.SUB) || type.equals(Arithmetic.Type.AND) || type.equals(Arithmetic.Type.RSB);
+                        var val = ((ImmediateNumber)i.getOp2()).getValue();
+                        boolean isMov = ImmediateNumber.isLegalImm(val);
+                        boolean isDestOp2 = i.getDest().equals(next.getOp2());
+                        if(isMov && isDestOp2 && typeOk) {
+                            next.setOp2(new ImmediateNumber(val));
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: loadImm replace");
+                            continue;
+                        }
+                    }
+                    // *********************************************************************************************************************************************
+                    // mla/mls
+                    // mul a b c
+                    // add/sub d a e -> mla/mls d b c e
                 }
             }
         }

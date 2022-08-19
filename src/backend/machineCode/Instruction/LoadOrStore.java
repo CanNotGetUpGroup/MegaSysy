@@ -75,7 +75,7 @@ public class LoadOrStore extends MachineInstruction {
 
     @Override
     public String toString() {
-        return (isForFloat()? "v":"") + (type == Type.LOAD ? "LDR" : "STR") + condString() + typeInfoString()  + " " + dest.toString() + ", " + addr.toString();
+        return (isForFloat()? "v":"") + (type == Type.LOAD ? "LDR" : "STR") + condString() + typeInfoString()  + " " + dest.toString() + ", " + addr.toString().substring(0, addr.toString().length()-2) + (hasShift()? ", " + getShifter() : "") + " ]" ;
     }
 
     @Override
