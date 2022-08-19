@@ -527,7 +527,6 @@ public class InstructionSelector {
                 valueMap.put(ir, dest);
             }
 
-            // TODO: Mod
             case Add -> {
                 MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)), op2 = valueToMCOperand(mbb, ir.getOperand(1));
 

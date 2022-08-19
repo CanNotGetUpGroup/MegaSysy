@@ -153,7 +153,7 @@ public class CodeGenManager {
 
         mc.halfRun2();
 
-//        PassManager.runMC(mc);
+        PassManager.runMC(mc);
         boolean debugMode = true;
         pw3.println(mc.toArm());
         pw3.flush();
