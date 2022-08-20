@@ -169,20 +169,20 @@ public class IndVarReduction extends FunctionPass {
                     return null;
                 }
             }
-//            case GetElementPtr -> {//改用memset貌似没效果
-//                builder.setInsertPoint(loop.getPreHeader().getTerminator());
-//                ArrayList<Value> Args = new ArrayList<>();
-//                incomingInst=builder.createGEP(I.getOperand(0),new ArrayList<>(){{
-//                    add(cycPhi);
-//                }});
-//                //TODO:添加ArraySSA的信息
-////                incomingInst.addOperand(I.getOperand(I.getNumOperands()-2));
-//                Args.add(incomingInst);
-//                Args.add(cycOp);
-//                sum=builder.createBinary(Instruction.Ops.Mul,TripCount, Constants.ConstantInt.get(4));
-//                Args.add(sum);
-//                return builder.createCall(SymbolTable.getInstance().getFunction("memset"), Args);
-//            }
+            case GetElementPtr -> {//改用memset貌似没效果
+                builder.setInsertPoint(loop.getPreHeader().getTerminator());
+                ArrayList<Value> Args = new ArrayList<>();
+                incomingInst=builder.createGEP(I.getOperand(0),new ArrayList<>(){{
+                    add(cycPhi);
+                }});
+                //TODO:添加ArraySSA的信息
+//                incomingInst.addOperand(I.getOperand(I.getNumOperands()-2));
+                Args.add(incomingInst);
+                Args.add(cycOp);
+                sum=builder.createBinary(Instruction.Ops.Mul,TripCount, Constants.ConstantInt.get(4));
+                Args.add(sum);
+                return builder.createCall(SymbolTable.getInstance().getFunction("memset"), Args);
+            }
             default -> {
                 return null;
             }
