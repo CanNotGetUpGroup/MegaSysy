@@ -236,7 +236,7 @@ public class PeepHole extends MCPass{
                     // LDR r0, [ r1, 8 ] -> LDR r0, [ r2, 4+8 ]
                     if( !i.hasShift() && !next.hasShift() &&
                         i.getCond() == null && next.getCond() == null
-                        && i instanceof Arithmetic 
+                        && i instanceof Arithmetic
                         && (((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
                         && i.getOp2() instanceof ImmediateNumber
                             ) {
@@ -265,9 +265,9 @@ public class PeepHole extends MCPass{
                             var nextnextNode = next.getInstNode().getNext();
                             if(nextnextNode != null) {
                                 var nextnext = nextnextNode.getVal();
-                                if( !nextnext.hasShift() 
-                                    && nextnext instanceof LoadOrStore 
-                                    && ((LoadOrStore)nextnext).getType() == LoadOrStore.Type.STORE 
+                                if( !nextnext.hasShift()
+                                    && nextnext instanceof LoadOrStore
+                                    && ((LoadOrStore)nextnext).getType() == LoadOrStore.Type.STORE
                                     && Objects.equals(iLastUse, nextnext)) {
                                     var moveStoreData = next.getDest().equals(nextnext.getOp1());
                                     var isSameDest = ((Address)nextnext.getOp2()).getReg().equals(i.getDest());
@@ -315,7 +315,7 @@ public class PeepHole extends MCPass{
                                 i.delete();
                                 done = false;
                                 if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
-                                continue;  
+                                continue;
                             }
                     }
                     // *********************************************************************************************************************************************
@@ -348,12 +348,12 @@ public class PeepHole extends MCPass{
                     // *********************************************************************************************************************************************
                     // move replace 2
                     // ....... dst ia a            ... dst is b
-                    // mov b a             ->  
-                    if(i instanceof Arithmetic || i instanceof Move || i instanceof LoadImm || 
+                    // mov b a             ->
+                    if(i instanceof Arithmetic || i instanceof Move || i instanceof LoadImm ||
                         (i instanceof LoadOrStore && ((LoadOrStore) i).getType().equals(LoadOrStore.Type.LOAD))) {
                         if(!i.hasShift() && !next.hasShift() &&
                             i.getCond() == null && next.getCond() == null &&
-                            next instanceof Move && 
+                            next instanceof Move &&
                             !next.isForFloat() &&
                             Objects.equals(iLastUse, next)) {
                             if(i.getDest() != null && i.getDest().equals(next.getOp2())) {
@@ -373,7 +373,7 @@ public class PeepHole extends MCPass{
                         i.getCond() == null && next.getCond() == null &&
                         i instanceof LoadImm &&
                         i.getOp2() instanceof ImmediateNumber &&
-                        next instanceof Arithmetic && 
+                        next instanceof Arithmetic &&
                         (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
                         Objects.equals(iLastUse, next)
                     ) {
@@ -433,7 +433,7 @@ public class PeepHole extends MCPass{
                         i.getCond() == null && next.getCond() == null && nextnext.getCond() == null &&
                         !i.isForFloat() && !next.isForFloat() && !nextnext.isForFloat() &&
                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
-                        (next instanceof Move || next instanceof LoadImm) &&  
+                        (next instanceof Move || next instanceof LoadImm) &&
                         nextnext instanceof LoadOrStore && ((LoadOrStore)nextnext).getType().equals(LoadOrStore.Type.STORE) &&
                         Objects.equals(iLastUse, nextnext)
                         ) {

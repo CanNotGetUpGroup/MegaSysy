@@ -12,7 +12,7 @@ public class Cmp extends MachineInstruction {
 
     private Register op1;
     private MCOperand op2;
-    private boolean isCmn = false;
+    boolean isCmn = false;
 
     public void setCmn(boolean isCmn) {
         this.isCmn = isCmn;
@@ -31,6 +31,7 @@ public class Cmp extends MachineInstruction {
         super(parent, cmp);
         this.op1 = (Register) cmp.getOp1();
         this.op2 = cmp.getOp2();
+        this.isCmn = cmp.isCmn;
     }
 
         @Override
