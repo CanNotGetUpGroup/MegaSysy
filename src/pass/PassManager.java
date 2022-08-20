@@ -87,7 +87,7 @@ public class PassManager {
         // MC Pass
         // MCPasses.add(new Hello());
         MCPasses.add(new MergeBlock());
-        MCPasses.add(new PeepHole());
+//        MCPasses.add(new PeepHole());
     }
 
     /**

@@ -240,7 +240,15 @@ public abstract class MachineInstruction implements Comparable {
     }
 
     public MachineInstruction getNext() {
-        return this.getInstNode().getNext().getVal();
+        var x = this.getInstNode().getNext();
+        if(x == null) return null;
+        return x.getVal();
+    }
+
+    public MachineInstruction getPrev(){
+        var x = this.getInstNode().getPrev();
+        if(x == null) return null;
+        return x.getVal();
     }
 
     public MachineInstruction(MachineBasicBlock parent) {
