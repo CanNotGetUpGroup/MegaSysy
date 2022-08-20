@@ -17,7 +17,7 @@ import java.util.*;
  * 精确到数组元素的SSA(ArraySSA)
  */
 public class MemorySSA {
-    public static boolean arraySSA=true;//TODO:暂时关闭了ArraySSA
+    public static boolean arraySSA=false;//TODO:暂时关闭了ArraySSA
     private final HashMap<Value, MemoryAccess> ValueToMemAcc;
     private final HashMap<Value,HashMap<BasicBlock,MemoryAccess>> PointerToPhi;
     //指令移动后可能失效
