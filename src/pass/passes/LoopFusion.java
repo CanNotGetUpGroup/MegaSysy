@@ -137,9 +137,9 @@ public class LoopFusion extends FunctionPass {
         // || !postDomInfo.dominates(succ.getLoopPrehead(),pred.getLoopPrehead())) {
         // return false;
         // }
-        System.out.println(
-                "find may fusioning loops, PRED:" + pred.getLoopHeader().getName() + " SUCC: " +
-                        succ.getLoopHeader().getName());
+//        System.out.println(
+//                "find may fusioning loops, PRED:" + pred.getLoopHeader().getName() + " SUCC: " +
+//                        succ.getLoopHeader().getName());
         return true;
     }
 
@@ -211,7 +211,7 @@ public class LoopFusion extends FunctionPass {
             predPreHeader.getInstList().insertBeforeEnd(inst.getInstNode());
         }
 
-        System.out.println("fusion");
+//        System.out.println("fusion");
 
         // 用前一个循环的indvar替换后一个循环的indvar
         succHeader.getInstList().forEach(inst -> {
