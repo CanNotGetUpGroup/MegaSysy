@@ -54,8 +54,8 @@ public class PassManager {
 //        passes.add(new InterProceduralDCE());
         passes.add(new LoopInfoUpdate());
         passes.add(new LICM());// 循环不变量外提
-//        passes.add(new LCSSA());
-//        passes.add(new LoopFusion());
+        // passes.add(new LCSSA());
+        // passes.add(new LoopFusion());
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new GVNGCM(aggressive));
@@ -66,15 +66,15 @@ public class PassManager {
         passes.add(new LocalArrayPromote());
 //        passes.add(new InterProceduralDCE());
         passes.add(new GlobalVariableOpt());
-//         passes.add(new LoopUnroll(false));//还存在bug，开了也不知道能不能快，干脆不开了
-//         passes.add(new LoopUnroll(false));
+        // passes.add(new LoopUnroll(false));//还存在bug，开了也不知道能不能快，干脆不开了
+        // passes.add(new LoopUnroll(false));
         passes.add(new LoopRedundant());
 
         aggressive = true;// 激进的GVN，消除掉数组参数的alloca，并关闭ArraySSA
         eliminatePreHeader = true;// 完成了循环优化，删掉preHeader
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new GVNGCM(aggressive));
-        passes.add(new EliminateDimInfo());//消除掉DimInfo可能对GVNGCM造成的影响
+        passes.add(new EliminateDimInfo());// 消除掉DimInfo可能对GVNGCM造成的影响
         passes.add(new GVNGCM(aggressive));
         passes.add(new EliminateAlloca());// 由于GVN需要使用alloca，因此最后再删除
         if (debug) {

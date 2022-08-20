@@ -435,6 +435,9 @@ public class InterProceduralDCE extends ModulePass {
     }
 
     private void findInputCallRelated(User user) {
+        if(inputRelated.contains(user)){
+            return;
+        }
         inputRelated.add(user);
         for (var op : user.getOperandList()) {
             if (op instanceof User) {
