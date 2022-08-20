@@ -305,8 +305,14 @@ public class InterProceduralDCE extends ModulePass {
                         break;
                     } else if (call.getUseList().size() == 1
                             && !(call.getUseList().get(0).getU() instanceof ReturnInst)) {
-                        isUseful = true;
-                        break;
+                        // 再向下搜索一层，应该能处理掉大部分的无效return了，不想写递归了
+//                        System.out.println("[DEBUG]: " + call.getCalledFunction().getName());
+                        for(var use : call.getUseList().get(0).getU().getUseList()) {
+                            if (!(use.getU() instanceof ReturnInst)) {
+                                isUseful = true;
+                                break;
+                            }
+                        }
                     }
                 }
                 if (isUseful) {
@@ -314,15 +320,17 @@ public class InterProceduralDCE extends ModulePass {
                 }
                 doneRemove = true;
                 optedRetFuncs.add(func);
+                func.getType().setVoidType();
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
                         if (inst instanceof ReturnInst) {
                             if (!inst.getOperandList().isEmpty()) {
-                                Constant ret = Constant.getNullValue(((ReturnInst) inst).getOperand(0).getType());
+                                // Constant ret = Constant.getNullValue(((ReturnInst)
+                                // inst).getOperand(0).getType());
                                 inst.removeAllOperand();
-                                if (ret != null) {
-                                    inst.addOperand(ret);
-                                }
+                                // if (ret != null) {
+                                // inst.addOperand(ret);
+                                // }
                             }
                         }
                     }
@@ -330,16 +338,18 @@ public class InterProceduralDCE extends ModulePass {
             } else {
                 doneRemove = true;
                 optedRetFuncs.add(func);
+                func.getType().setVoidType();
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
                         if (inst instanceof ReturnInst) {
                             if (!inst.getOperandList().isEmpty()) {
-                                Constant ret = Constant.getNullValue(((ReturnInst) inst).getOperand(0).getType());
+                                // Constant ret = Constant.getNullValue(((ReturnInst)
+                                // inst).getOperand(0).getType());
                                 inst.removeAllOperand();
-                                System.out.println("remove useless ret in func " + func.getName());
-                                if (ret != null) {
-                                    inst.addOperand(ret);
-                                }
+                                // System.out.println("remove useless ret in func " + func.getName());
+                                // if (ret != null) {
+                                // inst.addOperand(ret);
+                                // }
                             }
                         }
                     }
@@ -421,7 +431,7 @@ public class InterProceduralDCE extends ModulePass {
                 } else {
                     inputFuncCall.add((CallInst) value);
                 }
-            }else{
+            } else {
                 relatedInst.add((Instruction) value);
             }
         }
@@ -435,7 +445,7 @@ public class InterProceduralDCE extends ModulePass {
     }
 
     private void findInputCallRelated(User user) {
-        if(inputRelated.contains(user)){
+        if (inputRelated.contains(user)) {
             return;
         }
         inputRelated.add(user);

@@ -1,6 +1,5 @@
 package pass.passes;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -11,6 +10,7 @@ import ir.Function;
 import ir.Instruction;
 import ir.Loop;
 import ir.Constants.ConstantInt;
+import ir.instructions.Instructions.PHIInst;
 import ir.instructions.Instructions.BranchInst;
 import pass.FunctionPass;
 
@@ -25,7 +25,6 @@ public class LoopFusion extends FunctionPass {
 
     private DominatorTree domInfo;
     private PostDominatorTree postDomInfo;
-    private ArrayList<Loop> currentLevelLoop;
 
     @Override
     public String getName() {
@@ -62,6 +61,7 @@ public class LoopFusion extends FunctionPass {
         // 遍历hashMap fusionPairs
         fusionPairs.forEach((k, v) -> {
             donefusion(k, v);
+            loopInfo.computeLoopInfo(F);
         });
     }
 
@@ -122,6 +122,10 @@ public class LoopFusion extends FunctionPass {
             return false;
         }
         // 判断preheader的跳转判断条件是否一致
+        if (!(predPreBrInst.getOperandList().get(0) instanceof Instruction)
+                || !(succPreBrInst.getOperandList().get(0) instanceof Instruction)) {
+            return false;
+        }
         Instruction predPreCmpInst = (Instruction) predPreBrInst.getOperandList().get(0);
         Instruction succPreCmpInst = (Instruction) succPreBrInst.getOperandList().get(0);
         if (predPreCmpInst.getOperandList().get(0) != succPreCmpInst.getOperandList().get(0)
@@ -149,7 +153,8 @@ public class LoopFusion extends FunctionPass {
         var succHeader = succ.getLoopHeader();
         var commonBB = succ.getPreHeader();
         // 判定common的inst是否可以提取到predpreheader
-        // 先看它的opInst行不行
+        // 先看inst的opInst行不行，opinst的def必须在predHeader之前（在predPreHeader里面是ok的）
+        // operand 所在基本块都支配 predLoop header，取闭包
         for (var inst : commonBB.getInstList()) {
             if (!(inst instanceof BranchInst)) {
                 boolean isIrrelevant = true;
@@ -167,7 +172,9 @@ public class LoopFusion extends FunctionPass {
                 }
             }
         }
-        for (var inst = commonBB.getTerminator(); inst != null; inst = inst.getInstNode().getPrev().getVal()) {
+        // 再看看inst的 user 都被 predLoop header 支配，取闭包
+        for (var instnode = commonBB.getTerminator().getInstNode(); instnode != null; instnode = instnode.getPrev()) {
+            var inst = instnode.getVal();
             if (!(inst instanceof BranchInst)) {
                 boolean isIrrelevant = true;
                 for (var use : inst.getUseList()) {
@@ -176,7 +183,7 @@ public class LoopFusion extends FunctionPass {
                     }
                     Instruction userInst = (Instruction) use.getU();
                     if (!userIrrelevantInstSet.contains(userInst)
-                            && !domInfo.dominates(userInst.getParent(), predPreHeader)) {
+                            && !domInfo.dominates(predPreHeader, userInst.getParent())) {
                         isIrrelevant = false;
                     }
                     if (isIrrelevant) {
@@ -206,11 +213,29 @@ public class LoopFusion extends FunctionPass {
 
         System.out.println("fusion");
 
-        var predBrInst = predHeader.getInstList().getLast().getVal();
-//        predBrInst.CORemoveAllOperand();
-//        predBrInst.COaddOperand(succHeader);
+        // 用前一个循环的indvar替换后一个循环的indvar
         succHeader.getInstList().forEach(inst -> {
             inst.COReplaceOperand(succ.getIndVar(), pred.getIndVar());
         });
+        // succHeader 的 phi 移到 predHeader 前面
+        for (var inst : succHeader.getInstList()) {
+            if (!(inst instanceof PHIInst)) {
+                break;
+            }
+            inst.getInstNode().remove();
+            predHeader.getInstList().insertAtHead(inst.getInstNode());
+        }
+        // 维护新的block前驱后继关系
+        // pred preheader的branch Inst 原本指向common block的分支改为指向succ的exit block
+        var predPreheaderBrInst = predPreHeader.getTerminator();
+        var succExitBlock = succ.getExitBlocks().get(0);
+        predPreheaderBrInst.COReplaceOperand(commonBB, succExitBlock);
+        // pred 的branch Inst直接指向 succ的循环体（也就是header）
+        var predBrInst = predHeader.getTerminator();
+        predBrInst.removeAllOperand();
+        predBrInst.addOperand(succHeader);
+        // succ 的branch Inst原本指向自己的改为指向pred header
+        var succBrInst = succHeader.getTerminator();
+        succBrInst.COReplaceOperand(succHeader, predHeader);
     }
 }
