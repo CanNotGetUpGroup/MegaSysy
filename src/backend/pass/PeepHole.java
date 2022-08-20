@@ -14,6 +14,7 @@ import ir.Module;
 import pass.MCPass;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
@@ -96,6 +97,7 @@ public class PeepHole extends MCPass{
                             iList.add((PushOrPop)cur);
                         }
                         if(iList.size() > 1) {
+                            Collections.reverse(iList);
                             var n = new PushOrPopList(bb, type);
                             n.setForFloat(forFloat);
                             if(type.equals(PushOrPop.Type.Push)) iList.forEach(ii -> n.AddReg((Register)ii.getOp2()));
