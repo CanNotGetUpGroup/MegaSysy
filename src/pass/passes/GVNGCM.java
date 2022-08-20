@@ -59,8 +59,9 @@ public class GVNGCM extends ModulePass {
         boolean shouldContinue = true;
         while (shouldContinue) {
             clear();
-//            MemorySSA.arraySSA=!aggressive;
-            MemorySSA.arraySSA=false;//TODO:暂时关闭了ArraySSA
+            if(PassManager.openArraySSA){
+                MemorySSA.arraySSA = !aggressive;
+            }
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().functionDCE(F);

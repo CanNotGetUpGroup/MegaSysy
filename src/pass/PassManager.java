@@ -1,5 +1,6 @@
 package pass;
 
+import analysis.MemorySSA;
 import backend.CodeGenManager;
 import ir.Function;
 import ir.Module;
@@ -16,6 +17,7 @@ public class PassManager {
     public static boolean eliminatePreHeader = false;
     public static boolean aggressive = false;
     public static boolean debug = true;
+    public static boolean openArraySSA=false;
 
     /**
      * 初始化，在此处按照顺序添加IR pass
@@ -23,7 +25,11 @@ public class PassManager {
     public static void initialization() {
         passes.clear();
         GVNGCM.GCMOpen = true;
+        MemorySSA.arraySSA=openArraySSA;
         // eliminatePreHeader=true;//关闭LICM
+        if(!openArraySSA){//不开ArraySSA，直接消除掉DimInfo}
+            passes.add(new EliminateDimInfo());
+        }
         passes.add(new AddCondPreBlock());
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new Mem2Reg());// 消除掉local int(or float)的alloca，确保DCE消除store的正确
@@ -35,11 +41,11 @@ public class PassManager {
 
         passes.add(new LCSSA());
         passes.add(new LoopInfoUpdate()); // 计算循环信息
-        passes.add(new IndVarReduction());
+//        passes.add(new IndVarReduction());
         passes.add(new LICM());// 循环不变量外提
         passes.add(new InterProceduralDCE());
         passes.add(new GVNGCM(aggressive));
-        passes.add(new LoopRedundant());
+//        passes.add(new LoopRedundant());
 
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
@@ -53,7 +59,7 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new GVNGCM(aggressive));
-        passes.add(new LoopRedundant());
+//        passes.add(new LoopRedundant());
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new LoopUnroll(true));// 常量循环消除
@@ -62,7 +68,7 @@ public class PassManager {
         passes.add(new GlobalVariableOpt());
 //         passes.add(new LoopUnroll(false));//还存在bug，开了也不知道能不能快，干脆不开了
 //         passes.add(new LoopUnroll(false));
-        passes.add(new LoopRedundant());
+//        passes.add(new LoopRedundant());
 
         aggressive = true;// 激进的GVN，消除掉数组参数的alloca，并关闭ArraySSA
         eliminatePreHeader = true;// 完成了循环优化，删掉preHeader
