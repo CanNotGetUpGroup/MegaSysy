@@ -557,7 +557,8 @@ public class GVNGCM extends ModulePass {
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
             while (curBB != I.getParent()) {
                 if(DT.getNode(curBB)==null||curBB==DT.Root.BB){
-//                    System.out.println("curBB shouldn't be null!");
+                    System.out.println("curBB shouldn't be null!");
+                    break;
                 }
                 curBB = DT.getNode(curBB).IDom.BB;
                 int curLoopDepth = F.getLoopInfo().getLoopDepthForBB(curBB);
