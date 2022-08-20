@@ -1,7 +1,9 @@
 package pass.passes;
 
 import ir.BasicBlock;
+import ir.DerivedTypes;
 import ir.Function;
+import ir.Instruction;
 import ir.instructions.Instructions;
 import pass.FunctionPass;
 
@@ -12,6 +14,17 @@ public class VerifyFunction extends FunctionPass {
             for(Instructions.PHIInst phi:BB.getPHIs()){
                 if(!phi.getBlocks().contains(BB)){
                     System.out.println(BB+" should dominate "+phi);
+                }
+            }
+            for(Instruction I:BB.getInstList()){
+                if(I instanceof Instructions.GetElementPtrInst){
+                    if(I.getType() instanceof DerivedTypes.PointerType
+                            &&!((DerivedTypes.PointerType) I.getType()).getElementType().isIntegerTy()){
+                        if(((Instructions.GetElementPtrInst) I).getDimInfoDirectly().getNumOperands()!=0){
+                            System.out.println(I+" should not have dimInfo "
+                                    +((Instructions.GetElementPtrInst) I).getDimInfoDirectly());
+                        }
+                    }
                 }
             }
         }

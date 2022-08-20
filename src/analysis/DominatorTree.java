@@ -2,6 +2,7 @@ package analysis;
 
 import ir.BasicBlock;
 import ir.Function;
+import org.antlr.runtime.tree.Tree;
 import org.antlr.v4.runtime.misc.Pair;
 
 import java.util.*;
@@ -258,9 +259,9 @@ public class DominatorTree {
 
         public TreeNode Father;//CFG中的前驱（只记录了一个）
 
-        private int DFSInNum, DFSOutNum;
-        private int PostNumber;// CFG前序遍历序号
-        private ArrayList<TreeNode> Predecessors = new ArrayList<>();
+        public int DFSInNum, DFSOutNum;
+        public int PostNumber;// CFG前序遍历序号
+        public ArrayList<TreeNode> Predecessors = new ArrayList<>();
 
         public TreeNode(BasicBlock BB, TreeNode Father) {
             this.BB = BB;

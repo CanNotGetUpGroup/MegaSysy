@@ -16,4 +16,15 @@ public class DimInfo extends User {
         }
         return true;
     }
+
+    @Override
+    public String toString(){
+        StringBuilder sb=new StringBuilder();
+        sb.append("[");
+        for(Value v:getOperandList()){
+            sb.append(v).append(",");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
 }

@@ -59,8 +59,8 @@ public class GVNGCM extends ModulePass {
         boolean shouldContinue = true;
         while (shouldContinue) {
             clear();
-            MemorySSA.arraySSA=!aggressive;
-//            MemorySSA.arraySSA=false;
+//            MemorySSA.arraySSA=!aggressive;
+            MemorySSA.arraySSA=false;//TODO:暂时关闭了ArraySSA
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().functionDCE(F);
@@ -400,7 +400,7 @@ public class GVNGCM extends ModulePass {
                     }
                     if(same){
                         if(PassManager.debug){
-//                            System.out.println(LI+" is replaced with "+SI.getOperand(0));
+                            System.out.println(LI+" is replaced with "+SI.getOperand(0));
                         }
                         return getHash(SI.getOperand(0));
                     }
