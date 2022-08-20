@@ -251,7 +251,7 @@ public class GraphColor {
     void DecrementDegree(Register reg) {
         var d = degree.get(reg);
         degree.put(reg, d - 1);
-        if (d == MCRegister.maxRegNum(Register.Content.Float)) {
+        if (d == MCRegister.maxRegNum(curPassType)) {
             var set = new HashSet<Register>();
             set.add(reg);
             set.addAll(getAdjacent(reg));
