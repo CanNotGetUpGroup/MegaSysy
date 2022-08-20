@@ -18,7 +18,7 @@ public abstract class DerivedTypes {
 
         @Override
         public String toString() {
-            return this.isInt32Ty()?"i32":"i1";
+            return this.isInt32Ty() ? "i32" : "i1";
         }
     }
 
@@ -28,9 +28,9 @@ public abstract class DerivedTypes {
      * e.g a[4][2]:NumElements=4,dim=2,eleSize=2,getKidType()=[2]
      */
     public static class ArrayType extends Type {
-        private int NumElements;    //元素数量
-        private int dim;            //维数
-        private int eleSize;        //元素大小
+        private int NumElements; // 元素数量
+        private int dim; // 维数
+        private int eleSize; // 元素大小
 
         private ArrayType(Type ElementType, int numElements, int hashcode) {
             super(TypeID.ArrayTyID, hashcode);
@@ -79,18 +79,18 @@ public abstract class DerivedTypes {
             return getContainedTys().get(0);
         }
 
-        public boolean isIntArray(){
-            if(getKidType().isArrayTy()){
-                return ((ArrayType)getKidType()).isIntArray();
-            }else{
+        public boolean isIntArray() {
+            if (getKidType().isArrayTy()) {
+                return ((ArrayType) getKidType()).isIntArray();
+            } else {
                 return getKidType().isInt32Ty();
             }
         }
 
-        public boolean isFloatArray(){
-            if(getKidType().isArrayTy()){
-                return ((ArrayType)getKidType()).isFloatArray();
-            }else{
+        public boolean isFloatArray() {
+            if (getKidType().isArrayTy()) {
+                return ((ArrayType) getKidType()).isFloatArray();
+            } else {
                 return getKidType().isFloatTy();
             }
         }
@@ -99,7 +99,7 @@ public abstract class DerivedTypes {
          * 数组尺寸
          */
         public int size() {
-            return getNumElements()*getEleSize();
+            return getNumElements() * getEleSize();
         }
 
         /**
@@ -109,12 +109,12 @@ public abstract class DerivedTypes {
          * @param numElements 数组元素数量
          */
         public static ArrayType get(Type ElementType, int numElements) {
-            //检查MyContext中是否已经存在这种ArrayType，存在则直接返回该Type
+            // 检查MyContext中是否已经存在这种ArrayType，存在则直接返回该Type
             int hash = hash(ElementType, numElements);
             if (context.arrayTypes.containsKey(hash)) {
                 return context.arrayTypes.get(hash);
             }
-            //存入MyContext
+            // 存入MyContext
             ArrayType tmp = new ArrayType(ElementType, numElements, hash);
             context.arrayTypes.put(hash, tmp);
             return tmp;
@@ -130,8 +130,10 @@ public abstract class DerivedTypes {
                 result = prime * result + ElementType.getHashcode();
             } else if (ElementType.isArrayTy()) {
                 result = prime * result + ((ArrayType) ElementType).getDim() + 1;
-                result = prime * result + ((ArrayType) ElementType).getEleSize() * ((ArrayType) ElementType).getNumElements();
-                result = prime * result + hash(((ArrayType) ElementType).getKidType(), ((ArrayType) ElementType).getNumElements());
+                result = prime * result
+                        + ((ArrayType) ElementType).getEleSize() * ((ArrayType) ElementType).getNumElements();
+                result = prime * result
+                        + hash(((ArrayType) ElementType).getKidType(), ((ArrayType) ElementType).getNumElements());
             }
             return result;
         }
@@ -139,12 +141,12 @@ public abstract class DerivedTypes {
         /**
          * 返回一个维度表
          */
-        public ArrayList<Integer> getDims() { 
+        public ArrayList<Integer> getDims() {
             ArrayList<Integer> ret = new ArrayList<>();
             Type cur = this;
-            while(cur.isArrayTy()) { 
-                ret.add(((ArrayType)cur).getDim());
-                cur = ((ArrayType)cur).getKidType();
+            while (cur.isArrayTy()) {
+                ret.add(((ArrayType) cur).getDim());
+                cur = ((ArrayType) cur).getKidType();
             }
             return ret;
         }
@@ -166,10 +168,10 @@ public abstract class DerivedTypes {
         }
 
         @Override
-        public String toString(){
-            StringBuilder sb=new StringBuilder(getReturnType().toString());
+        public String toString() {
+            StringBuilder sb = new StringBuilder(getReturnType().toString());
             sb.append(" f(");
-            for(int i=1;i<getContainedTys().size();i++){
+            for (int i = 1; i < getContainedTys().size(); i++) {
                 sb.append(getContainedTys(i)).append(" ,");
             }
             sb.append(")");
@@ -186,7 +188,7 @@ public abstract class DerivedTypes {
             if (Params == null) {
                 return get(ReturnType);
             }
-            //检查MyContext中是否已经存在这种FunctionType，存在则直接返回该Type
+            // 检查MyContext中是否已经存在这种FunctionType，存在则直接返回该Type
             int hash = hash(ReturnType, Params);
             if (context.functionTypes.containsKey(hash)) {
                 return context.functionTypes.get(hash);
@@ -197,7 +199,7 @@ public abstract class DerivedTypes {
         }
 
         public static FunctionType get(Type ReturnType) {
-            //检查MyContext中是否已经存在这种FunctionType，存在则直接返回该Type
+            // 检查MyContext中是否已经存在这种FunctionType，存在则直接返回该Type
             int hash = hash(ReturnType, null);
             if (context.functionTypes.containsKey(hash)) {
                 return context.functionTypes.get(hash);
@@ -211,12 +213,16 @@ public abstract class DerivedTypes {
             return getContainedTys().get(i + 1);
         }
 
-        public int getParamNum(){
-            return getContainedTys().size()-1;
+        public int getParamNum() {
+            return getContainedTys().size() - 1;
         }
 
         public Type getReturnType() {
             return getContainedTys().get(0);
+        }
+
+        public void setVoidType() {
+            getContainedTys().set(0, Type.getVoidTy());
         }
 
         public static int hash(Type ReturnType, ArrayList<Type> Params) {
@@ -254,7 +260,7 @@ public abstract class DerivedTypes {
         }
 
         public static PointerType get(Type pointType) {
-            //检查MyContext中是否已经存在这种PointerType，存在则直接返回该Type
+            // 检查MyContext中是否已经存在这种PointerType，存在则直接返回该Type
             int hash = hash(pointType);
             if (context.pointerTypes.containsKey(hash)) {
                 return context.pointerTypes.get(hash);
@@ -275,6 +281,5 @@ public abstract class DerivedTypes {
             return result;
         }
     }
-
 
 }
