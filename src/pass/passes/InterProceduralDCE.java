@@ -4,14 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import ir.Argument;
-import ir.Constant;
-import ir.Function;
-import ir.GlobalVariable;
-import ir.Instruction;
+import ir.*;
 import ir.Module;
-import ir.User;
-import ir.Value;
+import ir.DerivedTypes.FunctionType;
 import ir.instructions.Instructions.BranchInst;
 import ir.instructions.Instructions.CallInst;
 import ir.instructions.Instructions.GetElementPtrInst;
@@ -306,8 +301,8 @@ public class InterProceduralDCE extends ModulePass {
                     } else if (call.getUseList().size() == 1
                             && !(call.getUseList().get(0).getU() instanceof ReturnInst)) {
                         // 再向下搜索一层，应该能处理掉大部分的无效return了，不想写递归了
-//                        System.out.println("[DEBUG]: " + call.getCalledFunction().getName());
-                        for(var use : call.getUseList().get(0).getU().getUseList()) {
+                        // System.out.println("[DEBUG]: " + call.getCalledFunction().getName());
+                        for (var use : call.getUseList().get(0).getU().getUseList()) {
                             if (!(use.getU() instanceof ReturnInst)) {
                                 isUseful = true;
                                 break;
@@ -320,38 +315,47 @@ public class InterProceduralDCE extends ModulePass {
                 }
                 doneRemove = true;
                 optedRetFuncs.add(func);
-                func.getType().setVoidType();
+                ArrayList<Type> newParamTy = new ArrayList<>(func.getType().getContainedTys().subList(1, func.getType().getParamNum() + 1));
+                DerivedTypes.FunctionType newFty= DerivedTypes.FunctionType.get(Type.getVoidTy()
+                        , newParamTy);
+                func.setType(newFty);
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
                         if (inst instanceof ReturnInst) {
                             if (!inst.getOperandList().isEmpty()) {
-                                // Constant ret = Constant.getNullValue(((ReturnInst)
-                                // inst).getOperand(0).getType());
                                 inst.removeAllOperand();
-                                // if (ret != null) {
-                                // inst.addOperand(ret);
-                                // }
                             }
                         }
+                    }
+                }
+                for (var use : func.getUseList()) {
+                    var user = use.getU();
+                    if (user instanceof CallInst) {
+                        var call = (CallInst) user;
+                        call.setType(Type.getVoidTy());
                     }
                 }
             } else {
                 doneRemove = true;
                 optedRetFuncs.add(func);
-                func.getType().setVoidType();
+                ArrayList<Type> newParamTy = new ArrayList<>(func.getType().getContainedTys().subList(1, func.getType().getParamNum() + 1));
+                DerivedTypes.FunctionType newFty= DerivedTypes.FunctionType.get(Type.getVoidTy()
+                        , newParamTy);
+                func.setType(newFty);
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
                         if (inst instanceof ReturnInst) {
                             if (!inst.getOperandList().isEmpty()) {
-                                // Constant ret = Constant.getNullValue(((ReturnInst)
-                                // inst).getOperand(0).getType());
                                 inst.removeAllOperand();
-                                // System.out.println("remove useless ret in func " + func.getName());
-                                // if (ret != null) {
-                                // inst.addOperand(ret);
-                                // }
                             }
                         }
+                    }
+                }
+                for (var use : func.getUseList()) {
+                    var user = use.getU();
+                    if (user instanceof CallInst) {
+                        var call = (CallInst) user;
+                        call.setType(Type.getVoidTy());
                     }
                 }
             }
