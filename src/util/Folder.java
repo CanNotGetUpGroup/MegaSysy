@@ -23,6 +23,9 @@ public class Folder {
         Value ret = null;
         int recurseTimes = 3;
         if (Instruction.isBinary(I.getOp())) {
+            if(I.getOperand(1)==null){
+                System.out.println(I.getOperand(1));
+            }
             ret = simplifyBin(I.getOp(), I.getOperand(0), I.getOperand(1), recurseTimes);
         }
         switch (I.getOp()) {
@@ -327,6 +330,9 @@ public class Folder {
         Value ret = createFDiv(X, Y);
         if (ret != null) return ret;
         Match MY = Match.createMatch(Y);
+        if(Y==null){
+            System.out.println(Y);
+        }
         Match M0 = new MatchConst(ConstantInt.get(0));
         // 0 / X -> 0
         if (Match.compare(X, M0)) {
