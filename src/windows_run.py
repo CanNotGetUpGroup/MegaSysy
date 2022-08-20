@@ -7,8 +7,11 @@ testcase=abspath+"/testcase"
 out_directory=abspath+"/MC"
 classpath=abspath+"/out/production/MegaSysy;"+abspath+"/lib/antlr-4.8-complete.jar"
 arg=0
-if len(sys.argv) == 2:
+o2=1
+if len(sys.argv) >= 2:
     arg=int(sys.argv[1])
+if len(sys.argv) ==3:
+    o2=0
 
 functional_testcase=testcase+"/functional/"
 functional_out_pass=out_directory+"/functional/"
@@ -21,7 +24,10 @@ if arg == 1 or arg == 0:
 
     for file in functional_file_list:
         print(functional_testcase+file+".sy:")
-        a=os.system("java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy -O2")
+        cmdline="java -classpath "+classpath+" Compiler -S -o "+functional_out_pass+file+".s "+functional_testcase+file+".sy"
+        if o2==1:
+            cmdline = cmdline + " -O2"
+        a=os.system(cmdline)
 
 performance_testcase=testcase+"/performance/"
 performance_out_pass=out_directory+"/performance/"
@@ -34,7 +40,10 @@ if arg == 2 or arg == 0:
 
     for file in performance_file_list:
         print(performance_testcase+file+".sy:")
-        a=os.system("java -classpath "+classpath+" Compiler -S -o "+performance_out_pass+file+".s "+performance_testcase+file+".sy -O2")
+        cmdline = "java -classpath "+classpath+" Compiler -S -o "+performance_out_pass+file+".s "+performance_testcase+file+".sy"
+        if o2==1:
+            cmdline = cmdline + " -O2"
+        a=os.system(cmdline)
 
 # thu_testcase=testcase+"/thu_test/"
 # thu_out=out_directory+"/thu_test/"
