@@ -43,15 +43,15 @@ public class PassManager {
         passes.add(new LoopInfoUpdate()); // 计算循环信息
         passes.add(new IndVarReduction());
         passes.add(new LICM());// 循环不变量外提
-        passes.add(new InterProceduralDCE());
+//        passes.add(new InterProceduralDCE());
         passes.add(new GVNGCM(aggressive));
-//        passes.add(new LoopRedundant());
+        passes.add(new LoopRedundant());
 
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
         passes.add(new Mem2Reg());// 处理掉新产生的alloca
         passes.add(new FuncInline());// 可能还有
-        passes.add(new InterProceduralDCE());
+//        passes.add(new InterProceduralDCE());
         passes.add(new LoopInfoUpdate());
         passes.add(new LICM());// 循环不变量外提
 //        passes.add(new LCSSA());
@@ -59,16 +59,16 @@ public class PassManager {
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new GVNGCM(aggressive));
-//        passes.add(new LoopRedundant());
+        passes.add(new LoopRedundant());
         passes.add(new DeadCodeEmit());
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new LoopUnroll(true));// 常量循环消除
         passes.add(new LocalArrayPromote());
-        passes.add(new InterProceduralDCE());
+//        passes.add(new InterProceduralDCE());
         passes.add(new GlobalVariableOpt());
 //         passes.add(new LoopUnroll(false));//还存在bug，开了也不知道能不能快，干脆不开了
 //         passes.add(new LoopUnroll(false));
-//        passes.add(new LoopRedundant());
+        passes.add(new LoopRedundant());
 
         aggressive = true;// 激进的GVN，消除掉数组参数的alloca，并关闭ArraySSA
         eliminatePreHeader = true;// 完成了循环优化，删掉preHeader
