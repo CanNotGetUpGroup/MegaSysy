@@ -123,7 +123,7 @@ public class LoopInfo {
         clear();
         domInfo = new DominatorTree(function);
         Stack<BasicBlock> backNode = new Stack<>();
-        // ! 后序遍历domtree domInfo.PostOrder是Dominate tree的后序遍历
+        // 后序遍历domtree domInfo.PostOrder是Dominate tree的后序遍历
         for (TreeNode DomNode : domInfo.getDTPostOrder()) {
             for (BasicBlock pred : DomNode.BB.getPredecessors()) {
                 // 如果一个结点支配其前继，则将这个边识别为backedge
@@ -171,7 +171,8 @@ public class LoopInfo {
         reOrderAllLoops();
         computeAllLoops();
 
-        for(Loop loop:allLoops) loop.clear();
+        for (Loop loop : allLoops)
+            loop.clear();
         computeExitingBlocks();
         computeExitBlocks();
         computeLoopPreheader();
@@ -179,18 +180,19 @@ public class LoopInfo {
         computeIndVarInfo();
     }
 
-    public void reOrderAllLoops(){
-        topLevelLoops.sort((o1,o2)->{
-            Integer dom1=domInfo.getNode(o1.getLoopHeader()).level,dom2=domInfo.getNode(o2.getLoopHeader()).level;
-            int header=dom1.compareTo(dom2);
-            return header!=0?header:1-o1.getLoopDepth().compareTo(o2.getLoopDepth());
+    public void reOrderAllLoops() {
+        topLevelLoops.sort((o1, o2) -> {
+            Integer dom1 = domInfo.getNode(o1.getLoopHeader()).level, dom2 = domInfo.getNode(o2.getLoopHeader()).level;
+            int header = dom1.compareTo(dom2);
+            return header != 0 ? header : 1 - o1.getLoopDepth().compareTo(o2.getLoopDepth());
         });
-        for(Loop loop:allLoops){
-            if(loop.getSubLoops()!=null&&!loop.getSubLoops().isEmpty()){
-                loop.getSubLoops().sort((o1,o2)->{
-                    Integer dom1=domInfo.getNode(o1.getLoopHeader()).level,dom2=domInfo.getNode(o2.getLoopHeader()).level;
-                    int header=dom1.compareTo(dom2);
-                    return header!=0?header:1-o1.getLoopDepth().compareTo(o2.getLoopDepth());
+        for (Loop loop : allLoops) {
+            if (loop.getSubLoops() != null && !loop.getSubLoops().isEmpty()) {
+                loop.getSubLoops().sort((o1, o2) -> {
+                    Integer dom1 = domInfo.getNode(o1.getLoopHeader()).level,
+                            dom2 = domInfo.getNode(o2.getLoopHeader()).level;
+                    int header = dom1.compareTo(dom2);
+                    return header != 0 ? header : 1 - o1.getLoopDepth().compareTo(o2.getLoopDepth());
                 });
             }
         }
@@ -312,7 +314,7 @@ public class LoopInfo {
         for (var pred : loopHeader.getPredecessors()) {
             if (!loop.getBbList().contains(pred)) {
                 if (ret != null && ret != pred) {
-//                    System.out.println("Error: loop header has multiple predecessors");
+                    // System.out.println("Error: loop header has multiple predecessors");
                     return null;
                 }
                 ret = pred;
@@ -357,7 +359,7 @@ public class LoopInfo {
      */
     private void computeLoopPreheader() {
         for (var loop : allLoops) {
-            loop.setLoopPrehead(getLoopPreheader(loop));
+            loop.setLoopPrehead(loop.getPreHeader());
         }
     }
 
@@ -373,7 +375,7 @@ public class LoopInfo {
         for (var pred : loopHeader.getPredecessors()) {
             if (loop.getBbList().contains(pred)) {
                 if (ret != null) {
-//                    System.out.println("Error: loop has multiple latchblocks");
+                    // System.out.println("Error: loop has multiple latchblocks");
                     return null;
                 }
                 ret = pred;
@@ -388,29 +390,29 @@ public class LoopInfo {
      */
     private void computeLatchBlocks() {
         for (Loop loop : allLoops) {
-//            BasicBlock latchBlock = getLoopLatchBlock(loop);
-//            if (latchBlock != null) {
-//                loop.getLatchBlocks().add(latchBlock);
-//            }
-            for(BasicBlock Pred:loop.getLoopHeader().getPredecessors()){
-                if(loop.getBbList().contains(Pred)){
+            // BasicBlock latchBlock = getLoopLatchBlock(loop);
+            // if (latchBlock != null) {
+            // loop.getLatchBlocks().add(latchBlock);
+            // }
+            for (BasicBlock Pred : loop.getLoopHeader().getPredecessors()) {
+                if (loop.getBbList().contains(Pred)) {
                     loop.getLatchBlocks().add(Pred);
                 }
             }
         }
     }
 
-    private void computeIndVarInfo(){
-        for(Loop L:allLoops){
-            var latchCmp=L.getLatchCmpInst();
-            if(!L.isSimpleForLoop()||latchCmp==null){
+    private void computeIndVarInfo() {
+        for (Loop L : allLoops) {
+            var latchCmp = L.getLatchCmpInst();
+            if (!L.isSimpleForLoop() || latchCmp == null) {
                 continue;
             }
-//            System.out.println(L.getSingleLatchBlock());
-//            System.out.println(latchCmp);
+            // System.out.println(L.getSingleLatchBlock());
+            // System.out.println(latchCmp);
             getIndVariable(L);
-            if(L.getIndVarCondInst()==null
-                    ||(!(L.getIndVarCondInst() instanceof BinaryInstruction))){
+            if (L.getIndVarCondInst() == null
+                    || (!(L.getIndVarCondInst() instanceof BinaryInstruction))) {
                 return;
             }
             var indVarCondInst = L.getIndVarCondInst();
@@ -427,37 +429,37 @@ public class LoopInfo {
                 return;
             }
 
-            if(!getStepInst(L)){
+            if (!getStepInst(L)) {
                 return;
             }
-            getTripCount(L,compareBias);
+            getTripCount(L, compareBias);
         }
     }
 
-    private void getIndVariable(Loop loop){
-        var latchCmp=loop.getLatchCmpInst();
-        int idx = 0,end=0;
+    private void getIndVariable(Loop loop) {
+        var latchCmp = loop.getLatchCmpInst();
+        int idx = 0, end = 0;
         for (var i = 0; i <= 1; i++) {
             var op = latchCmp.getOperand(i);
             if (op instanceof Instruction) {
                 Instruction opInst = (Instruction) op;
                 if (!getLoopDepthForBB(opInst.getParent()).equals(getLoopDepthForBB(latchCmp.getParent()))) {
-                    idx=1-i;
-                    end=i;
+                    idx = 1 - i;
+                    end = i;
                 } else {
-                    idx=i;
-                    end=1-i;
+                    idx = i;
+                    end = 1 - i;
                 }
             } else {
-                idx=1-i;
-                end=i;
+                idx = 1 - i;
+                end = i;
             }
         }
         loop.setIndVarCondInst((Instruction) latchCmp.getOperand(idx));
         loop.setIndVarEnd(latchCmp.getOperand(end));
     }
 
-    private boolean getStepInst(Loop L){
+    private boolean getStepInst(Loop L) {
         var indVar = L.getIndVar();
         int indVarDepth = this.getLoopDepthForBB(indVar.getParent());
         for (var incomingVal : indVar.getIncomingValues()) {
@@ -486,9 +488,9 @@ public class LoopInfo {
         return true;
     }
 
-    private void getTripCount(Loop L,Value compareBias){
-        var stepInst=L.getStepInst();
-        var latchCmp=L.getLatchCmpInst();
+    private void getTripCount(Loop L, Value compareBias) {
+        var stepInst = L.getStepInst();
+        var latchCmp = L.getLatchCmpInst();
         L.setBias(compareBias);
         if (stepInst.getOp().equals(Instruction.Ops.Add) &&
                 L.getStep() instanceof Constants.ConstantInt && L.getIndVarInit() instanceof Constants.ConstantInt &&
@@ -502,22 +504,22 @@ public class LoopInfo {
             switch (latchCmp.getPredicate()) {
                 case ICMP_SLT -> {
                     if (step > 0) {
-                        tripCount = init < end ? (int)Math.ceil((double)(end - init)/step):0;
+                        tripCount = init < end ? (int) Math.ceil((double) (end - init) / step) : 0;
                     }
                 }
                 case ICMP_SGT -> {
                     if (step < 0) {
-                        tripCount = init > end ? (int)Math.ceil((double)(init - end)/-step):0;
+                        tripCount = init > end ? (int) Math.ceil((double) (init - end) / -step) : 0;
                     }
                 }
                 case ICMP_SLE -> {
                     if (step > 0) {
-                        tripCount = init <= end ? (int)Math.ceil((double)(end - init + 1)/step):0;
+                        tripCount = init <= end ? (int) Math.ceil((double) (end - init + 1) / step) : 0;
                     }
                 }
                 case ICMP_SGE -> {
                     if (step < 0) {
-                        tripCount = init >= end ? (int)Math.ceil((double)(init - end + 1)/-step):0;
+                        tripCount = init >= end ? (int) Math.ceil((double) (init - end + 1) / -step) : 0;
                     }
                 }
                 case ICMP_NE -> {
