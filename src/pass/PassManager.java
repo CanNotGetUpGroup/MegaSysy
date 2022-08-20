@@ -87,7 +87,7 @@ public class PassManager {
         passes.add(new InterproceduralAnalysis());
         passes.add(new DeadCodeEmit());
         passes.add(new GlobalVariableOpt());
-//        passes.add(new GVNGCM(true));
+        passes.add(new GVNGCM(true));
     }
 
     /**

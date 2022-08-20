@@ -383,9 +383,9 @@ public abstract class Instructions {
         }
 
         public ArrayList<Value> getArrayIdx(){
-            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
-                return AliasAnalysis.gepToArrayIdx.get(this);
-            }
+//            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
+//                return AliasAnalysis.gepToArrayIdx.get(this);
+//            }
             ArrayList<Value> ret=new ArrayList<>();
             int dim=0;
             if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
@@ -410,7 +410,7 @@ public abstract class Instructions {
 //            if(!getOperand(1).equals(Constants.ConstantInt.get(0))){
                 ret.add(getOperand(1));
 //            }
-            AliasAnalysis.gepToArrayIdx.put(this,ret);
+//            AliasAnalysis.gepToArrayIdx.put(this,ret);
             return ret;
         }
 
