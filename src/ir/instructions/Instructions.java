@@ -1,5 +1,6 @@
 package ir.instructions;
 
+import analysis.AliasAnalysis;
 import ir.Value;
 import ir.*;
 import ir.DerivedTypes.*;
@@ -382,9 +383,9 @@ public abstract class Instructions {
         }
 
         public ArrayList<Value> getArrayIdx(){
-//            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
-//                return AliasAnalysis.gepToArrayIdx.get(this);
-//            }
+            if(AliasAnalysis.gepToArrayIdx.containsKey(this)){
+                return AliasAnalysis.gepToArrayIdx.get(this);
+            }
             ArrayList<Value> ret=new ArrayList<>();
             int dim=0;
             if(getOperand(0) instanceof GlobalVariable||getOperand(0) instanceof AllocaInst||getOperand(0) instanceof Argument){//a
