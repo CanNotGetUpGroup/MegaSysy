@@ -13,14 +13,12 @@ public class PostDominatorTree {
     private final ArrayList<DominatorTree.TreeNode> PostOrder;// 后序遍历CFG
     private final ArrayList<DominatorTree.TreeNode> ReversePostOrder;// 逆后序遍历CFG
     private final ArrayList<DominatorTree.TreeNode> DTPostOrder;// 后序遍历DT
-    private final ArrayList<DominatorTree.TreeNode> JoinNodes;// CFG中拥有多个前驱的节点
 
     public PostDominatorTree(Function F) {
         DomTreeNodes = new HashMap<>();
         PostOrder = new ArrayList<>();
         ReversePostOrder=new ArrayList<>();
         DTPostOrder = new ArrayList<>();
-        JoinNodes = new ArrayList<>();
 
         computeOnFunction(F);
     }
@@ -34,7 +32,6 @@ public class PostDominatorTree {
         for (var child : p.BB.getPredecessors()) {
             if (DomTreeNodes.containsKey(child)) {
                 DomTreeNodes.get(child).Predecessors.add(p);
-                JoinNodes.add(DomTreeNodes.get(child));
                 continue;
             }
             DominatorTree.TreeNode newP = new DominatorTree.TreeNode(child, p);
@@ -46,8 +43,13 @@ public class PostDominatorTree {
     public void computeOnFunction(Function F) {
         Parent = F;
         BasicBlock root = (F.getEntryBB());
+        HashSet<BasicBlock> visited=new HashSet<>();
         while(root.getSuccessorsNum()!=0){
-            root=root.getSuccessor(0);
+            for(BasicBlock bb:root.getSuccessors()){
+                if(visited.add(bb)){
+                    root=bb;
+                }
+            }
         }
         PostRoot=new DominatorTree.TreeNode(root);
         DomTreeNodes.put(root, PostRoot);
@@ -64,7 +66,6 @@ public class PostDominatorTree {
         PostOrder.clear();
         ReversePostOrder.clear();
         DTPostOrder.clear();
-        JoinNodes.clear();
     }
 
     public ArrayList<DominatorTree.TreeNode> getPostOrder() {
