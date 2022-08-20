@@ -89,6 +89,20 @@ public class InstructionSelector {
             head = head.getNext();
             var f = head.getVal();
 
+            f.getType().getParamNum();
+            var type = f.getType();
+            int num = type.getParamNum();
+            int floatNum = 0, intNum = 0;
+            for (int i = 0; i < num; i++) {
+                var paraType = type.getParamType(i);
+                if (type.isFloatTy())
+                    floatNum++;
+                intNum++;
+            }
+            var mf = funcMap.get(f);
+            mf.setFloatParaNum(floatNum);
+            mf.setIntParaNum(intNum);
+
             if (!f.isDefined()) continue;
             translateFunction(f);
         }
@@ -147,6 +161,7 @@ public class InstructionSelector {
                             intParaNum++; // could include pointer/array...
                         }
                     }
+
                     // paras store on stack
                     int numOnStack = 0;
                     if (floatParaNum > 16) numOnStack += floatParaNum - 16;
@@ -651,8 +666,10 @@ public class InstructionSelector {
                     } else if (isPowerOfTwo(divisor)) {
                         var temp = new VirtualRegister();
                         new Arithmetic(mbb, Arithmetic.Type.ASR, temp, op1, l - 1).pushBacktoInstList();
-                        new Arithmetic(mbb, Arithmetic.Type.LSR, temp, 32 - l).pushBacktoInstList();
-                        new Arithmetic(mbb, Arithmetic.Type.ADD, temp, op1).pushBacktoInstList();
+//                        new Arithmetic(mbb, Arithmetic.Type.LSR, temp, 32 - l).pushBacktoInstList();
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, temp, op1, temp);
+                        inst.setShifter(Shift.Type.LSR, 32-l);
+                        inst.pushBacktoInstList();
                         new Arithmetic(mbb, Arithmetic.Type.ASR, temp, l).pushBacktoInstList();
                         ans = temp;
                     } else {
