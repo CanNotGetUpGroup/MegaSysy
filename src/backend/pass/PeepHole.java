@@ -271,6 +271,7 @@ public class PeepHole extends MCPass{
                     // mov a b
                     // .......
                     if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
                         i instanceof Move &&
                         !i.isForFloat() &&
                         !(i.getOp2() instanceof ImmediateNumber) &&
@@ -299,6 +300,7 @@ public class PeepHole extends MCPass{
                     if(i instanceof Arithmetic || i instanceof Move || i instanceof LoadImm || 
                         (i instanceof LoadOrStore && ((LoadOrStore) i).getType().equals(LoadOrStore.Type.LOAD))) {
                         if(!i.hasShift() && !next.hasShift() &&
+                            i.getCond() == null && next.getCond() == null &&
                             next instanceof Move && 
                             !next.isForFloat() &&
                             Objects.equals(iLastUse, next)) {
