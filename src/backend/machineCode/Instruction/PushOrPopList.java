@@ -56,6 +56,7 @@ public class PushOrPopList extends MachineInstruction {
 
     @Override
     public ArrayList<Register> getUse() {
+        if(getCond() != null) return new ArrayList<Register>(regList); // 带Cond的pop会导致一些奇怪的bug 保守处理
         if (type == PushOrPop.Type.Push) return new ArrayList<Register>(regList);
         return new ArrayList<Register>();
     }

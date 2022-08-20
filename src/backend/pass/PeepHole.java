@@ -23,15 +23,15 @@ import org.antlr.v4.runtime.misc.Pair;
 
 public class PeepHole extends MCPass{
     private static final boolean PEEPHOLE_DEBUG = false;
-    private boolean DEL_ENDING_BR = false;
+    private boolean LASTRUN = false;
 
     public PeepHole() {
         super();
     }
 
-    public PeepHole(boolean deleteEndingBr) {
+    public PeepHole(boolean lastRun) {
         super();
-        this.DEL_ENDING_BR = deleteEndingBr;
+        this.LASTRUN = lastRun;
     }
 
     private boolean peepHoleWithoutDataflow(CodeGenManager CGM) {
@@ -43,7 +43,7 @@ public class PeepHole extends MCPass{
 
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
-                if (DEL_ENDING_BR && lastInst instanceof Branch && lastInst.getCond() == null) {
+                if (LASTRUN && lastInst instanceof Branch && lastInst.getCond() == null) {
                     if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
                         lastInst.delete();
                         done = false;
@@ -82,7 +82,7 @@ public class PeepHole extends MCPass{
                     }
 
                     // pushpopSimplify
-                    if(i instanceof PushOrPop) {                     
+                    if(LASTRUN && i instanceof PushOrPop) {                     
                         var type = ((PushOrPop)i).getType();
                         var forFloat = i.isForFloat();
                         var next = i.getNext();
@@ -213,7 +213,7 @@ public class PeepHole extends MCPass{
                     var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
                     var isLastDef = i.getDef().stream().anyMatch(def -> (lastDef.get(def) != null && lastDef.get(def).equals(i)));
                     var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
-                    if(isIDefbbOut) iLastUse = i;
+                    if(isIDefbbOut && isLastDef) iLastUse = i;
 
                     if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null && !i.isForFloat()) { // float不杀
                         i.delete();
