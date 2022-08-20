@@ -9,15 +9,16 @@ import java.util.*;
 public class PostDominatorTree {
     public Function Parent;
     public DominatorTree.TreeNode PostRoot;
-    public DominatorTree.TreeNode Root;
     public HashMap<BasicBlock, DominatorTree.TreeNode> DomTreeNodes;
     private final ArrayList<DominatorTree.TreeNode> PostOrder;// 后序遍历CFG
+    private final ArrayList<DominatorTree.TreeNode> ReversePostOrder;// 逆后序遍历CFG
     private final ArrayList<DominatorTree.TreeNode> DTPostOrder;// 后序遍历DT
     private final ArrayList<DominatorTree.TreeNode> JoinNodes;// CFG中拥有多个前驱的节点
 
     public PostDominatorTree(Function F) {
         DomTreeNodes = new HashMap<>();
         PostOrder = new ArrayList<>();
+        ReversePostOrder=new ArrayList<>();
         DTPostOrder = new ArrayList<>();
         JoinNodes = new ArrayList<>();
 
@@ -30,7 +31,7 @@ public class PostDominatorTree {
     public void initTreeNode(DominatorTree.TreeNode p) {
         if (p == null)
             return;
-        for (var child : p.BB.getSuccessors()) {
+        for (var child : p.BB.getPredecessors()) {
             if (DomTreeNodes.containsKey(child)) {
                 DomTreeNodes.get(child).Predecessors.add(p);
                 JoinNodes.add(DomTreeNodes.get(child));
@@ -44,16 +45,14 @@ public class PostDominatorTree {
 
     public void computeOnFunction(Function F) {
         Parent = F;
-        Root=new DominatorTree.TreeNode(F.getEntryBB());
-        DomTreeNodes.put(F.getEntryBB(),Root);
-        initTreeNode(PostRoot);
-
         BasicBlock root = (F.getEntryBB());
         while(root.getSuccessorsNum()!=0){
             root=root.getSuccessor(0);
         }
         PostRoot=new DominatorTree.TreeNode(root);
         DomTreeNodes.put(root, PostRoot);
+        initTreeNode(PostRoot);
+
         calculateDomTree();
         updateDFSNumbers();
     }
@@ -63,6 +62,7 @@ public class PostDominatorTree {
         PostRoot = null;
         DomTreeNodes.clear();
         PostOrder.clear();
+        ReversePostOrder.clear();
         DTPostOrder.clear();
         JoinNodes.clear();
     }
@@ -80,7 +80,7 @@ public class PostDominatorTree {
      */
     private void PostOrderDFS(DominatorTree.TreeNode p, Set<DominatorTree.TreeNode> visited, ArrayList<DominatorTree.TreeNode> PostOrder) {
         visited.add(p);
-        for (var child : p.BB.getSuccessors()) {
+        for (var child : p.BB.getPredecessors()) {
             if (!visited.contains(getNode(child))) {
                 PostOrderDFS(getNode(child), visited,PostOrder);
             }
@@ -89,9 +89,19 @@ public class PostDominatorTree {
         PostOrder.add(p);
     }
 
+    public ArrayList<DominatorTree.TreeNode> getReversePostOrder() {
+        if (ReversePostOrder.size() == 0) {
+            var tmp = getPostOrder();
+            for (int i = tmp.size() - 1; i >= 0; i--) {
+                ReversePostOrder.add(tmp.get(i));
+            }
+        }
+        return ReversePostOrder;
+    }
+
     public ArrayList<DominatorTree.TreeNode> getDTPostOrder() {
         if (DTPostOrder.size() == 0) {
-            DTPostOrderDFS(Root);
+            DTPostOrderDFS(PostRoot);
         }
         return DTPostOrder;
     }
@@ -141,13 +151,13 @@ public class PostDominatorTree {
      * 参考：https://www.cs.rice.edu/~keith/EMBED/dom.pdf
      */
     public void calculateDomTree() {
-        getPostOrder();
+        getReversePostOrder();
         boolean changed = true;
-        Root.IDom = Root;
+        PostRoot.IDom = PostRoot;
         while (changed) {
             changed = false;
-            for (var cur : PostOrder) {
-                if (cur == Root) {
+            for (var cur : ReversePostOrder) {
+                if (cur == PostRoot) {
                     continue;
                 }
                 var PredDomNode = cur.Predecessors;
@@ -179,7 +189,7 @@ public class PostDominatorTree {
 
     public void updateDFSNumbers() {
         Stack<Pair<DominatorTree.TreeNode, Iterator<DominatorTree.TreeNode>>> WorkStack = new Stack<>();
-        DominatorTree.TreeNode ThisRoot = Root;
+        DominatorTree.TreeNode ThisRoot = PostRoot;
         WorkStack.push(new Pair<>(ThisRoot, ThisRoot.Children.iterator()));
 
         int DFSNum = 0;

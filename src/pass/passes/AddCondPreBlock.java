@@ -53,6 +53,10 @@ public class AddCondPreBlock extends FunctionPass {
                     builder.setInsertPoint(Pred);
                     builder.createBr(newBB);
                     createBr(newBB,BB,cm);
+                    BasicBlock preHeader=new BasicBlock("",F,BB);
+                    BB.getTerminator().COReplaceOperand(Pred,preHeader);
+                    builder.setInsertPoint(preHeader);
+                    builder.createBr(Pred);
                 }
             }
         }
