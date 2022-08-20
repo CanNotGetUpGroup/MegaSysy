@@ -43,6 +43,7 @@ public class MergeBlock extends MCPass {
                     var predInst = bb.getPredInst().iterator().next();
                     var pred = bb.getPredInst().iterator().next().getParent();
                     var brothers = new HashSet<>(pred.getSuccessors());
+                    if(brothers.stream().noneMatch(x -> x != bb)) continue;
                     var brother = brothers.stream().filter(x -> x != bb).findFirst().get();
                     var brotherInst = brother.getPredInst().stream().filter(x -> x.getParent() == pred).findFirst().get();
                     if (bb.getSuccessors().iterator().next() == brother) {
