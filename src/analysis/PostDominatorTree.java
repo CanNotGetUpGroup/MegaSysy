@@ -42,15 +42,7 @@ public class PostDominatorTree {
 
     public void computeOnFunction(Function F) {
         Parent = F;
-        BasicBlock root = (F.getEntryBB());
-        HashSet<BasicBlock> visited=new HashSet<>();
-        while(root.getSuccessorsNum()!=0){
-            for(BasicBlock bb:root.getSuccessors()){
-                if(visited.add(bb)){
-                    root=bb;
-                }
-            }
-        }
+        BasicBlock root = (F.getReturnBlock());
         PostRoot=new DominatorTree.TreeNode(root);
         DomTreeNodes.put(root, PostRoot);
         initTreeNode(PostRoot);
