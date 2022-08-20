@@ -41,7 +41,7 @@ public class PassManager {
 
         passes.add(new LCSSA());
         passes.add(new LoopInfoUpdate()); // 计算循环信息
-//        passes.add(new IndVarReduction());
+        passes.add(new IndVarReduction());
         passes.add(new LICM());// 循环不变量外提
         passes.add(new InterProceduralDCE());
         passes.add(new GVNGCM(aggressive));
