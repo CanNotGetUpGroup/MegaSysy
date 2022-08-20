@@ -47,6 +47,7 @@ public class PeepHole extends MCPass{
                         lastInst.delete();
                         done = false;
                         if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
+                        continue;
                     }
                 }
 
@@ -60,12 +61,14 @@ public class PeepHole extends MCPass{
                                 i.delete();
                                 done = false;
                                 if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a a 0 -> del");
+                                continue;
                             }else {
                                 // add/sub a b 0 -> mov a b
                                 new Move(bb, i.getDest(), i.getOp1()).insertBefore(i);
                                 i.delete();
                                 done = false;
                                 if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a b 0 -> mov a b");
+                                continue;
                             }
                         }
                     }
@@ -74,6 +77,35 @@ public class PeepHole extends MCPass{
                         i.delete();
                         done = false;
                         if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: move a a -> del");
+                        continue;
+                    }
+
+                    // pushpopSimplify
+                    if(i instanceof PushOrPop) {                     
+                        var type = ((PushOrPop)i).getType();
+                        var forFloat = i.isForFloat();
+                        var next = i.getNext();
+                        if(next instanceof PushOrPop && ((PushOrPop) next).getType().equals(type) && next.isForFloat() == forFloat) continue;
+
+                        ArrayList<PushOrPop> iList =  new ArrayList<PushOrPop>();
+                        iList.add((PushOrPop)i);
+                        for(var cur=i.getPrev();
+                            cur instanceof PushOrPop && ((PushOrPop) cur).getType().equals(type) && cur.isForFloat() == forFloat;
+                            cur = cur.getPrev()
+                        ) {
+                            iList.add((PushOrPop)cur);
+                        }
+                        if(iList.size() > 1) {
+                            var n = new PushOrPopList(bb, type);
+                            n.setForFloat(forFloat);
+                            if(type.equals(PushOrPop.Type.Push)) iList.forEach(ii -> n.AddReg((Register)ii.getOp2()));
+                            else iList.forEach(ii -> n.AddReg((Register)ii.getDest()));
+                            n.insertAfter(i);
+                            iList.forEach(MachineInstruction::delete);
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: pushpopSimplify");
+                            continue;
+                        }
                     }
                 }
 
@@ -675,6 +707,7 @@ public class PeepHole extends MCPass{
             if(i instanceof Branch ||
                     (i instanceof LoadOrStore && ((LoadOrStore)i).getType() == LoadOrStore.Type.STORE) ||
                     i instanceof PushOrPop ||
+                    i instanceof PushOrPopList ||
                     i instanceof Comment ||
                     i instanceof Cmp ||
                     i.getCond() != null
