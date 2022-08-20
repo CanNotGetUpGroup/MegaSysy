@@ -184,7 +184,8 @@ public class PeepHole extends MCPass{
                     // add/sub ldr/str/move
                     // ADD r1, r2, 4
                     // LDR r0, [ r1, 8 ] -> LDR r0, [ r2, 4+8 ]
-                    if( !i.hasShift() && !next.hasShift()
+                    if( !i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null
                         && i instanceof Arithmetic 
                         && (((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
                         && i.getOp2() instanceof ImmediateNumber
@@ -243,6 +244,7 @@ public class PeepHole extends MCPass{
                     // mov a 2
                     // cmp b a  -> cmp b 2
                     if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
                         (i instanceof Move || i instanceof LoadImm) &&
                         i.getOp2() instanceof ImmediateNumber &&
                         Objects.equals(iLastUse, next) &&
@@ -352,6 +354,7 @@ public class PeepHole extends MCPass{
                      // add a b c shift
                      // ldr z a           -> ldr z b c shift
                      if( i.hasShift() && !next.hasShift() &&
+                         i.getCond() == null && next.getCond() == null &&
                          !i.isForFloat() && !next.isForFloat() &&
                          i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
                          next instanceof LoadOrStore && ((LoadOrStore)next).getType().equals(LoadOrStore.Type.LOAD) &&
@@ -376,6 +379,7 @@ public class PeepHole extends MCPass{
                      if(nextnextNode != null) {
                         var nextnext = nextnextNode.getVal();
                         if(i.hasShift() && !next.hasShift() && !nextnext.hasShift() &&
+                        i.getCond() == null && next.getCond() == null && nextnext.getCond() == null &&
                         !i.isForFloat() && !next.isForFloat() && !nextnext.isForFloat() &&
                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
                         (next instanceof Move || next instanceof LoadImm) &&  
@@ -427,6 +431,7 @@ public class PeepHole extends MCPass{
                     // mul a b c 不考虑muls
                     // add/sub d a e -> mla/mls d b c e
                     if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
                         !i.isForFloat() && !next.isForFloat() &&
                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.MUL) &&
                         next instanceof Arithmetic && (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
