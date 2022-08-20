@@ -8,6 +8,7 @@ import java.util.*;
 
 public class PostDominatorTree {
     public Function Parent;
+    public DominatorTree.TreeNode PostRoot;
     public DominatorTree.TreeNode Root;
     public HashMap<BasicBlock, DominatorTree.TreeNode> DomTreeNodes;
     private final ArrayList<DominatorTree.TreeNode> PostOrder;// 后序遍历CFG
@@ -43,21 +44,23 @@ public class PostDominatorTree {
 
     public void computeOnFunction(Function F) {
         Parent = F;
-        DominatorTree.TreeNode root = new DominatorTree.TreeNode(F.getEntryBB());
-        DomTreeNodes.put(F.getEntryBB(), Root);
-        initTreeNode(root);
+        Root=new DominatorTree.TreeNode(F.getEntryBB());
+        DomTreeNodes.put(F.getEntryBB(),Root);
+        initTreeNode(PostRoot);
+
+        BasicBlock root = (F.getEntryBB());
+        while(root.getSuccessorsNum()!=0){
+            root=root.getSuccessor(0);
+        }
+        PostRoot=new DominatorTree.TreeNode(root);
+        DomTreeNodes.put(root, PostRoot);
         calculateDomTree();
         updateDFSNumbers();
     }
 
-    public void update(Function F) {
-        clear();
-        computeOnFunction(F);
-    }
-
     public void clear() {
         Parent = null;
-        Root = null;
+        PostRoot = null;
         DomTreeNodes.clear();
         PostOrder.clear();
         DTPostOrder.clear();
@@ -67,7 +70,7 @@ public class PostDominatorTree {
     public ArrayList<DominatorTree.TreeNode> getPostOrder() {
         if (PostOrder.size() == 0) {
             Set<DominatorTree.TreeNode> visited = new HashSet<>();
-            PostOrderDFS(Root, visited,PostOrder);
+            PostOrderDFS(PostRoot, visited,PostOrder);
         }
         return PostOrder;
     }

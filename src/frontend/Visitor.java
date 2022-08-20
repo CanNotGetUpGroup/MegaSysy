@@ -126,9 +126,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
                 curVal = builder.createSIToFP(curVal, Type.getFloatTy());
             } else if (curVal.getType().equals(Type.getFloatTy())) {
                 curVal = builder.createFPToSI(curVal, Type.getInt32Ty());
-            } else {
-                LogError("arr can't be factor");
             }
+//            else {
+//                LogError("arr can't be factor");
+//            }
         }
     }
 
