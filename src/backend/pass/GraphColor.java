@@ -251,7 +251,7 @@ public class GraphColor {
     void DecrementDegree(Register reg) {
         var d = degree.get(reg);
         degree.put(reg, d - 1);
-        if (d == MCRegister.maxRegNum(Register.Content.Float)) {
+        if (d == MCRegister.maxRegNum(curPassType)) {
             var set = new HashSet<Register>();
             set.add(reg);
             set.addAll(getAdjacent(reg));
@@ -422,16 +422,17 @@ public class GraphColor {
 
     void AssignColors() {
 
-        for (int i = 0; i < MCRegister.maxRegNum(curPassType); i++) {
+        for (int i = 0; i < Math.max(MCRegister.maxRegNum(curPassType), 14); i++) {
             colorMap.put(new MCRegister(curPassType, i), i);
-
         }
 
         // select stack filter
         while (!selectStack.isEmpty()) {
             var n = selectStack.pop();
-            var okColors = IntStream.range(0, MCRegister.maxRegNum(curPassType)).boxed()
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            var okColors = new LinkedHashSet<Integer>();
+            okColors.add(12);
+            IntStream.range(0, MCRegister.maxRegNum(curPassType)).boxed()
+                    .forEach(okColors::add);
 
             for (var w : adjList.getOrDefault(n, new HashSet<>())) {
                 var alias = getAlias(w);
