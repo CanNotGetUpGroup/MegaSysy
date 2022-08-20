@@ -31,6 +31,7 @@ public class Shift extends MachineInstruction {
         this.dest = dest;
     }
 
+    @Override
     public MCOperand getOp1() {
         return op1;
     }

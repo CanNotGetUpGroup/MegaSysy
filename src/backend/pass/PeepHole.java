@@ -21,9 +21,15 @@ import org.antlr.v4.runtime.misc.Pair;
 
 public class PeepHole extends MCPass{
     private static final boolean PEEPHOLE_DEBUG = false;
+    private boolean DEL_ENDING_BR = false;
 
     public PeepHole() {
         super();
+    }
+
+    public PeepHole(boolean deleteEndingBr) {
+        super();
+        this.DEL_ENDING_BR = deleteEndingBr;
     }
 
     private boolean peepHoleWithoutDataflow(CodeGenManager CGM) {
@@ -35,7 +41,7 @@ public class PeepHole extends MCPass{
 
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
-                if (lastInst instanceof Branch && lastInst.getCond() == null) {
+                if (DEL_ENDING_BR && lastInst instanceof Branch && lastInst.getCond() == null) {
                     if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
                         lastInst.delete();
                         done = false;
@@ -48,6 +54,7 @@ public class PeepHole extends MCPass{
                     var iNode = next.getInstNode().getPrev();
                     if (iNode == null) continue;
                     var i = iNode.getVal();
+                    if(!DEL_ENDING_BR && (i.equals(lastInst) || next.equals(lastInst))) continue;
 
                     if(i instanceof Arithmetic) {
                         if((((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
@@ -149,10 +156,32 @@ public class PeepHole extends MCPass{
             var funcLivenessMap = funcLivenessAnalysis(f);
             
             for (var bb : f.getBbList()) {
+                if(bb.getInstList().isEmpty()) continue;
+                var lastInst = bb.getInstList().getLast().getVal();
+
                 var lastDef = new HashMap<MCOperand,MachineInstruction>();
                 var lastUse = new HashMap<MachineInstruction, MachineInstruction>();
                 var bbout = funcLivenessMap.get(bb).out;
                 blockLiveRange(bb, lastDef, lastUse);
+                
+                for (var next : bb.getInstList()) {
+                    var iNode = next.getInstNode().getPrev();
+                    if (iNode == null) continue;
+                    var i = iNode.getVal();
+                    if(!DEL_ENDING_BR && (i.equals(lastInst) || next.equals(lastInst))) continue;
+
+                    var iLastUse = lastUse.get(i);
+                    var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
+                    var isLastDef = i.getDef().stream().anyMatch(def -> (lastDef.get(def) != null && lastDef.get(def).equals(i)));
+                    var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
+                    if(isIDefbbOut) iLastUse = i;
+
+                    if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null && !i.isForFloat()) { // float不杀
+                        i.delete();
+                        done = false;
+                        if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: remove useless instr");
+                    }
+                }
 
                 for (var next : bb.getInstList()) {
                     var iNode = next.getInstNode().getPrev();
@@ -161,22 +190,14 @@ public class PeepHole extends MCPass{
 
                     var iLastUse = lastUse.get(i);
                     var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
-                    var isLastDef = i.getDef().stream().anyMatch(def -> lastDef.get(def).equals(i));
-                    var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
                     if(isIDefbbOut) iLastUse = i;
-
-                    if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null) {
-                        // i.delete();
-                        // done = false;
-                        // if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: remove useless instr");
-                        // continue;
-                    }
 
                     // *********************************************************************************************************************************************
                     // add/sub ldr/str/move
                     // ADD r1, r2, 4
                     // LDR r0, [ r1, 8 ] -> LDR r0, [ r2, 4+8 ]
-                    if( !i.hasShift() && !next.hasShift()
+                    if( !i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null
                         && i instanceof Arithmetic 
                         && (((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
                         && i.getOp2() instanceof ImmediateNumber
@@ -235,6 +256,7 @@ public class PeepHole extends MCPass{
                     // mov a 2
                     // cmp b a  -> cmp b 2
                     if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
                         (i instanceof Move || i instanceof LoadImm) &&
                         i.getOp2() instanceof ImmediateNumber &&
                         Objects.equals(iLastUse, next) &&
@@ -263,6 +285,7 @@ public class PeepHole extends MCPass{
                     // mov a b
                     // .......
                     if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
                         i instanceof Move &&
                         !i.isForFloat() &&
                         !(i.getOp2() instanceof ImmediateNumber) &&
@@ -291,6 +314,7 @@ public class PeepHole extends MCPass{
                     if(i instanceof Arithmetic || i instanceof Move || i instanceof LoadImm || 
                         (i instanceof LoadOrStore && ((LoadOrStore) i).getType().equals(LoadOrStore.Type.LOAD))) {
                         if(!i.hasShift() && !next.hasShift() &&
+                            i.getCond() == null && next.getCond() == null &&
                             next instanceof Move && 
                             !next.isForFloat() &&
                             Objects.equals(iLastUse, next)) {
@@ -320,11 +344,15 @@ public class PeepHole extends MCPass{
                         boolean isDestOp2 = i.getDest().equals(next.getOp2());
                         boolean isNewImmLegal = ImmediateNumber.isLegalImm(val+1);
                         if(isMvn && isDestOp2 && isNewImmLegal) {
+                            MachineInstruction n;
                             if(((Arithmetic)next).getType().equals(Arithmetic.Type.ADD)){
-                                new Arithmetic(bb, Arithmetic.Type.SUB, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1)).insertBefore(next);
+                                n = new Arithmetic(bb, Arithmetic.Type.SUB, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1));
+                                n.insertAfter(next);
                             } else {
-                                new Arithmetic(bb, Arithmetic.Type.ADD, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1)).insertBefore(next);
+                                n = new Arithmetic(bb, Arithmetic.Type.ADD, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1));
+                                n.insertAfter(next);
                             }
+                            lastUse.put(n, lastUse.get(next)); // Maintenance lastUse
                             i.delete();
                             next.delete();
                             done = false;
@@ -338,6 +366,7 @@ public class PeepHole extends MCPass{
                      // add a b c shift
                      // ldr z a           -> ldr z b c shift
                      if( i.hasShift() && !next.hasShift() &&
+                         i.getCond() == null && next.getCond() == null &&
                          !i.isForFloat() && !next.isForFloat() &&
                          i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
                          next instanceof LoadOrStore && ((LoadOrStore)next).getType().equals(LoadOrStore.Type.LOAD) &&
@@ -362,6 +391,7 @@ public class PeepHole extends MCPass{
                      if(nextnextNode != null) {
                         var nextnext = nextnextNode.getVal();
                         if(i.hasShift() && !next.hasShift() && !nextnext.hasShift() &&
+                        i.getCond() == null && next.getCond() == null && nextnext.getCond() == null &&
                         !i.isForFloat() && !next.isForFloat() && !nextnext.isForFloat() &&
                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
                         (next instanceof Move || next instanceof LoadImm) &&  
@@ -392,7 +422,7 @@ public class PeepHole extends MCPass{
                         i.getCond() == null && next.getCond() == null &&
                         i instanceof LoadImm &&
                         i.getOp2() instanceof ImmediateNumber &&
-                        next instanceof Arithmetic && 
+                        next instanceof Arithmetic &&
                         Objects.equals(iLastUse, next)
                     ) {
                         var type = ((Arithmetic)next).getType();
@@ -413,7 +443,8 @@ public class PeepHole extends MCPass{
                     // mul a b c 不考虑muls
                     // add/sub d a e -> mla/mls d b c e
                     if(!i.hasShift() && !next.hasShift() &&
-                        !i.isForFloat() && !next.isForFloat() && 
+                        i.getCond() == null && next.getCond() == null &&
+                        !i.isForFloat() && !next.isForFloat() &&
                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.MUL) &&
                         next instanceof Arithmetic && (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
                         !(next.getOp2() instanceof ImmediateNumber) &&
@@ -427,13 +458,15 @@ public class PeepHole extends MCPass{
                             if(next.getOp1().equals(mulRes)) {
                                 var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp2());
                                 mla.setCond(next.getCond());
-                                mla.insertAfter(next);
+                                lastUse.put(mla, lastUse.get(next)); // Maintenance lastUse
+                                mla.insertBefore(next);
                                 success = true;
                             }
                             // add d e a -> mla d b c e
                             else if (next.getOp2().equals(mulRes)) {
                                 var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
                                 mla.setCond(next.getCond());
+                                lastUse.put(mla, lastUse.get(next)); // Maintenance lastUse
                                 mla.insertAfter(next);
                                 success = true;
                             }
@@ -443,6 +476,7 @@ public class PeepHole extends MCPass{
                                 var mls = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
                                 mls.setCond(next.getCond());
                                 mls.setMls(true);
+                                lastUse.put(mls, lastUse.get(next)); // Maintenance lastUse
                                 mls.insertAfter(next);
                                 success = true;
                             }
@@ -531,14 +565,18 @@ public class PeepHole extends MCPass{
                 }
                     
             }
-            for(var def : i.getDef()) {
-                lastDef.put(def, i);
+            if(i.getCond() == null) {
+                for(var def : i.getDef()) {
+                    lastDef.put(def, i);
+                }
             }
+            
             if(i instanceof Branch ||
                     (i instanceof LoadOrStore && ((LoadOrStore)i).getType() == LoadOrStore.Type.STORE) ||
                     i instanceof PushOrPop ||
                     i instanceof Comment ||
-                    i instanceof Cmp
+                    i instanceof Cmp ||
+                    i.getCond() != null
                     ) {  // 这里的SideEffect比较激进 可能有问题？ 818 加了个cmp
                 lastUse.put(i, i);
             } else {
