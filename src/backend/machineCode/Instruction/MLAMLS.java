@@ -13,10 +13,14 @@ public class MLAMLS extends MachineInstruction {
     private MCOperand op2;
     private MCOperand op3;
 
-    boolean isMls = false;
+    private boolean isMls = false;
 
     public void setMls(boolean isMls) {
         this.isMls = isMls;
+    }
+
+    public boolean isMls() {
+        return isMls;
     }
     
     public MLAMLS(MachineBasicBlock parent, Register destReg, MCOperand op1, MCOperand op2, MCOperand op3) {
@@ -41,10 +45,62 @@ public class MLAMLS extends MachineInstruction {
         setForFloat(false);
     }
 
+    public MLAMLS(MachineBasicBlock parent, MLAMLS src) {
+        super(parent, src);
+
+        this.destReg = src.getDest();
+        this.op1 = src.getOp1();
+        this.op2 = src.getOp2();
+        this.op3 = src.getOp3();
+        setForFloat(false);
+        this.isMls = src.isMls();
+    }
+
     @Override
     public MachineInstruction setForFloat(boolean isForFloat) {
         setForFloat(isForFloat, new ArrayList<>(List.of("f32")));
         return this;
+    }
+
+    @Override
+    public Register getDest() {
+        return destReg;
+    }
+
+    @Override
+    public void setDest(Register dest) {
+        this.destReg = dest;
+    }
+
+    @Override
+    public MCOperand getOp1() {
+        return op1;
+    }
+
+    @Override
+    public void setOp1(MCOperand op) {
+        assert op1 instanceof Register;
+        this.op1 = (Register)op;
+    }
+
+    @Override
+    public MCOperand getOp2() {
+        return op2;
+    }
+
+    @Override
+    public void setOp2(MCOperand op) {
+        assert op2 instanceof Register;
+        this.op2 = (Register)op;
+    }
+
+    public MCOperand getOp3() {
+        return op3;
+    }
+
+    public void setOp3(MCOperand op) {
+        assert op3 instanceof Register;
+        this.op3 = (Register)op;
     }
 
     @Override

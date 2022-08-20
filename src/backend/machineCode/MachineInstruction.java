@@ -340,6 +340,8 @@ public abstract class MachineInstruction implements Comparable {
             return new VCVT(parent, (VCVT) src);
         if (src instanceof VMRS)
             return new VMRS(parent, (VMRS) src);
+        if (src instanceof MLAMLS)
+            return new MLAMLS(parent, (MLAMLS) src);
         throw new RuntimeException("Copy failed: " + src);
     }
 

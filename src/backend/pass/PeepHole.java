@@ -21,9 +21,15 @@ import org.antlr.v4.runtime.misc.Pair;
 
 public class PeepHole extends MCPass{
     private static final boolean PEEPHOLE_DEBUG = false;
+    private boolean DEL_ENDING_BR = false;
 
     public PeepHole() {
         super();
+    }
+
+    public PeepHole(boolean deleteEndingBr) {
+        super();
+        this.DEL_ENDING_BR = deleteEndingBr;
     }
 
     private boolean peepHoleWithoutDataflow(CodeGenManager CGM) {
@@ -35,19 +41,20 @@ public class PeepHole extends MCPass{
 
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
-               if (lastInst instanceof Branch && lastInst.getCond() == null) {
-                   if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
+                if (DEL_ENDING_BR && lastInst instanceof Branch && lastInst.getCond() == null) {
+                    if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
                         lastInst.delete();
                         done = false;
                         if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
-                   }
-               }
+                    }
+                }
 
 
                 for (var next : bb.getInstList()) {
                     var iNode = next.getInstNode().getPrev();
                     if (iNode == null) continue;
                     var i = iNode.getVal();
+                    if(!DEL_ENDING_BR && (i.equals(lastInst) || next.equals(lastInst))) continue;
 
                     if(i instanceof Arithmetic) {
                         if((((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
@@ -149,14 +156,19 @@ public class PeepHole extends MCPass{
             var funcLivenessMap = funcLivenessAnalysis(f);
             
             for (var bb : f.getBbList()) {
+                if(bb.getInstList().isEmpty()) continue;
+                var lastInst = bb.getInstList().getLast().getVal();
+
                 var lastDef = new HashMap<MCOperand,MachineInstruction>();
                 var lastUse = new HashMap<MachineInstruction, MachineInstruction>();
                 var bbout = funcLivenessMap.get(bb).out;
                 blockLiveRange(bb, lastDef, lastUse);
+                
                 for (var next : bb.getInstList()) {
                     var iNode = next.getInstNode().getPrev();
                     if (iNode == null) continue;
                     var i = iNode.getVal();
+                    if(!DEL_ENDING_BR && (i.equals(lastInst) || next.equals(lastInst))) continue;
 
                     var iLastUse = lastUse.get(i);
                     var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
