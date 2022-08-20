@@ -48,7 +48,7 @@ public class PassManager {
         passes.add(new LICM());// 循环不变量外提
         passes.add(new InterProceduralDCE());
         passes.add(new GVNGCM(aggressive));
-//        passes.add(new LoopRedundant());
+        passes.add(new LoopRedundant());
 
         passes.add(new FuncInline());
         passes.add(new GlobalVariableOpt());// FuncInline为其创造更多机会
