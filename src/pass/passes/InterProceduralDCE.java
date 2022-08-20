@@ -7,6 +7,9 @@ import java.util.HashSet;
 import ir.*;
 import ir.Module;
 import ir.DerivedTypes.FunctionType;
+import ir.instructions.BinaryInstruction;
+import ir.instructions.CmpInst;
+import ir.instructions.Instructions;
 import ir.instructions.Instructions.BranchInst;
 import ir.instructions.Instructions.CallInst;
 import ir.instructions.Instructions.GetElementPtrInst;
@@ -302,11 +305,16 @@ public class InterProceduralDCE extends ModulePass {
                             && !(call.getUseList().get(0).getU() instanceof ReturnInst)) {
                         // 再向下搜索一层，应该能处理掉大部分的无效return了，不想写递归了
                         // System.out.println("[DEBUG]: " + call.getCalledFunction().getName());
-                        for (var use : call.getUseList().get(0).getU().getUseList()) {
-                            if (!(use.getU() instanceof ReturnInst)) {
-                                isUseful = true;
-                                break;
+                        var user = call.getUseList().get(0).getU();
+                        if(user instanceof Instructions.PHIInst || user instanceof BinaryInstruction){
+                            for (var use : call.getUseList().get(0).getU().getUseList()) {
+                                if (!(use.getU() instanceof ReturnInst)) {
+                                    isUseful = true;
+                                    break;
+                                }
                             }
+                        }else {
+                            isUseful = true;
                         }
                     }
                 }
