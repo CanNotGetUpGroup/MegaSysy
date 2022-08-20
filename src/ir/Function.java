@@ -158,6 +158,27 @@ public class Function extends User {
         return entryBB;
     }
 
+    public BasicBlock getReturnBlock(){
+        HashSet<BasicBlock> visited=new HashSet<>();
+        retBB=null;
+        dfsFindRet(getEntryBB(),visited);
+        return retBB;
+    }
+
+    private BasicBlock retBB;
+
+    public void dfsFindRet(BasicBlock BB,HashSet<BasicBlock> visited){
+        if(retBB!=null) return;
+        if(BB.getSuccessorsNum()==0) {
+            retBB=BB;
+            return ;
+        }
+        for(BasicBlock bb:BB.getSuccessors()){
+            if(visited.add(bb))
+                dfsFindRet(bb,visited);
+        }
+    }
+
     public void setEntryBB(BasicBlock entryBB) {
         this.entryBB = entryBB;
         entryBB.setEntryBlock(true);

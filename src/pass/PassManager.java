@@ -48,7 +48,11 @@ public class PassManager {
         passes.add(new InterProceduralDCE());
         passes.add(new LoopInfoUpdate());
         passes.add(new LICM());// 循环不变量外提
+<<<<<<< HEAD
         passes.add(new LCSSA());
+=======
+//        passes.add(new LCSSA());
+>>>>>>> 8be3271977f8c0d4a9514e90f42251e9c7c4ae7f
 //        passes.add(new LoopFusion());
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
