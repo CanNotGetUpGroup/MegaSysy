@@ -240,7 +240,15 @@ public abstract class MachineInstruction implements Comparable {
     }
 
     public MachineInstruction getNext() {
-        return this.getInstNode().getNext().getVal();
+        var x = this.getInstNode().getNext();
+        if(x == null) return null;
+        return x.getVal();
+    }
+
+    public MachineInstruction getPrev(){
+        var x = this.getInstNode().getPrev();
+        if(x == null) return null;
+        return x.getVal();
     }
 
     public MachineInstruction(MachineBasicBlock parent) {
@@ -340,6 +348,8 @@ public abstract class MachineInstruction implements Comparable {
             return new VCVT(parent, (VCVT) src);
         if (src instanceof VMRS)
             return new VMRS(parent, (VMRS) src);
+        if (src instanceof MLAMLS)
+            return new MLAMLS(parent, (MLAMLS) src);
         throw new RuntimeException("Copy failed: " + src);
     }
 

@@ -111,10 +111,25 @@ public class MachineBasicBlock implements Addressable {
             head = head.getNext();
             var i = head.getVal();
 //            if (!(i instanceof Comment))
-                sb.append("\t").append(i.toString()).append("\n");
+            sb.append("\t").append(i.toString()).append("\n");
         }
         return sb.toString();
     }
+
+    public MachineBasicBlock getNext() {
+        var x = this.getBbNode().getNext();
+        return x == null ? null : x.getVal();
+    }
+
+    public MachineBasicBlock getPrev() {
+        var x = this.getBbNode().getPrev();
+        return x == null ? null : x.getVal();
+    }
+
+    public void remove() {
+        this.getBbNode().remove();
+    }
+
 
     public MachineFunction getParent() {
         return parent;
