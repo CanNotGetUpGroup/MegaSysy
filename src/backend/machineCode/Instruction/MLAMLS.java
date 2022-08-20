@@ -63,4 +63,11 @@ public class MLAMLS extends MachineInstruction {
 
         return ans;
     }
+
+    @Override
+    public ArrayList<Register> getDef() {
+        var ans = new ArrayList<Register>();
+        ans.add(destReg);
+        return ans;
+    }
 }
