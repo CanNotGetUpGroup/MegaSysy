@@ -131,7 +131,7 @@ public class CodeGenManager {
         module.rename();
         PassManager.functionalOpt();
 
-        if (true) {
+        if (false) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
             PassManager.debug=false;
