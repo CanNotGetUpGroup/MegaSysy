@@ -137,19 +137,21 @@ public class Branch extends MachineInstruction {
             case LABEL -> inst + "\t" + destBB.getLabel();
             case FUNC -> inst + "\t" + destf.getLabel();
             case String -> inst + "\t" + destStr;
-        } + "@" + this.getType();
+        } + "  @" + this.getType();
     }
 
     @Override
     public ArrayList<Register> getUse() {
         var ans = new ArrayList<Register>();
         if (type == Type.Call) {
+            var func = getDestf();
             ans.addAll(IntStream
-                    .range(0, 4)
+                    .range(0, func.getIntParaNum())
                     .mapToObj(i -> new MCRegister(Register.Content.Int, i))
                     .collect(Collectors.toSet()));
+
             ans.addAll(IntStream
-                    .range(0, 16)
+                    .range(0, func.getFloatParaNum())
                     .mapToObj(i -> new MCRegister(Register.Content.Float, i))
                     .collect(Collectors.toSet()));
         }
