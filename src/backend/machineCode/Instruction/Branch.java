@@ -145,12 +145,6 @@ public class Branch extends MachineInstruction {
         var ans = new ArrayList<Register>();
         if (type == Type.Call) {
             var func = getDestf();
-
-            System.out.println("======");
-            System.out.println(this);
-            System.out.println(func.getIntParaNum());
-            System.out.println(func.getFloatParaNum());
-
             ans.addAll(IntStream
                     .range(0, func.getIntParaNum())
                     .mapToObj(i -> new MCRegister(Register.Content.Int, i))

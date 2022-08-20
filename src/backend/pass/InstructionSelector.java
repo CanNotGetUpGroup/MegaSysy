@@ -543,24 +543,30 @@ public class InstructionSelector {
             }
 
             case Add -> {
-                MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)), op2 = valueToMCOperand(mbb, ir.getOperand(1));
+                var irOp1 = ir.getOperand(0);
+                var irOp2 = ir.getOperand(1);
 
+                if (irOp1 instanceof Constants.ConstantInt) {
+                    var tmp = irOp1;
+                    irOp1 = irOp2;
+                    irOp2 = tmp;
+                }
+                Register op1 = valueToReg(mbb, irOp1);
                 Register dest = new VirtualRegister();
+
+                if (irOp2 instanceof Constants.ConstantInt) {
+                    var value = ((Constants.ConstantInt) irOp2).getVal();
+                    if (!ImmediateNumber.isLegalImm(value) && ImmediateNumber.isLegalImm(-value)) {
+                        new Arithmetic(mbb, Arithmetic.Type.SUB, dest, op1, new ImmediateNumber(-value)).pushBacktoInstList();
+                        valueMap.put(ir, dest);
+                        break;
+                    }
+                }
+                MCOperand op2 = valueToMCOperand(mbb, irOp2);
+
                 valueMap.put(ir, dest);
 
-                if (op1 instanceof ImmediateNumber) {
-                    MCOperand tmp = op1;
-                    op1 = op2;
-                    op2 = tmp;
-                }
-                if (op1 instanceof ImmediateNumber) {
-                    Register opp1 = new VirtualRegister();
-                    new Move(mbb, opp1, op1).pushBacktoInstList();
-                    op1 = opp1;
-                }
-
-                Arithmetic.Type mcType = Arithmetic.Type.ADD;
-                new Arithmetic(mbb, mcType, dest, (Register) op1, op2).pushBacktoInstList();
+                new Arithmetic(mbb, Arithmetic.Type.ADD, dest, op1, op2).pushBacktoInstList();
             }
             case Sub -> {
                 Value irOp1 = ir.getOperand(0), irOp2 = ir.getOperand(1);
@@ -645,7 +651,6 @@ public class InstructionSelector {
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
                 new Arithmetic(mbb, Arithmetic.Type.MUL, dest, op1, op2).pushBacktoInstList();
-
             }
             case SDiv -> {
                 var irOp1 = ir.getOperand(0);
@@ -668,7 +673,7 @@ public class InstructionSelector {
                         new Arithmetic(mbb, Arithmetic.Type.ASR, temp, op1, l - 1).pushBacktoInstList();
 //                        new Arithmetic(mbb, Arithmetic.Type.LSR, temp, 32 - l).pushBacktoInstList();
                         var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, temp, op1, temp);
-                        inst.setShifter(Shift.Type.LSR, 32-l);
+                        inst.setShifter(Shift.Type.LSR, 32 - l);
                         inst.pushBacktoInstList();
                         new Arithmetic(mbb, Arithmetic.Type.ASR, temp, l).pushBacktoInstList();
                         ans = temp;
