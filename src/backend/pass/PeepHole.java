@@ -97,7 +97,7 @@ public class PeepHole extends MCPass{
                             iList.add((PushOrPop)cur);
                         }
                         if(iList.size() > 1) {
-                            Collections.reverse(iList);
+                            if(type == PushOrPop.Type.Pop) Collections.reverse(iList);
                             var n = new PushOrPopList(bb, type);
                             n.setForFloat(forFloat);
                             if(type.equals(PushOrPop.Type.Push)) iList.forEach(ii -> n.AddReg((Register)ii.getOp2()));
