@@ -13,7 +13,7 @@ public class PassManager {
     public static ArrayList<MCPass> MCPasses = new ArrayList<>();
     // 官方测例可以保证不会出现undef的情况，因此某些情况下可以激进地忽略掉undef（可能无法通过中端测试）
     public static boolean ignoreUndef = false;
-    public static boolean eliminatePreHeader = false;
+    public static boolean eliminatePreHeader = true;
     public static boolean aggressive = false;
     public static boolean debug = true;
 
@@ -48,6 +48,8 @@ public class PassManager {
         passes.add(new InterProceduralDCE());
         passes.add(new LoopInfoUpdate());
         passes.add(new LICM());// 循环不变量外提
+        passes.add(new LCSSA());
+        passes.add(new LoopFusion());
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new GVNGCM(aggressive));
