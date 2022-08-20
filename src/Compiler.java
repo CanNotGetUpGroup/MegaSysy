@@ -59,7 +59,7 @@ public class Compiler {
             PassManager.debug=false;
             IndVarReduction.backEndTest=true;
             PassManager.initialization();
-//            PassManager.initializationMC();
+            PassManager.initializationMC();
         }
         PassManager.run(module);
 
