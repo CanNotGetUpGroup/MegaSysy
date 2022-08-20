@@ -213,7 +213,7 @@ public class PeepHole extends MCPass{
                     var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
                     var isLastDef = i.getDef().stream().anyMatch(def -> (lastDef.get(def) != null && lastDef.get(def).equals(i)));
                     var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
-                    if(isIDefbbOut) iLastUse = i;
+                    if(isIDefbbOut && isLastDef) iLastUse = i;
 
                     if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null && !i.isForFloat()) { // float不杀
                         i.delete();
