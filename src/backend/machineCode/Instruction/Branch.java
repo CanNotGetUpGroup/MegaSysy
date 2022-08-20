@@ -167,11 +167,14 @@ public class Branch extends MachineInstruction {
                     .range(0, 4)
                     .mapToObj(i -> new MCRegister(Register.Content.Int, i))
                     .collect(Collectors.toSet()));
+            ans.add(new MCRegister(MCRegister.RegName.IP));
             ans.addAll(IntStream
                     .range(0, 16)
                     .mapToObj(i -> new MCRegister(Register.Content.Float, i))
                     .collect(Collectors.toSet()));
         }
+        if (isStoreLR())
+            ans.add(new MCRegister(Register.Content.Int, 13));
 
         return ans;
     }

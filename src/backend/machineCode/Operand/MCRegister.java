@@ -11,7 +11,7 @@ public class MCRegister extends Register {
     private RegName name;
 
     public static int maxRegNum(Content type){
-        if(type == Content.Int) return 12;
+        if(type == Content.Int) return 14;
         else return 32;
     }
 
@@ -32,8 +32,8 @@ public class MCRegister extends Register {
         r10(10),
         r11(11),
         IP(12),
-        SP(13),
-        LR(14),
+        SP(14),
+        LR(13),
         PC(15),
         CPSR(16),
         FPSCR(17),
@@ -55,8 +55,8 @@ public class MCRegister extends Register {
             case 1 -> RegName.r1;
             case 11 -> RegName.r11;
             case 12 -> RegName.IP;
-            case 13 -> RegName.SP;
-            case 14 -> RegName.LR;
+            case 14 -> RegName.SP;
+            case 13 -> RegName.LR;
             case 15 -> RegName.PC;
             case 16 -> RegName.CPSR;
             case 2 -> RegName.r2;
@@ -109,8 +109,8 @@ public class MCRegister extends Register {
         if (isInt()) {
             RegName reg = switch (id) {
                 case 12 -> RegName.IP;
-                case 13 -> RegName.SP;
-                case 14 -> RegName.LR;
+                case 14 -> RegName.SP;
+                case 13 -> RegName.LR;
                 case 15 -> RegName.PC;
                 case 16 -> RegName.CPSR;
                 case 17 -> RegName.FPSCR;
