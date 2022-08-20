@@ -348,8 +348,12 @@ public abstract class Instructions {
 //                        System.out.println("error!");
                         return null;
                     }
-                    ConstantValue = ((Constants.ConstantArray)((GlobalVariable)getArrayIdx().get(0))
-                            .getOperand(0)).getIndexConstant(CI.getVal());
+                    if(!(getResultElementType()).isArrayTy()){
+                        ConstantValue = ((Constants.ConstantArray)((GlobalVariable)getArrayIdx().get(0))
+                                .getOperand(0)).getIndexConstant(CI.getVal());
+                    }else{
+                        ConstantValue = (Constant) CA.getOperand(CI.getVal());
+                    }
                     return ConstantValue;
                 }
             } else {

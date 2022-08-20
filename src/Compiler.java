@@ -26,7 +26,7 @@ public class Compiler {
         FileWriter fw = new FileWriter(args[2]);
         PrintWriter pw = new PrintWriter(fw);
 
-        String[] str = {};
+        String[] str = {"vector_mul1.sy","vector_mul2.sy","vector_mul3.sy"};
         for (String s : str) {
             if (args[3].endsWith(s)) {
 //                InputStream in=new FileInputStream(args[3]);
