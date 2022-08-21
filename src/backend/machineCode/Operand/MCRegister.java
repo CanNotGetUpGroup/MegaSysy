@@ -11,7 +11,8 @@ public class MCRegister extends Register {
     private RegName name;
 
     public static int maxRegNum(Content type){
-        if(type == Content.Int) return 14;
+        if(type == Content.Int) return 14; // can be 14
+
         else return 32;
     }
 
