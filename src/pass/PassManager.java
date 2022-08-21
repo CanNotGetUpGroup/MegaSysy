@@ -25,6 +25,7 @@ public class PassManager {
         GVNGCM.GCMOpen = true;
         // eliminatePreHeader=true;//关闭LICM
         passes.add(new AddCondPreBlock());
+        passes.add(new TailCallOpt());
         passes.add(new SimplifyCFG(eliminatePreHeader));
         passes.add(new Mem2Reg());// 消除掉local int(or float)的alloca，确保DCE消除store的正确
         // 只分析一次，函数内联后可能会改变side effect(没有side effect的函数内联进了side effect函数)
@@ -63,7 +64,7 @@ public class PassManager {
         // passes.add(new LoopUnroll(false));//还存在bug，开了也不知道能不能快，干脆不开了
         // passes.add(new LoopUnroll(false));
         passes.add(new LoopRedundant());
-        passes.add(new TailCallOpt());
+
         aggressive = true;// 激进的GVN，消除掉数组参数的alloca，并关闭ArraySSA
         eliminatePreHeader = true;// 完成了循环优化，删掉preHeader
         passes.add(new SimplifyCFG(eliminatePreHeader));
