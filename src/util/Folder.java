@@ -562,9 +562,9 @@ public class Folder {
             case Sub -> {
                 return simplifySub(L, R, recurse);
             }
-            case FSub -> {
-                return simplifyFSub(L, R, recurse);
-            }
+//            case FSub -> {
+//                return simplifyFSub(L, R, recurse);
+//            }
             case Mul -> {
                 return simplifyMul(L, R, recurse);
             }

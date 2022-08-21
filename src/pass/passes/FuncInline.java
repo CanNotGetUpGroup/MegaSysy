@@ -238,11 +238,11 @@ public class FuncInline extends ModulePass {
 //        ){
 //            return false;
 //        }
-//        if(!(caller.getName().equals("asr5"))||F.getName().equals("F1")
-//                ||F.getName().equals("F2")||F.getName().equals("my_fabs")
-//        ){
-//            return false;
-//        }
+        if(!(caller.getName().equals("asr5"))||F.getName().equals("F1")
+                ||F.getName().equals("F2")||F.getName().equals("my_fabs")
+        ){
+            return false;
+        }
         int cost = 0;
 
         //检查F是否自递归
