@@ -37,7 +37,7 @@ public class DeadCodeEmit extends ModulePass {
                 functionDCE(F);
             }
 
-            if(F.getCallerList().isEmpty() && !F.getName().equals("main")) {
+            if(F.getCallerList().isEmpty() && !F.getName().equals("main") && !F.getName().equals("memset")) {
                 deadFunc.add(F);
             }
         }

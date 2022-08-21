@@ -15,6 +15,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import pass.PassManager;
+import pass.passes.IndVarReduction;
 import util.IList;
 
 import java.io.FileWriter;
@@ -65,8 +66,6 @@ public class CodeGenManager {
         var clean = new Clean(funcList);
         clean.run();
 
-//        var peepHole = new PeepHole(funcList);
-//       peepHole.run();
     }
 
     private void halfRun22() {
@@ -132,22 +131,30 @@ public class CodeGenManager {
         module.rename();
         PassManager.functionalOpt();
 
-        if (true) {
+        if (false) {
             //TODO：优化掉undef
-            PassManager.ignoreUndef = true;
+            PassManager.ignoreUndef = false;
+            PassManager.debug=false;
+            IndVarReduction.backEndTest=true;
             PassManager.initialization();
             PassManager.initializationMC();
         }
         PassManager.run(module);
 
+        pw1.println(module.toLL());
+        pw1.flush();
 
         var mc = CodeGenManager.getInstance();
         mc.loadModule(module);
 
-        mc.performanceRun();
+        mc.halfRun1(true);
+        pw2.println(mc.toArm());
+        pw2.flush();
+
+        mc.halfRun2();
 
         PassManager.runMC(mc);
-
+        boolean debugMode = true;
         pw3.println(mc.toArm());
         pw3.flush();
     }

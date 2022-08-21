@@ -12,6 +12,11 @@ public class Cmp extends MachineInstruction {
 
     private Register op1;
     private MCOperand op2;
+    boolean isCmn = false;
+
+    public void setCmn(boolean isCmn) {
+        this.isCmn = isCmn;
+    }
 
     public Cmp(MachineBasicBlock parent, Register op1, MCOperand op2) {
         super(parent);
@@ -26,6 +31,7 @@ public class Cmp extends MachineInstruction {
         super(parent, cmp);
         this.op1 = (Register) cmp.getOp1();
         this.op2 = cmp.getOp2();
+        this.isCmn = cmp.isCmn;
     }
 
         @Override
@@ -57,7 +63,7 @@ public class Cmp extends MachineInstruction {
 
     @Override
     public String toString() {
-        return (isForFloat()? "v": "") + "cmp" + condString()+ typeInfoString() + " " + op1.toString() + " , " + op2.toString();
+        return (isForFloat()? "v": "") + (isCmn ? "cmn":"cmp") + condString()+ typeInfoString() + " " + op1.toString() + " , " + op2.toString();
 
     }
 }

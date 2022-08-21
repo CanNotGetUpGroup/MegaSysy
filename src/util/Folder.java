@@ -23,6 +23,9 @@ public class Folder {
         Value ret = null;
         int recurseTimes = 3;
         if (Instruction.isBinary(I.getOp())) {
+            if(I.getOperand(1)==null){
+                System.out.println(I.getOperand(1));
+            }
             ret = simplifyBin(I.getOp(), I.getOperand(0), I.getOperand(1), recurseTimes);
         }
         switch (I.getOp()) {
@@ -92,6 +95,14 @@ public class Folder {
             int c=((ConstantInt)MU.V).getVal();
             return BinaryInstruction.create(Ops.Mul, X, ConstantInt.get(c+1), InsertBefore);
         }
+        // (Y * A) + (Y * B) -> (A+B)*Y
+        MatchUndef MU1=new MatchUndef(),MU2=new MatchUndef(),MU3=new MatchUndef();
+        if (Match.compare(X, new MatchBin(MU1, MU2, Ops.Mul))
+                &&Match.compare(Y,new MatchBin(Match.createMatch(MU1.V),MU3,Ops.Mul))) {
+            MyIRBuilder.getInstance().setInsertPoint(InsertBefore);
+            Value AB=MyIRBuilder.getInstance().createBinary(Ops.Add,MU2.V,MU3.V);
+            return BinaryInstruction.create(Ops.Mul, MU1.V,AB, InsertBefore);
+        }
         ret = simplifyAssociative(Ops.Add, X, Y, recurse);
         return ret;
     }
@@ -134,6 +145,26 @@ public class Folder {
         if (Match.compare(Y, new MatchBin(MX, MX, Ops.FAdd))) {
             return BinaryInstruction.create(Ops.FMul, X, ConstantFP.get(3), InsertBefore);
         }
+        // (Y * A) + Y -> (A+1)*Y || (A * Y) + Y -> Y * (A+1)
+        MU=new MatchUndef();
+        if (Match.compare(X, new MatchBin(MY, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
+            float c=((ConstantFP)MU.V).getVal();
+            return BinaryInstruction.create(Ops.FMul, Y, ConstantFP.get(c+1), InsertBefore);
+        }
+        // X + (X * A) -> (A+1)*X || X + (X * A) -> X * (A+1)
+        MU=new MatchUndef();
+        if (Match.compare(Y, new MatchBin(MX, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
+            float c=((ConstantFP)MU.V).getVal();
+            return BinaryInstruction.create(Ops.FMul, X, ConstantFP.get(c+1), InsertBefore);
+        }
+        // (Y * A) + (Y * B) -> (A+B)*Y
+        MatchUndef MU1=new MatchUndef(),MU2=new MatchUndef(),MU3=new MatchUndef();
+        if (Match.compare(X, new MatchBin(MU1, MU2, Ops.Mul))
+                &&Match.compare(Y,new MatchBin(Match.createMatch(MU1.V),MU3,Ops.Mul))) {
+            MyIRBuilder.getInstance().setInsertPoint(InsertBefore);
+            Value AB=MyIRBuilder.getInstance().createBinary(Ops.FAdd,MU2.V,MU3.V);
+            return BinaryInstruction.create(Ops.FMul, MU1.V,AB, InsertBefore);
+        }
         ret = simplifyAssociative(Ops.FAdd, X, Y, recurse);
         return ret;
     }
@@ -141,7 +172,7 @@ public class Folder {
     public static Value simplifySub(Value X, Value Y, int recurse) {
         Value ret = createSub(X, Y);
         if (ret != null) return ret;
-        Match MY = Match.createMatch(Y);
+        Match MY = Match.createMatch(Y),MX=Match.createMatch(X);
         // X - X -> 0
         if (Match.compare(X, MY)) {
             return ConstantInt.get(0);
@@ -150,6 +181,26 @@ public class Folder {
         if(Y instanceof ConstantInt){
             return BinaryInstruction.create(Ops.Add, X, ConstantInt.get(-((ConstantInt) Y).getVal()), InsertBefore);
         }
+        // (Y * A) - Y -> (A-1)*Y || (A * Y) - Y -> Y * (A-1)
+        MatchUndef MU=new MatchUndef();
+        if (Match.compare(X, new MatchBin(MY, MU, Ops.Mul))&&(MU.V instanceof ConstantInt)) {
+            int c=((ConstantInt)MU.V).getVal();
+            return BinaryInstruction.create(Ops.Mul, Y, ConstantInt.get(c-1), InsertBefore);
+        }
+        // X - (X * A) -> (1-A)*X || X - (X * A) -> X * (1-A)
+        MU=new MatchUndef();
+        if (Match.compare(Y, new MatchBin(MX, MU, Ops.Mul))&&(MU.V instanceof ConstantInt)) {
+            int c=((ConstantInt)MU.V).getVal();
+            return BinaryInstruction.create(Ops.Mul, X, ConstantInt.get(1-c), InsertBefore);
+        }
+        // (Y * A) - (Y * B) -> (A-B)*Y
+        MatchUndef MU1=new MatchUndef(),MU2=new MatchUndef(),MU3=new MatchUndef();
+        if (Match.compare(X, new MatchBin(MU1, MU2, Ops.Mul))
+                &&Match.compare(Y,new MatchBin(Match.createMatch(MU1.V),MU3,Ops.Mul))) {
+            MyIRBuilder.getInstance().setInsertPoint(InsertBefore);
+            Value AB=MyIRBuilder.getInstance().createBinary(Ops.Sub,MU2.V,MU3.V);
+            return BinaryInstruction.create(Ops.Mul, MU1.V,AB, InsertBefore);
+        }
         ret = simplifySubAssociative(Ops.Sub, X, Y, recurse);
         return ret;
     }
@@ -157,12 +208,32 @@ public class Folder {
     public static Value simplifyFSub(Value X, Value Y, int recurse) {
         Value ret = createFSub(X, Y);
         if (ret != null) return ret;
-        Match MY = Match.createMatch(Y);
+        Match MY = Match.createMatch(Y),MX=Match.createMatch(X);
         // X - X -> 0
         if (Match.compare(X, MY)) {
             return ConstantFP.get(0);
         }
-        ret = simplifySubAssociative(Ops.FSub, X, Y, recurse);
+//        // (Y * A) - Y -> (A-1)*Y || (A * Y) - Y -> Y * (A-1)
+//        MatchUndef MU=new MatchUndef();
+//        if (Match.compare(X, new MatchBin(MY, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
+//            float c=((ConstantFP)MU.V).getVal();
+//            return BinaryInstruction.create(Ops.FMul, Y, ConstantFP.get(c-1), InsertBefore);
+//        }
+//        // X - (X * A) -> (1-A)*X || X - (X * A) -> X * (1-A)
+//        MU=new MatchUndef();
+//        if (Match.compare(Y, new MatchBin(MX, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
+//            float c=((ConstantFP)MU.V).getVal();
+//            return BinaryInstruction.create(Ops.FMul, X, ConstantFP.get(1-c), InsertBefore);
+//        }
+//        // (Y * A) - (Y * B) -> (A-B)*Y
+//        MatchUndef MU1=new MatchUndef(),MU2=new MatchUndef(),MU3=new MatchUndef();
+//        if (Match.compare(X, new MatchBin(MU1, MU2, Ops.FMul))
+//                &&Match.compare(Y,new MatchBin(Match.createMatch(MU1.V),MU3,Ops.FMul))) {
+//            MyIRBuilder.getInstance().setInsertPoint(InsertBefore);
+//            Value AB=MyIRBuilder.getInstance().createBinary(Ops.FSub,MU2.V,MU3.V);
+//            return BinaryInstruction.create(Ops.FMul, MU1.V,AB, InsertBefore);
+//        }
+//        ret = simplifySubAssociative(Ops.FSub, X, Y, recurse);
         return ret;
     }
 
@@ -185,6 +256,14 @@ public class Folder {
         if (Match.compare(Y, M1)) {
             return X;
         }
+        // X * C -> X << c(可能会阻止加法融合为乘法)
+//        if(Y instanceof ConstantInt){
+//            int C=((ConstantInt) Y).getVal();
+//            if(C>0&&(C&(C-1))==0){
+//                Constants.ConstantInt cc= Constants.ConstantInt.get(Integer.bitCount(C-1));
+//                return BinaryInstruction.create(Ops.Shl,X,cc,InsertBefore);
+//            }
+//        }
         // (X / Y) * Y || Y * (X / Y) 需要考虑整除
 //        MatchUndef MA=new MatchUndef(),MB=new MatchUndef();
 //        if(Match.compare(X,new MatchBin(MA,MY,Ops.SDiv))
@@ -251,6 +330,9 @@ public class Folder {
         Value ret = createFDiv(X, Y);
         if (ret != null) return ret;
         Match MY = Match.createMatch(Y);
+        if(Y==null){
+            System.out.println(Y);
+        }
         Match M0 = new MatchConst(ConstantInt.get(0));
         // 0 / X -> 0
         if (Match.compare(X, M0)) {
@@ -284,6 +366,38 @@ public class Folder {
         // X * Y % Y -> 0
         MatchUndef MA = new MatchUndef();
         if (Match.compare(X, new MatchBin(MA, MY, Ops.Mul))) {
+            return ConstantInt.get(0);
+        }
+        return ret;
+    }
+
+    public static Value simplifyShl(Value X, Value Y, int recurse) {
+        Value ret = createShl(X, Y);
+        if (ret != null) return ret;
+        Match MY = Match.createMatch(Y);
+        Match M0 = new MatchConst(ConstantInt.get(0));
+        // X << 0 -> X
+        if (Match.compare(Y, M0)) {
+            return X;
+        }
+        // 0 << X -> 0
+        if (Match.compare(X, M0)) {
+            return ConstantInt.get(0);
+        }
+        return ret;
+    }
+
+    public static Value simplifyShr(Value X, Value Y, int recurse) {
+        Value ret = createShr(X, Y);
+        if (ret != null) return ret;
+        Match MY = Match.createMatch(Y);
+        Match M0 = new MatchConst(ConstantInt.get(0));
+        // X >> 0 -> X
+        if (Match.compare(Y, M0)) {
+            return X;
+        }
+        // 0 >> X -> 0
+        if (Match.compare(X, M0)) {
             return ConstantInt.get(0);
         }
         return ret;
@@ -442,29 +556,35 @@ public class Folder {
             case Add -> {
                 return simplifyAdd(L, R, recurse);
             }
-            case FAdd -> {
-                return simplifyFAdd(L, R, recurse);
-            }
+//            case FAdd -> {
+//                return simplifyFAdd(L, R, recurse);
+//            }
             case Sub -> {
                 return simplifySub(L, R, recurse);
             }
-            case FSub -> {
-                return simplifyFSub(L, R, recurse);
-            }
+//            case FSub -> {
+//                return simplifyFSub(L, R, recurse);
+//            }
             case Mul -> {
                 return simplifyMul(L, R, recurse);
             }
-            case FMul -> {
-                return simplifyFMul(L, R, recurse);
-            }
+//            case FMul -> {
+//                return simplifyFMul(L, R, recurse);
+//            }
             case SDiv -> {
                 return simplifyDiv(L, R, recurse);
             }
-            case FDiv -> {
-                return simplifyFDiv(L, R, recurse);
-            }
+//            case FDiv -> {
+//                return simplifyFDiv(L, R, recurse);
+//            }
             case SRem -> {
                 return simplifySRem(L, R, recurse);
+            }
+            case Shl -> {
+                return simplifyShl(L, R, recurse);
+            }
+            case Shr -> {
+                return simplifyShr(L, R, recurse);
             }
             default -> {
                 return null;
@@ -654,8 +774,10 @@ public class Folder {
                     if (CI2.getVal() == -1)
                         return RHS;
                     break;
-                case Xor:
+                case Xor,Shl,Shr:
                     // X ^ 0 == X
+                    // X << 0 == X
+                    // X >> 0 == X
                     if (CI2.getVal() == 0) return LHS;
                     break;
             }
@@ -665,33 +787,33 @@ public class Folder {
                 return createBinOp(Opc, RHS, LHS);
             }
         } else if (RHS instanceof ConstantFP) {
-            ConstantFP CI2 = (ConstantFP) RHS;
-            switch (Opc) {
-                case FSub:
-                case FAdd:
-                    // X - 0 == X
-                    // X + 0 == X
-                    if (CI2.getVal() == 0) {
-                        return LHS;
-                    }
-                    break;
-                case FMul:
-                    // X * 0 == 0
-                    // X * 1 == X
-                    if (CI2.getVal() == 0) {
-                        return RHS;
-                    }
-                    if (CI2.getVal() == 1) {
-                        return LHS;
-                    }
-                    break;
-                case FDiv:
-                    // X / 1 == X
-                    if (CI2.getVal() == 1) {
-                        return LHS;
-                    }
-                    break;
-            }
+//            ConstantFP CI2 = (ConstantFP) RHS;
+//            switch (Opc) {
+//                case FSub:
+//                case FAdd:
+//                    // X - 0 == X
+//                    // X + 0 == X
+//                    if (CI2.getVal() == 0) {
+//                        return LHS;
+//                    }
+//                    break;
+//                case FMul:
+//                    // X * 0 == 0
+//                    // X * 1 == X
+//                    if (CI2.getVal() == 0) {
+//                        return RHS;
+//                    }
+//                    if (CI2.getVal() == 1) {
+//                        return LHS;
+//                    }
+//                    break;
+//                case FDiv:
+//                    // X / 1 == X
+//                    if (CI2.getVal() == 1) {
+//                        return LHS;
+//                    }
+//                    break;
+//            }
         } else if (LHS instanceof ConstantFP) {
             // If C1 is a ConstantFP and C2 is not, swap the operands.
             if (Instruction.isCommutative(Opc)) {
@@ -725,6 +847,10 @@ public class Folder {
                         return ConstantInt.get(C1V | C2V);
                     case Xor:
                         return ConstantInt.get(C1V ^ C2V);
+                    case Shl:
+                        return ConstantInt.get(C1V<<C2V);
+                    case Shr:
+                        return ConstantInt.get(C1V>>C2V);
                 }
             }
             switch (Opc) {
@@ -809,6 +935,14 @@ public class Folder {
 
     public static Value createNot(Value C) {
         return createBinOp(Ops.Xor, C, ConstantInt.const1_1());
+    }
+
+    public static Value createShl(Value LHS, Value RHS){
+        return createBinOp(Ops.Shl,LHS,RHS);
+    }
+
+    public static Value createShr(Value LHS, Value RHS){
+        return createBinOp(Ops.Shr,LHS,RHS);
     }
 
     public static Constant createSelect(Constant C, Constant True, Constant False) {

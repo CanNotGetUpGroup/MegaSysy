@@ -9,10 +9,12 @@ import backend.machineCode.Operand.Address;
 import backend.machineCode.Operand.ImmediateNumber;
 import backend.machineCode.Operand.MCOperand;
 import backend.machineCode.Operand.Register;
+import backend.machineCode.Operand.Shifter;
 import ir.Module;
 import pass.MCPass;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
@@ -20,10 +22,16 @@ import java.util.Objects;
 import org.antlr.v4.runtime.misc.Pair;
 
 public class PeepHole extends MCPass{
-    private static final boolean PEEPHOLE_DEBUG = true;
+    private static final boolean PEEPHOLE_DEBUG = false;
+    private boolean LASTRUN = false;
 
     public PeepHole() {
         super();
+    }
+
+    public PeepHole(boolean lastRun) {
+        super();
+        this.LASTRUN = lastRun;
     }
 
     private boolean peepHoleWithoutDataflow(CodeGenManager CGM) {
@@ -35,11 +43,71 @@ public class PeepHole extends MCPass{
 
                 // 消除bb尾无效跳转
                 var lastInst = bb.getInstList().getLast().getVal();
-                if (lastInst instanceof Branch && lastInst.getCond() == null) {
+                if (LASTRUN && lastInst instanceof Branch && lastInst.getCond() == null) {
                     if ( bb.getBbNode().getNext() != null && ((Branch) lastInst).getDestBB() == bb.getBbNode().getNext().getVal()) {
                         lastInst.delete();
                         done = false;
                         if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: del bb ending branch");
+                        continue;
+                    }
+                }
+
+                for(var i : bb.getInstList()) {
+                    if(i instanceof Arithmetic) {
+                        if((((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
+                                && i.getOp2() instanceof ImmediateNumber
+                                && ((ImmediateNumber)i.getOp2()).getValue() == 0) {
+                            if(i.getDest().equals(i.getOp1()) || (i.getDest().toString().equals("SP") && i.getOp1().toString().equals("SP"))) {
+                                // add/sub a a 0 -> del
+                                i.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a a 0 -> del");
+                                continue;
+                            }else {
+                                // add/sub a b 0 -> mov a b
+                                new Move(bb, i.getDest(), i.getOp1()).insertBefore(i);
+                                i.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a b 0 -> mov a b");
+                                continue;
+                            }
+                        }
+                    }
+                    // move a a -> del
+                    if(i instanceof Move && i.getDest().toString().equals(i.getOp2().toString())) {
+                        i.delete();
+                        done = false;
+                        if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: move a a -> del");
+                        continue;
+                    }
+
+                    // pushpopSimplify
+                    if(LASTRUN && i instanceof PushOrPop) {                     
+                        var type = ((PushOrPop)i).getType();
+                        var forFloat = i.isForFloat();
+                        var next = i.getNext();
+                        if(next instanceof PushOrPop && ((PushOrPop) next).getType().equals(type) && next.isForFloat() == forFloat) continue;
+
+                        ArrayList<PushOrPop> iList =  new ArrayList<PushOrPop>();
+                        iList.add((PushOrPop)i);
+                        for(var cur=i.getPrev();
+                            cur instanceof PushOrPop && ((PushOrPop) cur).getType().equals(type) && cur.isForFloat() == forFloat;
+                            cur = cur.getPrev()
+                        ) {
+                            iList.add((PushOrPop)cur);
+                        }
+                        if(iList.size() > 1) {
+                            if(type == PushOrPop.Type.Pop) Collections.reverse(iList);
+                            var n = new PushOrPopList(bb, type);
+                            n.setForFloat(forFloat);
+                            if(type.equals(PushOrPop.Type.Push)) iList.forEach(ii -> n.AddReg((Register)ii.getOp2()));
+                            else iList.forEach(ii -> n.AddReg((Register)ii.getDest()));
+                            n.insertAfter(i);
+                            iList.forEach(MachineInstruction::delete);
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: pushpopSimplify");
+                            continue;
+                        }
                     }
                 }
 
@@ -49,26 +117,8 @@ public class PeepHole extends MCPass{
                     if (iNode == null) continue;
                     var i = iNode.getVal();
 
-                    if(i instanceof Arithmetic) {
-                        if((((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
-                                && i.getOp2() instanceof ImmediateNumber
-                                && ((ImmediateNumber)i.getOp2()).getValue() == 0) {
-                            if(i.getDest().equals(i.getOp1())) {
-                                // add/sub a a 0 -> del
-                                i.delete();
-                                done = false;
-                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a a 0 -> del");
-                            }else {
-                                // add/sub a b 0 -> mov a b
-                                new Move(bb, i.getDest(), i.getOp1()).insertBefore(i);
-                                i.delete();
-                                done = false;
-                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: add/sub a b 0 -> mov a b");
-                            }
-                        }
-                    }
-
                     if(i instanceof LoadOrStore) {
+                        // ldr2mov
                         // str a [b x]    str a [b x]
                         // ldr c [b x] -> mov c a
                         if(next instanceof LoadOrStore
@@ -83,13 +133,9 @@ public class PeepHole extends MCPass{
                         }
                     }
 
-                    if(i instanceof Move) {
-                        // move a a -> del
-                        if(i.getDest().toString().equals(i.getOp2().toString())) {
-                            i.delete();
-                            done = false;
-                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: move a a -> del");
-                        }else {
+                    if(i instanceof Move) {   
+                        if(!i.getDest().toString().equals(i.getOp2().toString())) {
+                            // delredmov
                             // move a b
                             // move a c -> move a c    !! move a a 不能删除
                             if(next instanceof Move 
@@ -101,6 +147,7 @@ public class PeepHole extends MCPass{
                                 done = false;
                                 if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE0: delredmov");
                                 }
+                            // delloopmov
                             // move a b
                             // move b a
                             if(next instanceof Move
@@ -149,9 +196,31 @@ public class PeepHole extends MCPass{
             var funcLivenessMap = funcLivenessAnalysis(f);
             
             for (var bb : f.getBbList()) {
+                if(bb.getInstList().isEmpty()) continue;
+                var lastInst = bb.getInstList().getLast().getVal();
+
                 var lastDef = new HashMap<MCOperand,MachineInstruction>();
                 var lastUse = new HashMap<MachineInstruction, MachineInstruction>();
+                var bbout = funcLivenessMap.get(bb).out;
                 blockLiveRange(bb, lastDef, lastUse);
+                
+                for (var next : bb.getInstList()) {
+                    var iNode = next.getInstNode().getPrev();
+                    if (iNode == null) continue;
+                    var i = iNode.getVal();
+
+                    var iLastUse = lastUse.get(i);
+                    var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
+                    var isLastDef = i.getDef().stream().anyMatch(def -> (lastDef.get(def) != null && lastDef.get(def).equals(i)));
+                    var isNotDefSP = i.getDef().stream().noneMatch(def -> def.toString().equals("SP"));
+                    if(isIDefbbOut && isLastDef) iLastUse = i;
+
+                    if(!isIDefbbOut && !isLastDef && isNotDefSP && i.getCond() == null && !i.hasShift() && iLastUse == null && !i.isForFloat()) { // float不杀
+                        i.delete();
+                        done = false;
+                        if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: remove useless instr");
+                    }
+                }
 
                 for (var next : bb.getInstList()) {
                     var iNode = next.getInstNode().getPrev();
@@ -159,13 +228,17 @@ public class PeepHole extends MCPass{
                     var i = iNode.getVal();
 
                     var iLastUse = lastUse.get(i);
+                    var isIDefbbOut = i.getDef().stream().anyMatch(bbout::contains);
+                    var isLastDef = i.getDef().stream().anyMatch(def -> (lastDef.get(def) != null && lastDef.get(def).equals(i)));
+                    if(isIDefbbOut && isLastDef) iLastUse = i;
 
                     // *********************************************************************************************************************************************
                     // add/sub ldr/str/move
                     // ADD r1, r2, 4
                     // LDR r0, [ r1, 8 ] -> LDR r0, [ r2, 4+8 ]
-                    if( !i.hasShift() && !next.hasShift()
-                        && i instanceof Arithmetic 
+                    if( !i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null
+                        && i instanceof Arithmetic
                         && (((Arithmetic) i).getType() == Arithmetic.Type.ADD || ((Arithmetic) i).getType() == Arithmetic.Type.SUB)
                         && i.getOp2() instanceof ImmediateNumber
                             ) {
@@ -175,8 +248,7 @@ public class PeepHole extends MCPass{
                         if(next instanceof LoadOrStore && Objects.equals(iLastUse, next)) {
                             boolean isSameDest = ((Address)next.getOp2()).getReg().equals(i.getDest());
                             boolean isImmOffset = ((Address)next.getOp2()).getOffset() instanceof ImmediateNumber;
-                            // TODO: bb间的usedef存在问题，只开放r0不会遇到bug，待修复
-                            if(isSameDest && isImmOffset && i.getDest().getId() == 0) {
+                            if(isSameDest && isImmOffset) {
                                 int nextImm = ((ImmediateNumber)((Address)next.getOp2()).getOffset()).getValue();
                                 if((isAdd && nextImm+iImm < 4096) || (!isAdd && nextImm-iImm >= 0)) {
                                     var nImm = isAdd ? new ImmediateNumber(nextImm+iImm) : new ImmediateNumber(nextImm-iImm);
@@ -185,6 +257,7 @@ public class PeepHole extends MCPass{
                                     i.delete();
                                     done = false;
                                     if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: add/sub ldr/str");
+                                    continue;
                                 }
                             }
                         } else if (next instanceof Move) {
@@ -194,9 +267,9 @@ public class PeepHole extends MCPass{
                             var nextnextNode = next.getInstNode().getNext();
                             if(nextnextNode != null) {
                                 var nextnext = nextnextNode.getVal();
-                                if( !nextnext.hasShift() 
-                                    && nextnext instanceof LoadOrStore 
-                                    && ((LoadOrStore)nextnext).getType() == LoadOrStore.Type.STORE 
+                                if( !nextnext.hasShift()
+                                    && nextnext instanceof LoadOrStore
+                                    && ((LoadOrStore)nextnext).getType() == LoadOrStore.Type.STORE
                                     && Objects.equals(iLastUse, nextnext)) {
                                     var moveStoreData = next.getDest().equals(nextnext.getOp1());
                                     var isSameDest = ((Address)nextnext.getOp2()).getReg().equals(i.getDest());
@@ -212,6 +285,7 @@ public class PeepHole extends MCPass{
                                             i.delete();
                                             done = false;
                                             if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: add/sub move");
+                                            continue;
                                         }
                                     }
                                 }
@@ -222,24 +296,340 @@ public class PeepHole extends MCPass{
                     // mov a 2
                     // cmp b a  -> cmp b 2
                     if(!i.hasShift() && !next.hasShift() &&
-                        i instanceof Move &&
+                        i.getCond() == null && next.getCond() == null &&
+                        (i instanceof Move || i instanceof LoadImm) &&
                         i.getOp2() instanceof ImmediateNumber &&
                         Objects.equals(iLastUse, next) &&
                         next instanceof Cmp &&
-                        (i.getDest().equals(next.getOp1()) || i.getDest().equals(next.getOp2())) &&
+                        i.getDest().equals(next.getOp2()) &&
                         !next.getOp1().equals(next.getOp2())) { // to avoid cmp a a
                             var imm = ((ImmediateNumber)i.getOp2()).getValue();
+                            boolean success = false;
                             if(ImmediateNumber.isLegalImm(imm)) {
-                                if(i.getDest().equals(next.getOp1())) {
-                                    next.setOp1(new ImmediateNumber(imm));
-                                } else {
-                                    next.setOp2(new ImmediateNumber(imm));
-                                }
+                                next.setOp2(new ImmediateNumber(imm));
+                                success = true;
+                            } else if(ImmediateNumber.isLegalImm(-imm)) {
+                                next.setOp2(new ImmediateNumber(-imm));
+                                ((Cmp)next).setCmn(true);
+                                success = true;
+                            }
+                            if(success) {
                                 i.delete();
                                 done = false;
                                 if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mov cmp");
+                                continue;
                             }
                     }
+                    // *********************************************************************************************************************************************
+                    // move replace
+                    // mov a b
+                    // .......
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        i instanceof Move &&
+                        !i.isForFloat() &&
+                        !(i.getOp2() instanceof ImmediateNumber) &&
+                        Objects.equals(iLastUse, next) &&
+                        !(next instanceof Branch)) {
+                        var src = i.getOp2();
+                        var dst = i.getDest();
+                        boolean success = false;
+                        if(next.getOp1() != null && next.getOp1().equals(dst)) {next.setOp1(src); success = true;}
+                        else if(next.getOp2().equals(dst)) {next.setOp2(src); success = true;}
+                        else if(next.getOp2() != null && next.getOp2() instanceof Address) {
+                            Address addr = (Address)next.getOp2();
+                            if(addr.getReg().equals(dst)) {addr.setReg((Register)src); success = true;}
+                        }
+                        if(success) {
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: move replace");
+                            continue;
+                        }
+                    }
+                    // *********************************************************************************************************************************************
+                    // move replace 2
+                    // ....... dst ia a            ... dst is b
+                    // mov b a             ->
+                    if(i instanceof Arithmetic || i instanceof Move || i instanceof LoadImm ||
+                        (i instanceof LoadOrStore && ((LoadOrStore) i).getType().equals(LoadOrStore.Type.LOAD))) {
+                        if(!i.hasShift() && !next.hasShift() &&
+                            i.getCond() == null && next.getCond() == null &&
+                            next instanceof Move &&
+                            !next.isForFloat() &&
+                            Objects.equals(iLastUse, next)) {
+                            if(i.getDest() != null && i.getDest().equals(next.getOp2())) {
+                                i.setDest(next.getDest());
+                                next.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: move replace 2");
+                                continue;
+                            }
+                        }
+                    }
+                     // *********************************************************************************************************************************************
+                     // mvnadd2sub
+                     // mvn a imm
+                     // add/sub z b a  -> sub/add z b imm+1
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        i instanceof LoadImm &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        next instanceof Arithmetic &&
+                        (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        var val = ~(((ImmediateNumber)i.getOp2()).getValue());
+                        boolean isMvn = ImmediateNumber.isLegalImm(val);
+                        boolean isDestOp2 = i.getDest().equals(next.getOp2());
+                        boolean isNewImmLegal = ImmediateNumber.isLegalImm(val+1);
+                        if(isMvn && isDestOp2 && isNewImmLegal) {
+                            MachineInstruction n;
+                            if(((Arithmetic)next).getType().equals(Arithmetic.Type.ADD)){
+                                n = new Arithmetic(bb, Arithmetic.Type.SUB, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1));
+                                n.insertAfter(next);
+                            } else {
+                                n = new Arithmetic(bb, Arithmetic.Type.ADD, next.getDest(), (Register)next.getOp1(), new ImmediateNumber(val+1));
+                                n.insertAfter(next);
+                            }
+                            lastUse.put(n, lastUse.get(next)); // Maintenance lastUse
+                            if(lastDef.get(n.getDest()) != null && lastDef.get(n.getDest()).equals(next)) lastDef.put(n.getDest(), n);
+                            i.delete();
+                            next.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mvnadd2sub");
+                            continue;
+                        }
+                    }
+
+                     // *********************************************************************************************************************************************
+                     // addldrstrshift
+                     // add a b c shift
+                     // ldr z a           -> ldr z b c shift
+                     if( i.hasShift() && !next.hasShift() &&
+                         i.getCond() == null && next.getCond() == null &&
+                         !i.isForFloat() && !next.isForFloat() &&
+                         i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
+                         next instanceof LoadOrStore && ((LoadOrStore)next).getType().equals(LoadOrStore.Type.LOAD) &&
+                         Objects.equals(iLastUse, next)
+                     ) {
+                        var addr = (Address)next.getOp2();
+                        boolean isDestAddr = i.getDest().equals(addr.getReg()) && addr.hasConstOffset() && ((ImmediateNumber)addr.getOffset()).getValue() == 0;
+                        if(isDestAddr) {
+                            addr.setReg((Register)i.getOp1());
+                            addr.setOffset((Register)i.getOp2());
+                            next.setShifter(i.getShifter());
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: addldrstrshift1");
+                            continue;
+                        }
+                     }
+                     // add a b c shift
+                     // mov d e                   mov d e
+                     // str d [a]             ->  str d [b c shift]       !! b != d
+                     var nextnextNode = next.getInstNode().getNext();
+                     if(nextnextNode != null) {
+                        var nextnext = nextnextNode.getVal();
+                        if(i.hasShift() && !next.hasShift() && !nextnext.hasShift() &&
+                        i.getCond() == null && next.getCond() == null && nextnext.getCond() == null &&
+                        !i.isForFloat() && !next.isForFloat() && !nextnext.isForFloat() &&
+                        i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.ADD) &&
+                        (next instanceof Move || next instanceof LoadImm) &&
+                        nextnext instanceof LoadOrStore && ((LoadOrStore)nextnext).getType().equals(LoadOrStore.Type.STORE) &&
+                        Objects.equals(iLastUse, nextnext)
+                        ) {
+                            var addr = (Address)nextnext.getOp2();
+                            boolean isSameData = next.getDest().equals(nextnext.getOp1());
+                            boolean isSameDst = i.getDest().equals(addr.getReg()) && addr.hasConstOffset() && ((ImmediateNumber)addr.getOffset()).getValue() == 0;
+                            boolean notEditData = !i.getOp1().equals(next.getDest()) && !i.getOp2().equals(next.getDest());
+                            if(isSameData && isSameDst && notEditData) {
+                                addr.setReg((Register)i.getOp1());
+                                addr.setOffset((Register)i.getOp2());
+                                nextnext.setShifter(i.getShifter());
+                                i.delete();
+                                done = false;
+                                if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: addldrstrshift2");
+                                continue;
+                            }
+                        }
+                     }
+
+                     // *********************************************************************************************************************************************
+                     // loadImm replace
+                     // mov a imm   @LoadImm
+                     // add z b a               -> add z b imm
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        i instanceof LoadImm &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        next instanceof Arithmetic &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        var type = ((Arithmetic)next).getType();
+                        var typeOk = type.equals(Arithmetic.Type.ADD) || type.equals(Arithmetic.Type.SUB) || type.equals(Arithmetic.Type.AND) || type.equals(Arithmetic.Type.RSB);
+                        var val = ((ImmediateNumber)i.getOp2()).getValue();
+                        boolean isMov = ImmediateNumber.isLegalImm(val);
+                        boolean isDestOp2 = i.getDest().equals(next.getOp2());
+                        if(isMov && isDestOp2 && typeOk) {
+                            next.setOp2(new ImmediateNumber(val));
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: loadImm replace");
+                            continue;
+                        }
+                    }
+                    // *********************************************************************************************************************************************
+                    // mla/mls
+                    // mul a b c 不考虑muls
+                    // add/sub d a e -> mla/mls d b c e
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        !i.isForFloat() && !next.isForFloat() &&
+                        i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.MUL) &&
+                        next instanceof Arithmetic && (((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) || ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB)) &&
+                        !(next.getOp2() instanceof ImmediateNumber) &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        var type = ((Arithmetic)next).getType();
+                        var mulRes = i.getDest();
+                        boolean success = false;
+                        if(type.equals(Arithmetic.Type.ADD)) {
+                            // add d a e -> mla d b c e
+                            if(next.getOp1().equals(mulRes)) {
+                                var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp2());
+                                mla.setCond(next.getCond());
+                                lastUse.put(mla, lastUse.get(next)); // Maintenance lastUse
+                                if(lastDef.get(mla.getDest()) != null && lastDef.get(mla.getDest()).equals(next)) lastDef.put(mla.getDest(), mla);
+                                mla.insertBefore(next);
+                                success = true;
+                            }
+                            // add d e a -> mla d b c e
+                            else if (next.getOp2().equals(mulRes)) {
+                                var mla = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
+                                mla.setCond(next.getCond());
+                                lastUse.put(mla, lastUse.get(next)); // Maintenance lastUse
+                                if(lastDef.get(mla.getDest()) != null && lastDef.get(mla.getDest()).equals(next)) lastDef.put(mla.getDest(), mla);
+                                mla.insertAfter(next);
+                                success = true;
+                            }
+                        }else if(type.equals(Arithmetic.Type.SUB)) {
+                            // sub d e a -> mls d b c e
+                            if(next.getOp2().equals(mulRes)) {
+                                var mls = new MLAMLS(bb, next.getDest(), i.getOp1(), i.getOp2(), next.getOp1());
+                                mls.setCond(next.getCond());
+                                mls.setMls(true);
+                                lastUse.put(mls, lastUse.get(next)); // Maintenance lastUse
+                                if(lastDef.get(mls.getDest()) != null && lastDef.get(mls.getDest()).equals(next)) lastDef.put(mls.getDest(), mls);
+                                mls.insertAfter(next);
+                                success = true;
+                            }
+                        }
+
+                        if(success) {
+                            i.delete();
+                            next.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: mla/mls");
+                            continue;
+                        }
+                    }
+
+                    // *********************************************************************************************************************************************
+                    // subsub
+                    // sub a b a
+                    // sub b b a    ->     mov b a
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        !i.isForFloat() && !next.isForFloat() &&
+                        i instanceof Arithmetic && ((Arithmetic)i).getType().equals(Arithmetic.Type.SUB) &&
+                        next instanceof Arithmetic && ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB) &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        boolean isSameA = i.getDest().equals(i.getOp2()) && i.getDest().equals(next.getOp2());
+                        boolean isSameB = next.getDest().equals(i.getOp1()) && next.getDest().equals(next.getOp1());
+                        if(isSameA && isSameB) {
+                            var n = new Move(bb, next.getDest(), i.getDest());
+                            lastUse.put(n, lastUse.get(next)); // Maintenance lastUse
+                            if(lastDef.get(n.getDest()) != null && lastDef.get(n.getDest()).equals(next)) lastDef.put(n.getDest(), n);
+                            n.insertAfter(next);
+                            i.delete();
+                            next.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: subsub");
+                            continue;
+                        }
+                    }
+
+                    // *********************************************************************************************************************************************
+                    // shiftAdd
+                    // ASR,LSL,LSR a b #x
+                    // add d a c   ->      add d c b [shift] #x
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        !i.isForFloat() && !next.isForFloat() &&
+                        i instanceof Arithmetic &&
+                        (((Arithmetic)i).getType().equals(Arithmetic.Type.ASR) || ((Arithmetic)i).getType().equals(Arithmetic.Type.LSL) || ((Arithmetic)i).getType().equals(Arithmetic.Type.LSR)) &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        next instanceof Arithmetic && ((Arithmetic)next).getType().equals(Arithmetic.Type.ADD) &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        boolean success = false;
+                        var type = switch(((Arithmetic)i).getType()) {
+                            case ASR -> Shift.Type.ASR;
+                            case LSL -> Shift.Type.LSL;
+                            case LSR -> Shift.Type.LSR;
+                            default -> null;
+                        };
+                        if (type == null) throw new RuntimeException("Dead shift type!");
+                        if(i.getDest().equals(next.getOp1()) && !(next.getOp2() instanceof ImmediateNumber)) {
+                            next.setOp1(next.getOp2());
+                            next.setOp2(i.getOp1());
+                            next.setShifter(type, ((ImmediateNumber)i.getOp2()).getValue());
+                            success = true;
+                        } else if(i.getDest().equals(next.getOp2())) {
+                            next.setOp2(i.getOp1());
+                            next.setShifter(type, ((ImmediateNumber)i.getOp2()).getValue());
+                            success = true;
+                        }
+                        if(success) {
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: shiftAdd");
+                            continue;
+                        }
+                    }
+
+                    // *********************************************************************************************************************************************
+                    // shiftSub
+                    // ASR,LSL,LSR a b #x
+                    // sub d c a   ->      dub d c b [shift] #x
+                    if(!i.hasShift() && !next.hasShift() &&
+                        i.getCond() == null && next.getCond() == null &&
+                        !i.isForFloat() && !next.isForFloat() &&
+                        i instanceof Arithmetic &&
+                        (((Arithmetic)i).getType().equals(Arithmetic.Type.ASR) || ((Arithmetic)i).getType().equals(Arithmetic.Type.LSL) || ((Arithmetic)i).getType().equals(Arithmetic.Type.LSR)) &&
+                        i.getOp2() instanceof ImmediateNumber &&
+                        next instanceof Arithmetic && ((Arithmetic)next).getType().equals(Arithmetic.Type.SUB) &&
+                        Objects.equals(iLastUse, next)
+                    ) {
+                        var type = switch(((Arithmetic)i).getType()) {
+                            case ASR -> Shift.Type.ASR;
+                            case LSL -> Shift.Type.LSL;
+                            case LSR -> Shift.Type.LSR;
+                            default -> null;
+                        };
+                        if (type == null) throw new RuntimeException("Dead shift type!");
+                        if(i.getDest().equals(next.getOp2())) {
+                            next.setOp2(i.getOp1());
+                            next.setShifter(type, ((ImmediateNumber)i.getOp2()).getValue());
+                            i.delete();
+                            done = false;
+                            if(PEEPHOLE_DEBUG) System.out.println("PEEPHOLE1: shiftSub");
+                            continue;
+                        }
+                    }
+                    // *********************************************************************************************************************************************
                 }
             }
         }
@@ -310,14 +700,20 @@ public class PeepHole extends MCPass{
                 }
                     
             }
-            for(var def : i.getDef()) {
-                lastDef.put(def, i);
+            if(i.getCond() == null) {
+                for(var def : i.getDef()) {
+                    lastDef.put(def, i);
+                }
             }
+            
             if(i instanceof Branch ||
                     (i instanceof LoadOrStore && ((LoadOrStore)i).getType() == LoadOrStore.Type.STORE) ||
                     i instanceof PushOrPop ||
-                    i instanceof Comment
-                    ) {  // 这里的SideEffect比较激进 可能有问题？
+                    i instanceof PushOrPopList ||
+                    i instanceof Comment ||
+                    i instanceof Cmp ||
+                    i.getCond() != null
+                    ) {  // 这里的SideEffect比较激进 可能有问题？ 818 加了个cmp
                 lastUse.put(i, i);
             } else {
                 lastUse.put(i, null);

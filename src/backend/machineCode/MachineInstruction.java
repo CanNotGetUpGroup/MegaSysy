@@ -10,7 +10,7 @@ import util.IListNode;
 
 import java.util.ArrayList;
 
-public abstract class MachineInstruction implements Comparable{
+public abstract class MachineInstruction implements Comparable {
     private MachineBasicBlock parent;
     private IListNode<MachineInstruction, MachineBasicBlock> instNode;
     private MachineInstruction.Ops op;//指令类型
@@ -226,7 +226,8 @@ public abstract class MachineInstruction implements Comparable{
     public void insertBefore(IListNode<MachineInstruction, MachineBasicBlock> node) {
         this.getInstNode().insertBefore(node);
     }
-    public  void insertAfter(MachineInstruction node) {
+
+    public void insertAfter(MachineInstruction node) {
         this.getInstNode().insertAfter(node.getInstNode());
     }
 
@@ -236,6 +237,14 @@ public abstract class MachineInstruction implements Comparable{
 
     public void delete() {
         this.getInstNode().remove();
+    }
+
+    public MachineInstruction getNext() {
+        return this.getInstNode().getNext() == null ? null : this.getInstNode().getNext().getVal();
+    }
+
+    public MachineInstruction getPrev() {
+        return this.getInstNode().getPrev() == null ? null : this.getInstNode().getPrev().getVal();
     }
 
     public MachineInstruction(MachineBasicBlock parent) {
@@ -252,7 +261,7 @@ public abstract class MachineInstruction implements Comparable{
         this.cond = src.getCond();
         this.op = src.getOp();
         this.comment = src.getComment();
-        this.typeinfo = new ArrayList<>(src.getTypeinfo());
+        this.typeinfo = src.getTypeinfo() == null ? null : new ArrayList<>(src.getTypeinfo());
         this.setState = src.isSetState();
         this.forFloat = src.isForFloat();
         this.forBr = src.isforBr();
@@ -335,12 +344,16 @@ public abstract class MachineInstruction implements Comparable{
             return new VCVT(parent, (VCVT) src);
         if (src instanceof VMRS)
             return new VMRS(parent, (VMRS) src);
+        if (src instanceof MLAMLS)
+            return new MLAMLS(parent, (MLAMLS) src);
+        if (src instanceof PushOrPopList)
+            return new PushOrPopList(parent, (PushOrPopList) src);
         throw new RuntimeException("Copy failed: " + src);
     }
 
     @Override
     public int compareTo(Object o) {
-        if(!(o instanceof MachineInstruction))
+        if (!(o instanceof MachineInstruction))
             throw new RuntimeException("Can't compare");
         var i = (MachineInstruction) o;
         return i.getId() - getId();

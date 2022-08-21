@@ -15,6 +15,26 @@ public class MachineFunction implements Addressable{
     private boolean isDefined = false;
     private boolean isLeaf = true;
 
+    public int getIntParaNum() {
+        return intParaNum;
+    }
+
+    public void setIntParaNum(int intParaNum) {
+        this.intParaNum = intParaNum;
+    }
+
+    int intParaNum;
+
+    public int getFloatParaNum() {
+        return floatParaNum;
+    }
+
+    public void setFloatParaNum(int floatParaNum) {
+        this.floatParaNum = floatParaNum;
+    }
+
+    int floatParaNum;
+
     public int getMaxParaNumOnStack() {
         return maxParaNumOnStack;
     }

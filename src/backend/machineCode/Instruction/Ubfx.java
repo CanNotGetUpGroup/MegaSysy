@@ -12,12 +12,14 @@ public class Ubfx extends MachineInstruction {
     private Register dest;
 
     @Override
-    public Register getOp1() {
+    public MCOperand getOp1() {
         return op;
     }
 
-    public void setOp1(Register op) {
-        this.op = op;
+    @Override
+    public void setOp1(MCOperand op) {
+        assert op instanceof Register;
+        this.op = (Register)op;
     }
 
     private Register op;
@@ -78,5 +80,19 @@ public class Ubfx extends MachineInstruction {
                 .append(", ").append(width);
 
         return sb.toString();
+    }
+
+    @Override
+    public ArrayList<Register> getUse() {
+        var ans = new ArrayList<Register>();
+        ans.add(op);
+        return ans;
+    }
+
+    @Override
+    public ArrayList<Register> getDef() {
+        var ans = new ArrayList<Register>();
+        ans.add(dest);
+        return ans;
     }
 }

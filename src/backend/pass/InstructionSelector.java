@@ -89,6 +89,20 @@ public class InstructionSelector {
             head = head.getNext();
             var f = head.getVal();
 
+            f.getType().getParamNum();
+            var type = f.getType();
+            int num = type.getParamNum();
+            int floatNum = 0, intNum = 0;
+            for (int i = 0; i < num; i++) {
+                var paraType = type.getParamType(i);
+                if (type.isFloatTy())
+                    floatNum++;
+                intNum++;
+            }
+            var mf = funcMap.get(f);
+            mf.setFloatParaNum(floatNum);
+            mf.setIntParaNum(intNum);
+
             if (!f.isDefined()) continue;
             translateFunction(f);
         }
@@ -147,6 +161,7 @@ public class InstructionSelector {
                             intParaNum++; // could include pointer/array...
                         }
                     }
+
                     // paras store on stack
                     int numOnStack = 0;
                     if (floatParaNum > 16) numOnStack += floatParaNum - 16;
@@ -201,20 +216,20 @@ public class InstructionSelector {
         }
 
         var valueMap = mf.getValueMap();
-        for(var bb : mf.getBbList()){
-            for(var i : bb.getInstList()){
-                if(i.getOp1() instanceof IrPlaceHolder){
-                    i.setOp1(valueMap.get(((IrPlaceHolder)i.getOp1()).getIr()));
+        for (var bb : mf.getBbList()) {
+            for (var i : bb.getInstList()) {
+                if (i.getOp1() instanceof IrPlaceHolder) {
+                    i.setOp1(valueMap.get(((IrPlaceHolder) i.getOp1()).getIr()));
                 }
-                if(i.getOp2() instanceof IrPlaceHolder){
-                    i.setOp2(valueMap.get(((IrPlaceHolder)i.getOp2()).getIr()));
+                if (i.getOp2() instanceof IrPlaceHolder) {
+                    i.setOp2(valueMap.get(((IrPlaceHolder) i.getOp2()).getIr()));
                 }
-                if(i.getOp2() instanceof Address){
+                if (i.getOp2() instanceof Address) {
                     Address add = (Address) i.getOp2();
-                    if(add.getReg() instanceof IrPlaceHolder){
+                    if (add.getReg() instanceof IrPlaceHolder) {
                         add.setReg(valueMap.get(((IrPlaceHolder) add.getReg()).getIr()));
                     }
-                    if(add.getOffset() instanceof IrPlaceHolder){
+                    if (add.getOffset() instanceof IrPlaceHolder) {
                         add.setOffset(valueMap.get(((IrPlaceHolder) add.getOffset()).getIr()));
                     }
                 }
@@ -439,77 +454,62 @@ public class InstructionSelector {
                 }
             }
             case Store -> {
+                Address addr;
                 Register op1 = valueToReg(mbb, ir.getOperand(0));
-                Register op2 = valueToReg(mbb, ir.getOperand(1));
-                new LoadOrStore(mbb, LoadOrStore.Type.STORE, op1, new Address(op2)).pushBacktoInstList();
+
+                Register reg = valueMap.get(ir.getOperand(1));
+                if (reg != null && allocaMap.containsKey(reg)) {
+                    addr = getLegalSpAddr(allocaMap.get(reg), op1.getContent(), mbb);
+                } else {
+                    Register op2 = valueToReg(mbb, ir.getOperand(1));
+                    addr = new Address(op2);
+                }
+                new LoadOrStore(mbb, LoadOrStore.Type.STORE, op1, addr)
+                        .setForFloat(op1.getContent() == Register.Content.Float)
+                        .pushBacktoInstList();
             }
             case Load -> {
-                Register src = valueToReg(mbb, ir.getOperand(0));
-                Register dest = new VirtualRegister();
+                Address addr;
+                Register dest = new VirtualRegister(ir.getType().isFloatTy() ? Register.Content.Float : Register.Content.Int);
                 valueMap.put(ir, dest);
+                Register reg = valueMap.get(ir.getOperand(0));
 
-                new LoadOrStore(mbb, LoadOrStore.Type.LOAD, dest, new Address(src)).pushBacktoInstList();
+                if (reg != null && allocaMap.containsKey(reg)) {
+                    addr = getLegalSpAddr(allocaMap.get(reg), dest.getContent(), mbb);
+                } else {
+                    Register src = valueToReg(mbb, ir.getOperand(0));
+                    addr = new Address(src);
+                }
+
+                new LoadOrStore(mbb, LoadOrStore.Type.LOAD, dest, addr).setForFloat(ir.getType().isFloatTy()).pushBacktoInstList();
             }
             case GetElementPtr -> {
                 var curIr = (Instructions.GetElementPtrInst) ir;
-                assert ir.getType().isPointerTy();
-
 
                 var irOp = ir.getOperand(0);
                 var srcAddr = valueToReg(mbb, irOp);
-
                 if (curIr.allIndicesZero()) {
                     valueMap.put(ir, srcAddr);
                     break;
                 }
 
-                int constOffset = 0;
-
-                Register dest = null;
-
-                var srcType = curIr.getSourceElementType();
-                int i = 1;
-                while (true) {
-                    MCOperand op = valueToMCOperand(mbb, ir.getOperand(i));
-                    int size = srcType.isArrayTy() ? ((DerivedTypes.ArrayType) srcType).size() : 1;
-                    if (op instanceof ImmediateNumber) {
-                        constOffset += 4 * ((ImmediateNumber) op).getValue() * size;
-                    } else {
-                        assert op instanceof Register;
-                        Register op2 = new VirtualRegister();
-
-                        Register temp = new VirtualRegister();
-                        new LoadImm(mbb, temp, 4 * size).pushBacktoInstList();
-
-                        new Arithmetic(mbb, Arithmetic.Type.MUL, op2, (Register) op, temp).pushBacktoInstList();
-
-                        if (dest == null) {
-                            dest = new VirtualRegister();
-                            new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, op2).pushBacktoInstList();
-                        } else {
-                            var dest1 = new VirtualRegister();
-                            new Arithmetic(mbb, Arithmetic.Type.ADD, dest1, dest, op2).pushBacktoInstList();
-                            dest = dest1;
-                        }
-                    }
-                    if (srcType.isInt32Ty() || i >= ir.getNumOperands() - 1) break;
-                    i++;
-                    srcType = ((DerivedTypes.ArrayType) srcType).getKidType();
+                var offset = curIr.getOperand(curIr.getNumOperands() - 1);
+//                var size = curIr.get====
+                if (allocaMap.containsKey(srcAddr) && offset instanceof Constants.ConstantInt) {
+                    int constOffset = allocaMap.get(srcAddr) + 4 * ((Constants.ConstantInt) offset).getVal();
+                    var reg = new VirtualRegister();
+                    var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, reg, new MCRegister(MCRegister.RegName.SP), constOffset);
+                    inst.pushBacktoInstList();
+                    valueMap.put(ir, reg);
+                    allocaMap.put(reg, constOffset);
+                } else {
+                    var irOffset = valueToReg(mbb, offset);
+                    var dest = new VirtualRegister();
+                    var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, irOffset);
+                    inst.setShifter(Shift.Type.LSL, 2);
+                    inst.pushBacktoInstList();
+                    valueMap.put(ir, dest);
                 }
-                if (constOffset != 0) {
-                    // deal with const offset together
-                    if (dest == null) {
-                        dest = new VirtualRegister();
-                        new Arithmetic(mbb, Arithmetic.Type.ADD, dest, srcAddr, constOffset).pushBacktoInstList();
-                    } else {
-                        var dest2 = new VirtualRegister();
-                        new Arithmetic(mbb, Arithmetic.Type.ADD, dest2, dest, constOffset).pushBacktoInstList();
-                        dest = dest2;
-                    }
-
-                }
-                if (dest == null) dest = srcAddr;
-                valueMap.put(ir, dest);
             }
             case ICmp, FCmp -> {
                 // pass; will do it when needed
@@ -542,26 +542,31 @@ public class InstructionSelector {
                 valueMap.put(ir, dest);
             }
 
-            // TODO: Mod
             case Add -> {
-                MCOperand op1 = valueToMCOperand(mbb, ir.getOperand(0)), op2 = valueToMCOperand(mbb, ir.getOperand(1));
+                var irOp1 = ir.getOperand(0);
+                var irOp2 = ir.getOperand(1);
 
+                if (irOp1 instanceof Constants.ConstantInt) {
+                    var tmp = irOp1;
+                    irOp1 = irOp2;
+                    irOp2 = tmp;
+                }
+                Register op1 = valueToReg(mbb, irOp1);
                 Register dest = new VirtualRegister();
+
+                if (irOp2 instanceof Constants.ConstantInt) {
+                    var value = ((Constants.ConstantInt) irOp2).getVal();
+                    if (!ImmediateNumber.isLegalImm(value) && ImmediateNumber.isLegalImm(-value)) {
+                        new Arithmetic(mbb, Arithmetic.Type.SUB, dest, op1, new ImmediateNumber(-value)).pushBacktoInstList();
+                        valueMap.put(ir, dest);
+                        break;
+                    }
+                }
+                MCOperand op2 = valueToMCOperand(mbb, irOp2);
+
                 valueMap.put(ir, dest);
 
-                if (op1 instanceof ImmediateNumber) {
-                    MCOperand tmp = op1;
-                    op1 = op2;
-                    op2 = tmp;
-                }
-                if (op1 instanceof ImmediateNumber) {
-                    Register opp1 = new VirtualRegister();
-                    new Move(mbb, opp1, op1).pushBacktoInstList();
-                    op1 = opp1;
-                }
-
-                Arithmetic.Type mcType = Arithmetic.Type.ADD;
-                new Arithmetic(mbb, mcType, dest, (Register) op1, op2).pushBacktoInstList();
+                new Arithmetic(mbb, Arithmetic.Type.ADD, dest, op1, op2).pushBacktoInstList();
             }
             case Sub -> {
                 Value irOp1 = ir.getOperand(0), irOp2 = ir.getOperand(1);
@@ -587,6 +592,19 @@ public class InstructionSelector {
                 }
 
                 new Arithmetic(mbb, type, dest, op1, op2).pushBacktoInstList();
+            }
+            case Shl, Shr -> {
+                Register op1 = valueToReg(mbb, ir.getOperand(0));
+                MCOperand op2 = valueToMCOperand(mbb, ir.getOperand(1));
+
+                Register dest = new VirtualRegister();
+                valueMap.put(ir, dest);
+                new Arithmetic(mbb, switch (ir.getOp()) {
+                    case Shl -> Arithmetic.Type.LSL;
+                    case Shr -> Arithmetic.Type.ASR;
+                    default -> null;
+                }, dest, op1, op2).pushBacktoInstList();
+
             }
             case Mul -> {
                 var irOp1 = ir.getOperand(0);
@@ -633,10 +651,47 @@ public class InstructionSelector {
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
                 new Arithmetic(mbb, Arithmetic.Type.MUL, dest, op1, op2).pushBacktoInstList();
-
             }
             case SDiv -> {
-                Register op1 = valueToReg(mbb, ir.getOperand(0)), op2 = valueToReg(mbb, ir.getOperand(1));
+                var irOp1 = ir.getOperand(0);
+                var irOp2 = ir.getOperand(1);
+                Register op1 = valueToReg(mbb, ir.getOperand(0));
+                if (irOp2 instanceof Constants.ConstantInt) {
+                    int divisor = ((Constants.ConstantInt) irOp2).getVal();
+                    boolean isNeg = divisor < 0;
+                    divisor = isNeg ? -divisor : divisor;
+                    Register ans = null;
+                    System.out.println(ir);
+                    var choose = ChooseMultiplier(divisor, 31);
+                    long m = choose.m;
+                    int l = choose.l, sh = choose.sh;
+                    boolean canDo = true;
+                    if (divisor == 1) {
+                        ans = op1;
+                    } else if (isPowerOfTwo(divisor)) {
+                        var temp = new VirtualRegister();
+                        new Arithmetic(mbb, Arithmetic.Type.ASR, temp, op1, l - 1).pushBacktoInstList();
+//                        new Arithmetic(mbb, Arithmetic.Type.LSR, temp, 32 - l).pushBacktoInstList();
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, temp, op1, temp);
+                        inst.setShifter(Shift.Type.LSR, 32 - l);
+                        inst.pushBacktoInstList();
+                        new Arithmetic(mbb, Arithmetic.Type.ASR, temp, l).pushBacktoInstList();
+                        ans = temp;
+                    } else {
+                        // TODO: 长乘法
+                        canDo = false;
+                    }
+                    if (canDo) {
+                        if (isNeg) {
+                            new Arithmetic(mbb, Arithmetic.Type.RSB, ans, 0).pushBacktoInstList();
+                        }
+                        valueMap.put(ir, ans);
+                        break;
+                    }
+                }
+
+
+                Register op2 = valueToReg(mbb, ir.getOperand(1));
 
                 Register dest = new VirtualRegister();
                 valueMap.put(ir, dest);
@@ -731,9 +786,77 @@ public class InstructionSelector {
 
             default -> {
                 throw new RuntimeException("Didn't process command: " + ir);
-
             }
         }
+
+    }
+
+    boolean isLegalOffset(int value, Register.Content type) {
+        if (type == Register.Content.Float) {
+            return value < 1024 && value > -1024;
+        } else { // INT
+            return value > -4096 && value < 4096;
+        }
+    }
+
+    Address getLegalSpAddr(int offset, Register.Content type, MachineBasicBlock mbb) {
+        if (isLegalOffset(offset, type)) {
+            return new Address(new MCRegister(MCRegister.RegName.SP), offset);
+        } else {
+            var reg = new VirtualRegister();
+            new Arithmetic(mbb, Arithmetic.Type.ADD, reg, new MCRegister(MCRegister.RegName.SP), offset)
+                    .pushBacktoInstList();
+            return new Address(reg);
+        }
+    }
+
+    class ChooseMultiplierAns {
+        public int getL() {
+            return l;
+        }
+
+        public int getSh() {
+            return sh;
+        }
+
+        public long getM() {
+            return m;
+        }
+
+        int l;
+        int sh;
+        long m;
+
+        public ChooseMultiplierAns(int l, int sh, long m) {
+            this.l = l;
+            this.sh = sh;
+            this.m = m;
+        }
+    }
+
+    ChooseMultiplierAns ChooseMultiplier(int d, int prec) {
+        int l = log2(d), sh;
+        long mLow = 1, mHigh;
+        if (!isPowerOfTwo(d))
+            l = l + 1;
+        sh = l;
+        for (int i = 0; i < 32 + l; i++) {
+            mLow *= 2;
+        }
+        mHigh = mLow;
+        mLow /= d;
+        long temp = 1;
+        for (int i = 0; i < 32 + l - prec; i++) {
+            temp *= 2;
+        }
+        mHigh += temp;
+        mHigh /= d;
+        while (mLow / 2 < mHigh / 2 && sh > 0) {
+            mLow /= 2;
+            mHigh /= 2;
+            sh--;
+        }
+        return new ChooseMultiplierAns(l, sh, mHigh);
     }
 
     public static MCOperand valueToMCOperand(MachineBasicBlock parent, Value val) {
@@ -779,8 +902,8 @@ public class InstructionSelector {
 
             if (ans == null)
                 if (val instanceof CmpInst) return i1ToReg(parent, val);
-            else
-                return new IrPlaceHolder((Instruction) val);
+                else
+                    return new IrPlaceHolder((Instruction) val);
             return ans;
         } else if (val instanceof Argument) {
             return valueMap.get(val);

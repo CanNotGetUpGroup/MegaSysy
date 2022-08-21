@@ -131,6 +131,7 @@ public class FuncInline extends ModulePass {
         //拷贝出一个Function，该Function用于内联，不在Module中
         cloneMap = new CloneMap();
         Function copy = callee.copy(cloneMap);
+        BasicBlock root = (copy.getReturnBlock());
         BasicBlock insertBB = copy.getEntryBB();
         insertBB.setComment("inline "+CI);
         BasicBlock originBB = CI.getParent();
@@ -207,7 +208,7 @@ public class FuncInline extends ModulePass {
         builder.createBr(copy.getEntryBB());
 
         //copy的最后一个指令的返回指令
-        ReturnInst returnInst= (ReturnInst) copy.getBbList().getLast().getVal().getInstList().getLast().getVal();
+        ReturnInst returnInst= (ReturnInst) root.getInstList().getLast().getVal();
         IListIterator<BasicBlock, Function> beforeLeaveIt=leave.getBbNode().getIterator();
         caller.getBbList().splice(beforeLeaveIt,copy.getBbList());
         //3. 参数返回值处理
@@ -229,7 +230,17 @@ public class FuncInline extends ModulePass {
     public boolean shouldInline(CallInst CI,CallGraph CG,boolean checkLineNum) {
         Function caller = CI.getFunction();
         Function F = CI.getCalledFunction();
-//        if(!(caller.getName().equals("asr5"))||F.getName().equals("F1")||F.getName().equals("F2")||F.getName().equals("my_fabs")){
+//        if(!
+////                (caller.getName().equals("asr5"))||
+//                F.getName().equals("F1")
+//                ||F.getName().equals("F2")
+//                ||F.getName().equals("simpson")
+//        ){
+//            return false;
+//        }
+//        if(!(caller.getName().equals("asr5"))||F.getName().equals("F1")
+//                ||F.getName().equals("F2")||F.getName().equals("my_fabs")
+//        ){
 //            return false;
 //        }
         int cost = 0;

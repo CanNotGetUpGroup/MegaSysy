@@ -59,12 +59,15 @@ public class GVNGCM extends ModulePass {
         boolean shouldContinue = true;
         while (shouldContinue) {
             clear();
+            if(PassManager.openArraySSA){
+                MemorySSA.arraySSA = !aggressive;
+            }
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().functionDCE(F);
             if(GCMOpen)
                 functionGCM(F);
-            shouldContinue |= new SimplifyCFG(PassManager.eliminatePreHeader).run(F);
+            shouldContinue |= new SimplifyCFG(aggressive).run(F);
         }
         Module.getInstance().rename(F);
     }
@@ -161,11 +164,14 @@ public class GVNGCM extends ModulePass {
             if (loadGVN(LI)) {
                 return true;
             }
-        } else if(I.getOp().equals(Ops.Call)){
-            if(!((CallInst)I).withoutGEP()){
+        } else if(I.getOp().equals(Ops.Call)) {
+            if (!((CallInst) I).withoutGEP()) {
                 return false;
             }
         }
+//        else if(Instruction.isBinary(I.getOp())){
+//            return false;
+//        }
         if (I.getType().isVoidTy()) return false;
         int now = nextValueNumber;
         int num = lookUpOrAdd(I);
@@ -356,8 +362,11 @@ public class GVNGCM extends ModulePass {
         ArrayList<Integer> array = new ArrayList<>();
         ArrayList<Value> arrayIdx = GEP.getArrayIdx();
         //需要区分argument还是它的alloca
-        if(aggressive&&arrayIdx.size()==1&&AliasAnalysis.isParamOrArgument(arrayIdx.get(0))){
-            return getHash(arrayIdx.get(0));
+        if(aggressive){
+            if(arrayIdx.get(1).equals(Constants.ConstantInt.get(1))&&
+                    arrayIdx.get(2).equals(Constants.ConstantInt.get(0))&&
+                    AliasAnalysis.isParamOrArgument(arrayIdx.get(0)))
+                return getHash(arrayIdx.get(0));
         }
         for (Value v : arrayIdx) {
             array.add(getHash(v).a);
@@ -382,6 +391,7 @@ public class GVNGCM extends ModulePass {
             array.add(definingAccess.getID());
             if(definingAccess instanceof MemoryAccess.MemoryDef&&
                     ((MemoryAccess.MemoryDef) definingAccess).getMemoryInstruction() instanceof StoreInst){
+                //ArraySSA不能保证store的一定是load的位置
                 StoreInst SI=(StoreInst)((MemoryAccess.MemoryDef)definingAccess).getMemoryInstruction();
                 Pair<Integer,ArrayList<Integer>> storeHash=getHash(SI.getOperand(1));
                 if(loadHash.a.equals(storeHash.a)){
@@ -392,8 +402,12 @@ public class GVNGCM extends ModulePass {
                             break;
                         }
                     }
-                    if(same)
+                    if(same){
+                        if(PassManager.debug){
+//                            System.out.println(LI+" is replaced with "+SI.getOperand(0));
+                        }
                         return getHash(SI.getOperand(0));
+                    }
                 }
             }
         }
@@ -546,7 +560,8 @@ public class GVNGCM extends ModulePass {
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
             while (curBB != I.getParent()) {
                 if(DT.getNode(curBB)==null||curBB==DT.Root.BB){
-//                    System.out.println("curBB shouldn't be null!");
+                    System.out.println("curBB shouldn't be null!");
+                    break;
                 }
                 curBB = DT.getNode(curBB).IDom.BB;
                 int curLoopDepth = F.getLoopInfo().getLoopDepthForBB(curBB);

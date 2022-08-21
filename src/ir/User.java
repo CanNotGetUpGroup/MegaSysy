@@ -1,8 +1,10 @@
 package ir;
 
+import util.CloneMap;
+
 import java.util.ArrayList;
 
-public abstract class User extends Value {
+public class User extends Value {
     ArrayList<Value> OperandList;
     int numOperands;
 
@@ -43,6 +45,22 @@ public abstract class User extends Value {
         this.numOperands = OperandList.size();
     }
 
+    public void addOperandAtHead(Value Val){
+        OperandList.add(0,Val);
+        if (Val != null) {
+            Val.addUse(new Use(this, Val, 0));
+        }
+        for (int i = 1; i < OperandList.size(); i++) {
+            for (Use use : OperandList.get(i).getUseList()) {
+                if (use.getU() == this) {
+                    use.setOperandNo(i);
+                    break;
+                }
+            }
+        }
+        this.numOperands = OperandList.size();
+    }
+
     public void addAllOperand(ArrayList<Value> Val) {
         if (Val != null) {
             for (Value v : Val) {
@@ -66,7 +84,6 @@ public abstract class User extends Value {
             for (Use use : OperandList.get(i).getUseList()) {
                 if (use.getU() == this) {
                     use.setOperandNo(i - 1);
-                    break;
                 }
             }
         }
@@ -100,6 +117,11 @@ public abstract class User extends Value {
         super(ty, name);
         OperandList = new ArrayList<>();
         this.numOperands = 0;
+    }
+
+    @Override
+    public Value copy(CloneMap cloneMap) {
+        return null;
     }
 
     public User(Type type, int numOperands) {

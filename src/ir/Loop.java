@@ -24,8 +24,9 @@ public class Loop {
     private Value indVarEnd; // 索引边界（可不可以等于边界，自己判断）
     private Instruction stepInst; // 索引迭代指令
     private Instruction indVarCondInst; // icmp 中携带 indVar 的操作数（在 while (i < n)
-    //的情况下等于 stepInst）
+    // 的情况下等于 stepInst）
     private Value step; // 迭代长度
+    private Value bias;
     private Integer tripCount; // 迭代次数（只考虑 init/end/step 都是常量的情况）
 
     /**
@@ -124,7 +125,7 @@ public class Loop {
             return null;
         }
         Instruction ret = getSingleLatchBlock().getTerminator();
-        if(!(ret.getOperand(0) instanceof Instruction)){
+        if (!(ret.getOperand(0) instanceof Instruction)) {
             return null;
         }
         return (CmpInst) ret.getOperand(0);
@@ -140,9 +141,9 @@ public class Loop {
         BasicBlock preHeader = null;
         int cnt = 0;
         for (var pred : this.loopHeader.getPredecessors()) {
-            if (pred.getLoopDepth() != this.loopHeader.getLoopDepth()) {
-                preHeader = pred;
+            if (!this.getBbList().contains(pred)) {
                 cnt++;
+                preHeader = pred;
             }
         }
         if (cnt != 1) {
@@ -179,7 +180,7 @@ public class Loop {
     // 1 pre header, 1 latch block, 1 exit block
     public boolean isSimpleForLoop() {
         return latchBlocks.size() == 1 && loopHeader.getPredecessors().size() == 2
-                && exitBlocks.size() == 1 && exitingBlocks.size() == 1;
+                && exitBlocks.size() == 1 && exitingBlocks.size() == 1 && getPreHeader()!=null;
     }
 
     public void addBlock(BasicBlock bb) {
@@ -208,10 +209,10 @@ public class Loop {
         subLoop.setParentLoop(null);
     }
 
-    public boolean isSafeToCopy(){
-        for(BasicBlock BB:getBbList()){
-            for(Instruction I:BB.getInstList()){
-                if(I instanceof Instructions.CallInst){
+    public boolean isSafeToCopy() {
+        for (BasicBlock BB : getBbList()) {
+            for (Instruction I : BB.getInstList()) {
+                if (I instanceof Instructions.CallInst) {
                     return false;
                 }
             }
@@ -273,5 +274,13 @@ public class Loop {
 
     public void setTripCount(Integer tripCount) {
         this.tripCount = tripCount;
+    }
+
+    public Value getBias() {
+        return bias;
+    }
+
+    public void setBias(Value bias) {
+        this.bias = bias;
     }
 }

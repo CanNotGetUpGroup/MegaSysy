@@ -1,5 +1,6 @@
 package pass.passes;
 
+import analysis.AliasAnalysis;
 import analysis.DominatorTree;
 import analysis.PointerInfo;
 import ir.*;
@@ -25,6 +26,7 @@ public class GlobalVariableOpt extends ModulePass {
     @Override
     public void runOnModule(Module M) {
         boolean changed=true;
+        AliasAnalysis.gepToArrayIdx.clear();
         while (changed){
             changed=false;
             for(GlobalVariable gv:new ArrayList<>(M.getGlobalVariables())){
@@ -46,7 +48,6 @@ public class GlobalVariableOpt extends ModulePass {
             if(GS.getAccessingFunction().getName().equals("main")){
                 Type ty = GV.getElementType();
                 if(!ty.isArrayTy()){//不对数组进行本地化
-//                    System.out.println("localize");
                     builder.setInsertPoint(GS.getAccessingFunction().getEntryBB());
                     Instructions.AllocaInst AI= (Instructions.AllocaInst) builder.createAlloca(ty);
                     AI.setVarName("global_"+GV.getName().substring(1));
@@ -60,7 +61,7 @@ public class GlobalVariableOpt extends ModulePass {
                     }
                     builder.setInsertPoint(I);
                     builder.createStore(GV.getOperand(0),AI);
-                    System.out.println(GV.toString()+" be localized");
+//                    System.out.println(GV.toString()+" be localized");
                     GV.replaceAllUsesWith(AI);
                     GV.remove();
                     return true;

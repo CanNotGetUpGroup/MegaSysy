@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import pass.PassManager;
+import pass.passes.IndVarReduction;
 import pass.passes.SimplifyCFG;
 
 import java.io.*;
@@ -37,7 +38,7 @@ public class Compiler {
 //                }
 //                pw.println(sb.toString());
 //                pw.flush();
-//                throw new RuntimeException("skip this testcase");
+                throw new RuntimeException("skip this testcase");
             }
         }
 
@@ -55,6 +56,8 @@ public class Compiler {
         if (O2) {
             //TODO：优化掉undef
             PassManager.ignoreUndef = false;
+            PassManager.debug=false;
+            IndVarReduction.backEndTest=true;
             PassManager.initialization();
             PassManager.initializationMC();
         }

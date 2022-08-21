@@ -1,7 +1,6 @@
 package ir;
 
 import ir.instructions.Instructions.*;
-import org.antlr.v4.runtime.misc.Pair;
 import pass.PassManager;
 import util.CloneMap;
 import util.IList;
@@ -75,7 +74,8 @@ public class BasicBlock extends Value {
     }
 
     public Function getParent() {
-        if(bbNode.getParent()==null) return null;
+        if (bbNode.getParent() == null)
+            return null;
         return bbNode.getParent().getVal();
     }
 
@@ -103,8 +103,8 @@ public class BasicBlock extends Value {
     public void remove() {
         bbNode.remove();
         dropUsesAsValue();
-        for(PHIInst phi:new ArrayList<>(PHIs)){
-            phi.removeIncomingValue(this,false);
+        for (PHIInst phi : new ArrayList<>(PHIs)) {
+            phi.removeIncomingValue(this, false);
         }
         PHIs.clear();
         getTerminator().dropUsesAsUser();
@@ -114,8 +114,8 @@ public class BasicBlock extends Value {
     public void remove(boolean terminatorHasRemoved) {
         bbNode.remove();
         dropUsesAsValue();
-        for(PHIInst phi:new ArrayList<>(PHIs)){
-            phi.removeIncomingValue(this,false);
+        for (PHIInst phi : new ArrayList<>(PHIs)) {
+            phi.removeIncomingValue(this, false);
         }
         PHIs.clear();
         if (!terminatorHasRemoved)
@@ -125,14 +125,14 @@ public class BasicBlock extends Value {
     public void removeThisAndAllInst() {
         bbNode.remove();
         dropUsesAsValue();
-        for(PHIInst phi:new ArrayList<>(PHIs)){
-            phi.removeIncomingValue(this,false);
+        for (PHIInst phi : new ArrayList<>(PHIs)) {
+            phi.removeIncomingValue(this, false);
         }
         PHIs.clear();
-        for(Instruction I:getInstList()){
+        for (Instruction I : getInstList()) {
             I.remove();
         }
-//        getTerminator().dropUsesAsUser();
+        // getTerminator().dropUsesAsUser();
     }
 
     /**
@@ -196,17 +196,17 @@ public class BasicBlock extends Value {
         return B;
     }
 
-    public void replacePredecessorWith(BasicBlock OldBB,BasicBlock newBB){
-        for(int i=0;i<getPredecessorsNum();i++){
-            if(getPredecessor(i)==OldBB){
-                OldBB.replaceSuccessorWith(this,newBB);
-                newBB.setSuccessor(0,this);
+    public void replacePredecessorWith(BasicBlock OldBB, BasicBlock newBB) {
+        for (int i = 0; i < getPredecessorsNum(); i++) {
+            if (getPredecessor(i) == OldBB) {
+                OldBB.replaceSuccessorWith(this, newBB);
+                newBB.setSuccessor(0, this);
             }
         }
     }
 
-    public void replaceSuccessorWith(BasicBlock OldBB,BasicBlock newBB){
-        getTerminator().replaceSuccessorWith(OldBB,newBB);
+    public void replaceSuccessorWith(BasicBlock OldBB, BasicBlock newBB) {
+        getTerminator().replaceSuccessorWith(OldBB, newBB);
     }
 
     /**

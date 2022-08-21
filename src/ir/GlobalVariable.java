@@ -1,17 +1,13 @@
 package ir;
 
-import ir.instructions.Instructions;
 import util.CloneMap;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class GlobalVariable extends User {
     private Module parent;
     private boolean isConstantGlobal; // Is this a global constant?
 
-    public Type getElementType(){
-        return ((DerivedTypes.PointerType)getType()).getElementType();
+    public Type getElementType() {
+        return ((DerivedTypes.PointerType) getType()).getElementType();
     }
 
     public Module getParent() {
@@ -32,25 +28,28 @@ public class GlobalVariable extends User {
 
     /**
      * 创建一个未初始化的全局变量
+     * 
      * @param ty
      * @param parent
      * @param isConstantGlobal
      * @return
      */
-    public static GlobalVariable create(Type ty, Module parent, boolean isConstantGlobal){
-        return new GlobalVariable("",ty, parent,null, isConstantGlobal);
+    public static GlobalVariable create(Type ty, Module parent, boolean isConstantGlobal) {
+        return new GlobalVariable("", ty, parent, null, isConstantGlobal);
     }
 
     /**
      * 创建一个初始化的全局变量
+     * 
      * @param ty
      * @param parent
      * @param InitVal
      * @param isConstantGlobal
      * @return
      */
-    public static GlobalVariable create(String name,Type ty, Module parent,Constant InitVal, boolean isConstantGlobal){
-        return new GlobalVariable(name,ty, parent,InitVal, isConstantGlobal);
+    public static GlobalVariable create(String name, Type ty, Module parent, Constant InitVal,
+            boolean isConstantGlobal) {
+        return new GlobalVariable(name, ty, parent, InitVal, isConstantGlobal);
     }
 
     public GlobalVariable(Type ty, Module parent) {
@@ -61,14 +60,14 @@ public class GlobalVariable extends User {
     /**
      * 插入在Moudle最后
      */
-    public GlobalVariable(String name,Type ty, Module parent,Constant InitVal, boolean isConstantGlobal) {
-        super(DerivedTypes.PointerType.get(ty),name, 0);
+    public GlobalVariable(String name, Type ty, Module parent, Constant InitVal, boolean isConstantGlobal) {
+        super(DerivedTypes.PointerType.get(ty), name, 0);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;
-        if(InitVal!=null){
+        if (InitVal != null) {
             assert InitVal.getType().equals(ty);
             addOperand(InitVal);
-        }else {
+        } else {
             addOperand(Constant.getNullValue(ty));
         }
         parent.getGlobalVariables().add(this);
@@ -76,25 +75,26 @@ public class GlobalVariable extends User {
 
     /**
      *
-     * @param ty 类型
-     * @param numOps 参数数量
-     * @param parent 属于的Module
+     * @param ty               类型
+     * @param numOps           参数数量
+     * @param parent           属于的Module
      * @param isConstantGlobal 是否是constant
-     * @param insertBefore  插入在该指令前
+     * @param insertBefore     插入在该指令前
      */
     public GlobalVariable(Type ty, int numOps, Module parent, boolean isConstantGlobal, GlobalVariable insertBefore) {
         super(DerivedTypes.PointerType.get(ty), numOps);
         this.parent = parent;
         this.isConstantGlobal = isConstantGlobal;
-        //插入在该指令前
-        int idx=parent.getGlobalVariables().indexOf(insertBefore);
-        parent.getGlobalVariables().add(idx,this);
+        // 插入在该指令前
+        int idx = parent.getGlobalVariables().indexOf(insertBefore);
+        parent.getGlobalVariables().add(idx, this);
     }
 
     @Override
     public String toString() {
-        if(isConstantGlobal) return getName()+" = dso_local constant "+getOperand(0);
-        return getName()+" = dso_local global "+getOperand(0);
+        if (isConstantGlobal)
+            return getName() + " = dso_local constant " + getOperand(0);
+        return getName() + " = dso_local global " + getOperand(0);
     }
 
     @Override
@@ -102,11 +102,10 @@ public class GlobalVariable extends User {
         return this;
     }
 
-    public void remove(){
+    public void remove() {
         parent.getGlobalVariables().remove(this);
         dropUsesAsValue();
         dropUsesAsUser();
     }
-
 
 }
