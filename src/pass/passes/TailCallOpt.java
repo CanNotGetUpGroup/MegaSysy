@@ -47,10 +47,7 @@ public class TailCallOpt extends FunctionPass {
                 }
                 var instpre = inst.getInstNode().getPrev().getVal();
                 if(!(instpre instanceof Instructions.CallInst)){
-                    if(instpre instanceof Instructions.LoadInst){
-                        outer++;
-                    }
-                    if(outer>1){
+                    if(!(instpre instanceof Instructions.LoadInst)){
                         isTailCallFunc = false;
                         break;
                     }
