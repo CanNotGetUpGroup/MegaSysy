@@ -6,9 +6,7 @@ import java.util.HashSet;
 
 import ir.*;
 import ir.Module;
-import ir.DerivedTypes.FunctionType;
 import ir.instructions.BinaryInstruction;
-import ir.instructions.CmpInst;
 import ir.instructions.Instructions;
 import ir.instructions.Instructions.BranchInst;
 import ir.instructions.Instructions.CallInst;
@@ -290,6 +288,7 @@ public class InterProceduralDCE extends ModulePass {
                         innerCall.add(callInst);
                     } else if (!user.getUseList().isEmpty()) {
                         isUseful = true;
+                        break;
                     }
                 }
             }
@@ -306,15 +305,16 @@ public class InterProceduralDCE extends ModulePass {
                         // 再向下搜索一层，应该能处理掉大部分的无效return了，不想写递归了
                         // System.out.println("[DEBUG]: " + call.getCalledFunction().getName());
                         var user = call.getUseList().get(0).getU();
-                        if(user instanceof Instructions.PHIInst || user instanceof BinaryInstruction){
+                        if (user instanceof Instructions.PHIInst || user instanceof BinaryInstruction) {
                             for (var use : call.getUseList().get(0).getU().getUseList()) {
                                 if (!(use.getU() instanceof ReturnInst)) {
                                     isUseful = true;
                                     break;
                                 }
                             }
-                        }else {
+                        } else {
                             isUseful = true;
+                            break;
                         }
                     }
                 }
@@ -323,9 +323,9 @@ public class InterProceduralDCE extends ModulePass {
                 }
                 doneRemove = true;
                 optedRetFuncs.add(func);
-                ArrayList<Type> newParamTy = new ArrayList<>(func.getType().getContainedTys().subList(1, func.getType().getParamNum() + 1));
-                DerivedTypes.FunctionType newFty= DerivedTypes.FunctionType.get(Type.getVoidTy()
-                        , newParamTy);
+                ArrayList<Type> newParamTy = new ArrayList<>(
+                        func.getType().getContainedTys().subList(1, func.getType().getParamNum() + 1));
+                DerivedTypes.FunctionType newFty = DerivedTypes.FunctionType.get(Type.getVoidTy(), newParamTy);
                 func.setType(newFty);
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {
@@ -346,9 +346,9 @@ public class InterProceduralDCE extends ModulePass {
             } else {
                 doneRemove = true;
                 optedRetFuncs.add(func);
-                ArrayList<Type> newParamTy = new ArrayList<>(func.getType().getContainedTys().subList(1, func.getType().getParamNum() + 1));
-                DerivedTypes.FunctionType newFty= DerivedTypes.FunctionType.get(Type.getVoidTy()
-                        , newParamTy);
+                ArrayList<Type> newParamTy = new ArrayList<>(
+                        func.getType().getContainedTys().subList(1, func.getType().getParamNum() + 1));
+                DerivedTypes.FunctionType newFty = DerivedTypes.FunctionType.get(Type.getVoidTy(), newParamTy);
                 func.setType(newFty);
                 for (var bb : func.getBbList()) {
                     for (var inst : bb.getInstList()) {

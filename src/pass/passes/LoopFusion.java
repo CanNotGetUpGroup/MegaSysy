@@ -5,7 +5,6 @@ import java.util.HashSet;
 
 import analysis.DominatorTree;
 import analysis.LoopInfo;
-import analysis.PostDominatorTree;
 import ir.Function;
 import ir.Instruction;
 import ir.Loop;
@@ -24,7 +23,6 @@ import pass.FunctionPass;
 public class LoopFusion extends FunctionPass {
 
     private DominatorTree domInfo;
-    private PostDominatorTree postDomInfo;
 
     @Override
     public String getName() {
@@ -35,7 +33,6 @@ public class LoopFusion extends FunctionPass {
     public void runOnFunction(Function F) {
         LoopInfo loopInfo = F.getLoopInfo();
         domInfo = new DominatorTree(F);
-        postDomInfo = new PostDominatorTree(F);
         loopInfo.computeLoopInfo(F);
         HashMap<Loop, Loop> fusionPairs = new HashMap<>();
         HashSet<Loop> fusionSet = new HashSet<>();
@@ -137,9 +134,10 @@ public class LoopFusion extends FunctionPass {
         // || !postDomInfo.dominates(succ.getLoopPrehead(),pred.getLoopPrehead())) {
         // return false;
         // }
-//        System.out.println(
-//                "find may fusioning loops, PRED:" + pred.getLoopHeader().getName() + " SUCC: " +
-//                        succ.getLoopHeader().getName());
+        // System.out.println(
+        // "find may fusioning loops, PRED:" + pred.getLoopHeader().getName() + " SUCC:
+        // " +
+        // succ.getLoopHeader().getName());
         return true;
     }
 
@@ -211,7 +209,7 @@ public class LoopFusion extends FunctionPass {
             predPreHeader.getInstList().insertBeforeEnd(inst.getInstNode());
         }
 
-//        System.out.println("fusion");
+        // System.out.println("fusion");
 
         // 用前一个循环的indvar替换后一个循环的indvar
         succHeader.getInstList().forEach(inst -> {
