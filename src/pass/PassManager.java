@@ -45,7 +45,7 @@ public class PassManager {
             passes.add(new VerifyFunction());
         }
         passes.add(new IndVarReduction());
-//        passes.add(new LICM());// 循环不变量外提
+        passes.add(new LICM());// 循环不变量外提
         passes.add(new GVNGCM(aggressive));
         passes.add(new LoopRedundant());
         passes.add(new InterProceduralDCE());
@@ -56,7 +56,7 @@ public class PassManager {
         passes.add(new FuncInline());// 可能还有
         passes.add(new InterProceduralDCE());
         passes.add(new LoopInfoUpdate());
-//        passes.add(new LICM());// 循环不变量外提
+        passes.add(new LICM());// 循环不变量外提
          passes.add(new LCSSA());
          passes.add(new LoopFusion());
         passes.add(new SimplifyCFG(eliminatePreHeader));

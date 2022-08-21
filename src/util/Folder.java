@@ -787,33 +787,33 @@ public class Folder {
                 return createBinOp(Opc, RHS, LHS);
             }
         } else if (RHS instanceof ConstantFP) {
-            ConstantFP CI2 = (ConstantFP) RHS;
-            switch (Opc) {
-                case FSub:
-                case FAdd:
-                    // X - 0 == X
-                    // X + 0 == X
-                    if (CI2.getVal() == 0) {
-                        return LHS;
-                    }
-                    break;
-                case FMul:
-                    // X * 0 == 0
-                    // X * 1 == X
-                    if (CI2.getVal() == 0) {
-                        return RHS;
-                    }
-                    if (CI2.getVal() == 1) {
-                        return LHS;
-                    }
-                    break;
-                case FDiv:
-                    // X / 1 == X
-                    if (CI2.getVal() == 1) {
-                        return LHS;
-                    }
-                    break;
-            }
+//            ConstantFP CI2 = (ConstantFP) RHS;
+//            switch (Opc) {
+//                case FSub:
+//                case FAdd:
+//                    // X - 0 == X
+//                    // X + 0 == X
+//                    if (CI2.getVal() == 0) {
+//                        return LHS;
+//                    }
+//                    break;
+//                case FMul:
+//                    // X * 0 == 0
+//                    // X * 1 == X
+//                    if (CI2.getVal() == 0) {
+//                        return RHS;
+//                    }
+//                    if (CI2.getVal() == 1) {
+//                        return LHS;
+//                    }
+//                    break;
+//                case FDiv:
+//                    // X / 1 == X
+//                    if (CI2.getVal() == 1) {
+//                        return LHS;
+//                    }
+//                    break;
+//            }
         } else if (LHS instanceof ConstantFP) {
             // If C1 is a ConstantFP and C2 is not, swap the operands.
             if (Instruction.isCommutative(Opc)) {
