@@ -137,19 +137,21 @@ public class Branch extends MachineInstruction {
             case LABEL -> inst + "\t" + destBB.getLabel();
             case FUNC -> inst + "\t" + destf.getLabel();
             case String -> inst + "\t" + destStr;
-        } + "@" + this.getType();
+        } + "  @" + this.getType();
     }
 
     @Override
     public ArrayList<Register> getUse() {
         var ans = new ArrayList<Register>();
         if (type == Type.Call) {
+            var func = getDestf();
             ans.addAll(IntStream
-                    .range(0, 4)
+                    .range(0, Math.min(func.getIntParaNum(), 4))
                     .mapToObj(i -> new MCRegister(Register.Content.Int, i))
                     .collect(Collectors.toSet()));
+
             ans.addAll(IntStream
-                    .range(0, 16)
+                    .range(0, Math.max(func.getFloatParaNum(), 16))
                     .mapToObj(i -> new MCRegister(Register.Content.Float, i))
                     .collect(Collectors.toSet()));
         }
@@ -165,11 +167,14 @@ public class Branch extends MachineInstruction {
                     .range(0, 4)
                     .mapToObj(i -> new MCRegister(Register.Content.Int, i))
                     .collect(Collectors.toSet()));
+            ans.add(new MCRegister(MCRegister.RegName.IP));
             ans.addAll(IntStream
                     .range(0, 16)
                     .mapToObj(i -> new MCRegister(Register.Content.Float, i))
                     .collect(Collectors.toSet()));
         }
+        if (isStoreLR())
+            ans.add(new MCRegister(Register.Content.Int, 13));
 
         return ans;
     }

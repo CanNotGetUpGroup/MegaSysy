@@ -42,7 +42,7 @@ public class LoopRedundant extends FunctionPass {
         var latchBlock = loop.getSingleLatchBlock();
 
         Instructions.BranchInst latchBr = (Instructions.BranchInst) latchBlock.getTerminator();
-        if (latchBr.getNumOperands() == 1) {
+        if (latchBr.getNumOperands() == 1||latchBlock!=loop.getLoopHeader()) {
             return;
         }
         BasicBlock exit = null;

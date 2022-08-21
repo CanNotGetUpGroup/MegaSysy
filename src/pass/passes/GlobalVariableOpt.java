@@ -1,5 +1,6 @@
 package pass.passes;
 
+import analysis.AliasAnalysis;
 import analysis.DominatorTree;
 import analysis.PointerInfo;
 import ir.*;
@@ -25,6 +26,7 @@ public class GlobalVariableOpt extends ModulePass {
     @Override
     public void runOnModule(Module M) {
         boolean changed=true;
+        AliasAnalysis.gepToArrayIdx.clear();
         while (changed){
             changed=false;
             for(GlobalVariable gv:new ArrayList<>(M.getGlobalVariables())){

@@ -213,27 +213,27 @@ public class Folder {
         if (Match.compare(X, MY)) {
             return ConstantFP.get(0);
         }
-        // (Y * A) - Y -> (A-1)*Y || (A * Y) - Y -> Y * (A-1)
-        MatchUndef MU=new MatchUndef();
-        if (Match.compare(X, new MatchBin(MY, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
-            float c=((ConstantFP)MU.V).getVal();
-            return BinaryInstruction.create(Ops.FMul, Y, ConstantFP.get(c-1), InsertBefore);
-        }
-        // X - (X * A) -> (1-A)*X || X - (X * A) -> X * (1-A)
-        MU=new MatchUndef();
-        if (Match.compare(Y, new MatchBin(MX, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
-            float c=((ConstantFP)MU.V).getVal();
-            return BinaryInstruction.create(Ops.FMul, X, ConstantFP.get(1-c), InsertBefore);
-        }
-        // (Y * A) - (Y * B) -> (A-B)*Y
-        MatchUndef MU1=new MatchUndef(),MU2=new MatchUndef(),MU3=new MatchUndef();
-        if (Match.compare(X, new MatchBin(MU1, MU2, Ops.FMul))
-                &&Match.compare(Y,new MatchBin(Match.createMatch(MU1.V),MU3,Ops.FMul))) {
-            MyIRBuilder.getInstance().setInsertPoint(InsertBefore);
-            Value AB=MyIRBuilder.getInstance().createBinary(Ops.FSub,MU2.V,MU3.V);
-            return BinaryInstruction.create(Ops.FMul, MU1.V,AB, InsertBefore);
-        }
-        ret = simplifySubAssociative(Ops.FSub, X, Y, recurse);
+//        // (Y * A) - Y -> (A-1)*Y || (A * Y) - Y -> Y * (A-1)
+//        MatchUndef MU=new MatchUndef();
+//        if (Match.compare(X, new MatchBin(MY, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
+//            float c=((ConstantFP)MU.V).getVal();
+//            return BinaryInstruction.create(Ops.FMul, Y, ConstantFP.get(c-1), InsertBefore);
+//        }
+//        // X - (X * A) -> (1-A)*X || X - (X * A) -> X * (1-A)
+//        MU=new MatchUndef();
+//        if (Match.compare(Y, new MatchBin(MX, MU, Ops.FMul))&&(MU.V instanceof ConstantFP)) {
+//            float c=((ConstantFP)MU.V).getVal();
+//            return BinaryInstruction.create(Ops.FMul, X, ConstantFP.get(1-c), InsertBefore);
+//        }
+//        // (Y * A) - (Y * B) -> (A-B)*Y
+//        MatchUndef MU1=new MatchUndef(),MU2=new MatchUndef(),MU3=new MatchUndef();
+//        if (Match.compare(X, new MatchBin(MU1, MU2, Ops.FMul))
+//                &&Match.compare(Y,new MatchBin(Match.createMatch(MU1.V),MU3,Ops.FMul))) {
+//            MyIRBuilder.getInstance().setInsertPoint(InsertBefore);
+//            Value AB=MyIRBuilder.getInstance().createBinary(Ops.FSub,MU2.V,MU3.V);
+//            return BinaryInstruction.create(Ops.FMul, MU1.V,AB, InsertBefore);
+//        }
+//        ret = simplifySubAssociative(Ops.FSub, X, Y, recurse);
         return ret;
     }
 
@@ -556,27 +556,27 @@ public class Folder {
             case Add -> {
                 return simplifyAdd(L, R, recurse);
             }
-            case FAdd -> {
-                return simplifyFAdd(L, R, recurse);
-            }
+//            case FAdd -> {
+//                return simplifyFAdd(L, R, recurse);
+//            }
             case Sub -> {
                 return simplifySub(L, R, recurse);
             }
-            case FSub -> {
-                return simplifyFSub(L, R, recurse);
-            }
+//            case FSub -> {
+//                return simplifyFSub(L, R, recurse);
+//            }
             case Mul -> {
                 return simplifyMul(L, R, recurse);
             }
-            case FMul -> {
-                return simplifyFMul(L, R, recurse);
-            }
+//            case FMul -> {
+//                return simplifyFMul(L, R, recurse);
+//            }
             case SDiv -> {
                 return simplifyDiv(L, R, recurse);
             }
-            case FDiv -> {
-                return simplifyFDiv(L, R, recurse);
-            }
+//            case FDiv -> {
+//                return simplifyFDiv(L, R, recurse);
+//            }
             case SRem -> {
                 return simplifySRem(L, R, recurse);
             }
@@ -787,33 +787,33 @@ public class Folder {
                 return createBinOp(Opc, RHS, LHS);
             }
         } else if (RHS instanceof ConstantFP) {
-            ConstantFP CI2 = (ConstantFP) RHS;
-            switch (Opc) {
-                case FSub:
-                case FAdd:
-                    // X - 0 == X
-                    // X + 0 == X
-                    if (CI2.getVal() == 0) {
-                        return LHS;
-                    }
-                    break;
-                case FMul:
-                    // X * 0 == 0
-                    // X * 1 == X
-                    if (CI2.getVal() == 0) {
-                        return RHS;
-                    }
-                    if (CI2.getVal() == 1) {
-                        return LHS;
-                    }
-                    break;
-                case FDiv:
-                    // X / 1 == X
-                    if (CI2.getVal() == 1) {
-                        return LHS;
-                    }
-                    break;
-            }
+//            ConstantFP CI2 = (ConstantFP) RHS;
+//            switch (Opc) {
+//                case FSub:
+//                case FAdd:
+//                    // X - 0 == X
+//                    // X + 0 == X
+//                    if (CI2.getVal() == 0) {
+//                        return LHS;
+//                    }
+//                    break;
+//                case FMul:
+//                    // X * 0 == 0
+//                    // X * 1 == X
+//                    if (CI2.getVal() == 0) {
+//                        return RHS;
+//                    }
+//                    if (CI2.getVal() == 1) {
+//                        return LHS;
+//                    }
+//                    break;
+//                case FDiv:
+//                    // X / 1 == X
+//                    if (CI2.getVal() == 1) {
+//                        return LHS;
+//                    }
+//                    break;
+//            }
         } else if (LHS instanceof ConstantFP) {
             // If C1 is a ConstantFP and C2 is not, swap the operands.
             if (Instruction.isCommutative(Opc)) {

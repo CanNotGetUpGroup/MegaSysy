@@ -84,7 +84,6 @@ public class User extends Value {
             for (Use use : OperandList.get(i).getUseList()) {
                 if (use.getU() == this) {
                     use.setOperandNo(i - 1);
-                    break;
                 }
             }
         }

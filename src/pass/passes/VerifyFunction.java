@@ -1,9 +1,7 @@
 package pass.passes;
 
-import ir.BasicBlock;
-import ir.DerivedTypes;
-import ir.Function;
-import ir.Instruction;
+import analysis.LoopInfo;
+import ir.*;
 import ir.instructions.Instructions;
 import pass.FunctionPass;
 
@@ -24,6 +22,17 @@ public class VerifyFunction extends FunctionPass {
                             System.out.println(I+" should not have dimInfo "
                                     +((Instructions.GetElementPtrInst) I).getDimInfoDirectly());
                         }
+                    }
+                }
+            }
+            LoopInfo LI=F.getLoopInfo();
+            LI.computeLoopInfo(F);
+            for(Loop loop:LI.getAllLoops()){
+                BasicBlock preHeader=loop.getPreHeader();
+                if(loop.isSimpleForLoop()){
+                    if(preHeader==null){
+                        System.out.println("(loop header:"+loop.getLoopHeader()
+                                +") is simple loop, but don't have PreHeader!");
                     }
                 }
             }

@@ -59,8 +59,9 @@ public class GVNGCM extends ModulePass {
         boolean shouldContinue = true;
         while (shouldContinue) {
             clear();
-//            MemorySSA.arraySSA=!aggressive;
-            MemorySSA.arraySSA=false;//TODO:暂时关闭了ArraySSA
+            if(PassManager.openArraySSA){
+                MemorySSA.arraySSA = !aggressive;
+            }
             AliasAnalysis.runMemorySSA(F);
             shouldContinue = functionGVN(F);
             new DeadCodeEmit().functionDCE(F);
@@ -163,11 +164,14 @@ public class GVNGCM extends ModulePass {
             if (loadGVN(LI)) {
                 return true;
             }
-        } else if(I.getOp().equals(Ops.Call)){
-            if(!((CallInst)I).withoutGEP()){
+        } else if(I.getOp().equals(Ops.Call)) {
+            if (!((CallInst) I).withoutGEP()) {
                 return false;
             }
         }
+//        else if(Instruction.isBinary(I.getOp())){
+//            return false;
+//        }
         if (I.getType().isVoidTy()) return false;
         int now = nextValueNumber;
         int num = lookUpOrAdd(I);
@@ -556,7 +560,8 @@ public class GVNGCM extends ModulePass {
             int minLoopDepth = F.getLoopInfo().getLoopDepthForBB(minBB);
             while (curBB != I.getParent()) {
                 if(DT.getNode(curBB)==null||curBB==DT.Root.BB){
-//                    System.out.println("curBB shouldn't be null!");
+                    System.out.println("curBB shouldn't be null!");
+                    break;
                 }
                 curBB = DT.getNode(curBB).IDom.BB;
                 int curLoopDepth = F.getLoopInfo().getLoopDepthForBB(curBB);

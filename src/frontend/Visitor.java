@@ -654,6 +654,10 @@ public class Visitor extends SysyBaseVisitor<Value> {
         if (ctx.funcFParams() != null) {
             visit(ctx.funcFParams());
         }
+        BasicBlock succ=builder.createBasicBlock(curF);
+        builder.setInsertPoint(BB);
+        builder.createBr(succ);
+        builder.setInsertPoint(succ);
         visit(ctx.block());
         BasicBlock endBB = curF.getBbList().getLast().getVal();
         IListNode<Instruction, BasicBlock> endInst = endBB.getInstList().getLast();

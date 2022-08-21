@@ -31,13 +31,13 @@ public class IndVarReduction extends FunctionPass {
 
     @Override
     public void runOnFunction(Function F) {
-        var gvngcm=new GVNGCM(false);
-        var redundant=new LoopRedundant();
+//        var gvngcm=new GVNGCM(false);
+//        var redundant=new LoopRedundant();
         boolean canContinue;
         do {
             canContinue = false;
-            gvngcm.functionGVNGCM(F);
-            redundant.runOnFunction(F);
+//            gvngcm.functionGVNGCM(F);
+//            redundant.runOnFunction(F);
 //            Module.getInstance().rename(F);
             LI = F.getLoopInfo();
             DT = F.getAndUpdateDominatorTree();
