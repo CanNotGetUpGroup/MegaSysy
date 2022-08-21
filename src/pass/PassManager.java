@@ -58,7 +58,7 @@ public class PassManager {
         passes.add(new LoopInfoUpdate());
         passes.add(new LICM());// 循环不变量外提
          passes.add(new LCSSA());
-//         passes.add(new LoopFusion());
+         passes.add(new LoopFusion());
         passes.add(new SimplifyCFG(eliminatePreHeader));
 
         passes.add(new GVNGCM(aggressive));
