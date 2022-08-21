@@ -165,9 +165,9 @@ public class GVNGCM extends ModulePass {
                 return true;
             }
         } else if(I.getOp().equals(Ops.Call)){
-            if(!((CallInst)I).withoutGEP()){
+//            if(!((CallInst)I).withoutGEP()){
                 return false;
-            }
+//            }
         }
         if (I.getType().isVoidTy()) return false;
         int now = nextValueNumber;
