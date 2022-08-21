@@ -27,7 +27,7 @@ public class PassManager {
         GVNGCM.GCMOpen = true;
         MemorySSA.arraySSA=openArraySSA;
         // eliminatePreHeader=true;//关闭LICM
-        if(!openArraySSA){//不开ArraySSA，直接消除掉DimInfo}
+        if(!openArraySSA){//不开ArraySSA，直接消除掉DimInfo
             passes.add(new EliminateDimInfo());
         }
         passes.add(new AddCondPreBlock());
