@@ -97,7 +97,7 @@ public class FuncInline extends ModulePass {
                     System.out.println(callee + " didn't inline into " + caller);
                     continue;
                 }else{
-//                    System.out.println(callee + " inline into " + caller);
+                    System.out.println(callee + " inline into " + caller);
                     localChanged=true;
                     CG.getNode(callee).getCalledFunctions().forEach(calleeEE->{
                         CG.getNode(caller).addCalledFunction(calleeEE.a.copy(cloneMap),calleeEE.b);
@@ -230,9 +230,14 @@ public class FuncInline extends ModulePass {
     public boolean shouldInline(CallInst CI,CallGraph CG,boolean checkLineNum) {
         Function caller = CI.getFunction();
         Function F = CI.getCalledFunction();
-//        if(!(caller.getName().equals("asr5"))||F.getName().equals("F1")||F.getName().equals("F2")||F.getName().equals("my_fabs")){
-//            return false;
-//        }
+        if(!
+                (caller.getName().equals("asr5"))||
+                F.getName().equals("F1")
+                ||F.getName().equals("F2")
+//                ||F.getName().equals("simpson")
+        ){
+            return false;
+        }
         int cost = 0;
 
         //检查F是否自递归
