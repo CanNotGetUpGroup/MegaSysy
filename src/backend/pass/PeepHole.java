@@ -86,12 +86,13 @@ public class PeepHole extends MCPass{
                         var type = ((PushOrPop)i).getType();
                         var forFloat = i.isForFloat();
                         var next = i.getNext();
-                        if(next instanceof PushOrPop && ((PushOrPop) next).getType().equals(type) && next.isForFloat() == forFloat) continue;
+                        var cond = i.getCond();
+                        if(next instanceof PushOrPop && ((PushOrPop) next).getType().equals(type) && next.isForFloat() == forFloat && next.getCond() == cond) continue;
 
                         ArrayList<PushOrPop> iList =  new ArrayList<PushOrPop>();
                         iList.add((PushOrPop)i);
                         for(var cur=i.getPrev();
-                            cur instanceof PushOrPop && ((PushOrPop) cur).getType().equals(type) && cur.isForFloat() == forFloat;
+                            cur instanceof PushOrPop && ((PushOrPop) cur).getType().equals(type) && cur.isForFloat() == forFloat && cur.getCond() == cond;
                             cur = cur.getPrev()
                         ) {
                             iList.add((PushOrPop)cur);
@@ -100,6 +101,7 @@ public class PeepHole extends MCPass{
                             if(type == PushOrPop.Type.Pop) Collections.reverse(iList);
                             var n = new PushOrPopList(bb, type);
                             n.setForFloat(forFloat);
+                            n.setCond(cond);
                             if(type.equals(PushOrPop.Type.Push)) iList.forEach(ii -> n.AddReg((Register)ii.getOp2()));
                             else iList.forEach(ii -> n.AddReg((Register)ii.getDest()));
                             n.insertAfter(i);
