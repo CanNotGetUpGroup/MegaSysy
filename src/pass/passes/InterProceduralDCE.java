@@ -249,7 +249,7 @@ public class InterProceduralDCE extends ModulePass {
                 var call = (CallInst) user;
                 Constant nullArg = Constant.getNullValue(call.getArgs().get(idx).getType());
                 call.CoReplaceOperandByIndex(idx + 1, nullArg);
-                System.out.println("remove dead arg " + arg.getName() + " in func " + func.getName());
+//                System.out.println("remove dead arg " + arg.getName() + " in func " + func.getName());
             }
         }
     }
@@ -494,7 +494,7 @@ public class InterProceduralDCE extends ModulePass {
                         doneRemove = true;
                         Instruction inst = (Instruction) value;
                         inst.remove();
-                        System.out.println("remove gv related: " + value.getName());
+//                        System.out.println("remove gv related: " + value.getName());
                     }
                 }
                 if (relatedFunc.isEmpty()) {

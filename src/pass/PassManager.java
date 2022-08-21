@@ -36,7 +36,7 @@ public class PassManager {
         passes.add(new LCSSA());
         passes.add(new LoopInfoUpdate()); // 计算循环信息
         passes.add(new IndVarReduction());
-        passes.add(new LICM());// 循环不变量外提
+//        passes.add(new LICM());// 循环不变量外提
         passes.add(new InterProceduralDCE());
         passes.add(new GVNGCM(aggressive));
         passes.add(new LoopRedundant());
@@ -47,7 +47,7 @@ public class PassManager {
         passes.add(new FuncInline());// 可能还有
         passes.add(new InterProceduralDCE());
         passes.add(new LoopInfoUpdate());
-        passes.add(new LICM());// 循环不变量外提
+//        passes.add(new LICM());// 循环不变量外提
          passes.add(new LCSSA());
          passes.add(new LoopFusion());
         passes.add(new SimplifyCFG(eliminatePreHeader));
@@ -63,7 +63,7 @@ public class PassManager {
         // passes.add(new LoopUnroll(false));//还存在bug，开了也不知道能不能快，干脆不开了
         // passes.add(new LoopUnroll(false));
         passes.add(new LoopRedundant());
-
+        passes.add(new TailCallOpt());
         aggressive = true;// 激进的GVN，消除掉数组参数的alloca，并关闭ArraySSA
         eliminatePreHeader = true;// 完成了循环优化，删掉preHeader
         passes.add(new SimplifyCFG(eliminatePreHeader));
