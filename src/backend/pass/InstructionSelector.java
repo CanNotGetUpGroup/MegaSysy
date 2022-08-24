@@ -660,12 +660,11 @@ public class InstructionSelector {
                     int divisor = ((Constants.ConstantInt) irOp2).getVal();
                     boolean isNeg = divisor < 0;
                     divisor = isNeg ? -divisor : divisor;
-                    Register ans = null;
-                    System.out.println(ir);
-                    var choose = ChooseMultiplier(divisor, 31);
+                    Register ans;
+                    var choose = ChooseMultiplier(divisor);
                     long m = choose.m;
+                    int n = (int) ((m << 32) >>> 32);
                     int l = choose.l, sh = choose.sh;
-                    boolean canDo = true;
                     if (divisor == 1) {
                         ans = op1;
                     } else if (isPowerOfTwo(divisor)) {
@@ -677,17 +676,33 @@ public class InstructionSelector {
                         inst.pushBacktoInstList();
                         new Arithmetic(mbb, Arithmetic.Type.ASR, temp, l).pushBacktoInstList();
                         ans = temp;
+                    } else if (m < 2147483648L) {
+                        var mReg = new VirtualRegister();
+                        var high = new VirtualRegister();
+                        new LoadImm(mbb, mReg, n).pushBacktoInstList();
+                        new SMMUL(mbb, high, op1, mReg).pushBacktoInstList();
+                        new Arithmetic(mbb, Arithmetic.Type.ASR, high, sh).pushBacktoInstList();
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, high, op1);
+                        inst.setShifter(Shift.Type.LSR, 31);
+                        inst.pushBacktoInstList();
+                        ans = high;
                     } else {
-                        // TODO: 长乘法
-                        canDo = false;
+                        var mReg = new VirtualRegister();
+                        var high = new VirtualRegister();
+                        new LoadImm(mbb, mReg, n).pushBacktoInstList();
+                        new SMMUL(mbb, high, op1, mReg).pushBacktoInstList();
+                        new Arithmetic(mbb, Arithmetic.Type.ADD, high, op1).pushBacktoInstList();
+                        new Arithmetic(mbb, Arithmetic.Type.ASR, high, sh).pushBacktoInstList();
+                        var inst = new Arithmetic(mbb, Arithmetic.Type.ADD, high, op1);
+                        inst.setShifter(Shift.Type.LSR, 31);
+                        inst.pushBacktoInstList();
+                        ans = high;
                     }
-                    if (canDo) {
-                        if (isNeg) {
-                            new Arithmetic(mbb, Arithmetic.Type.RSB, ans, 0).pushBacktoInstList();
-                        }
-                        valueMap.put(ir, ans);
-                        break;
+                    if (isNeg) {
+                        new Arithmetic(mbb, Arithmetic.Type.RSB, ans, 0).pushBacktoInstList();
                     }
+                    valueMap.put(ir, ans);
+                    break;
                 }
 
 
@@ -834,29 +849,19 @@ public class InstructionSelector {
         }
     }
 
-    ChooseMultiplierAns ChooseMultiplier(int d, int prec) {
-        int l = log2(d), sh;
-        long mLow = 1, mHigh;
+    ChooseMultiplierAns ChooseMultiplier(int d) {
+        int l = log2(d) ;
         if (!isPowerOfTwo(d))
             l = l + 1;
-        sh = l;
-        for (int i = 0; i < 32 + l; i++) {
-            mLow *= 2;
+
+        long nc = ((long) 1 << 31) - (((long) 1 << 31) % d) - 1;
+        long p = 32;
+        while (((long) 1 << p) <= nc * (d - ((long) 1 << p) % d)) {
+            p++;
         }
-        mHigh = mLow;
-        mLow /= d;
-        long temp = 1;
-        for (int i = 0; i < 32 + l - prec; i++) {
-            temp *= 2;
-        }
-        mHigh += temp;
-        mHigh /= d;
-        while (mLow / 2 < mHigh / 2 && sh > 0) {
-            mLow /= 2;
-            mHigh /= 2;
-            sh--;
-        }
-        return new ChooseMultiplierAns(l, sh, mHigh);
+        long m = ((((long) 1 << p) + (long) d - ((long) 1 << p) % d) / (long) d);
+        int sh = (int) (p - 32);
+        return new ChooseMultiplierAns(l, sh, m);
     }
 
     public static MCOperand valueToMCOperand(MachineBasicBlock parent, Value val) {
