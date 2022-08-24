@@ -5,11 +5,7 @@ import backend.CodeGenManager;
 import backend.machineCode.MachineBasicBlock;
 import backend.machineCode.MachineFunction;
 import backend.machineCode.MachineInstruction;
-import backend.machineCode.Operand.Address;
-import backend.machineCode.Operand.ImmediateNumber;
-import backend.machineCode.Operand.MCOperand;
-import backend.machineCode.Operand.Register;
-import backend.machineCode.Operand.Shifter;
+import backend.machineCode.Operand.*;
 import ir.Module;
 import pass.MCPass;
 
@@ -86,12 +82,13 @@ public class PeepHole extends MCPass{
                         var type = ((PushOrPop)i).getType();
                         var forFloat = i.isForFloat();
                         var next = i.getNext();
-                        if(next instanceof PushOrPop && ((PushOrPop) next).getType().equals(type) && next.isForFloat() == forFloat) continue;
+                        var cond = i.getCond();
+                        if(next instanceof PushOrPop && ((PushOrPop) next).getType().equals(type) && next.isForFloat() == forFloat && next.getCond() == cond) continue;
 
                         ArrayList<PushOrPop> iList =  new ArrayList<PushOrPop>();
                         iList.add((PushOrPop)i);
                         for(var cur=i.getPrev();
-                            cur instanceof PushOrPop && ((PushOrPop) cur).getType().equals(type) && cur.isForFloat() == forFloat;
+                            cur instanceof PushOrPop && ((PushOrPop) cur).getType().equals(type) && cur.isForFloat() == forFloat && cur.getCond() == cond;
                             cur = cur.getPrev()
                         ) {
                             iList.add((PushOrPop)cur);
@@ -100,6 +97,7 @@ public class PeepHole extends MCPass{
                             if(type == PushOrPop.Type.Pop) Collections.reverse(iList);
                             var n = new PushOrPopList(bb, type);
                             n.setForFloat(forFloat);
+                            n.setCond(cond);
                             if(type.equals(PushOrPop.Type.Push)) iList.forEach(ii -> n.AddReg((Register)ii.getOp2()));
                             else iList.forEach(ii -> n.AddReg((Register)ii.getDest()));
                             n.insertAfter(i);
@@ -700,6 +698,12 @@ public class PeepHole extends MCPass{
                 }
                     
             }
+
+//            var ip = new MCRegister(MCRegister.RegName.IP);
+//            if(LASTRUN && i instanceof Branch && lastDef.containsKey(ip)) {
+//                lastUse.put(lastDef.get(ip), i);
+//            }
+
             if(i.getCond() == null) {
                 for(var def : i.getDef()) {
                     lastDef.put(def, i);
@@ -726,8 +730,8 @@ public class PeepHole extends MCPass{
         boolean done = false;
         while(!done) {
             // System.out.println("PeepHole");
-            // done = peepHoleWithDataflow(CGM);
-            done = peepHoleWithoutDataflow(CGM) & peepHoleWithDataflow(CGM);
+            if(LASTRUN) done = peepHoleWithoutDataflow(CGM);
+            else done = peepHoleWithoutDataflow(CGM) & peepHoleWithDataflow(CGM);
         }
     }
 

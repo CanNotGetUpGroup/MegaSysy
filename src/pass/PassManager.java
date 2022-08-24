@@ -17,7 +17,7 @@ public class PassManager {
     public static boolean eliminatePreHeader = false;
     public static boolean aggressive = false;
     public static boolean debug = true;
-    public static boolean openArraySSA = false;
+    public static boolean openArraySSA = true;
 
     /**
      * 初始化，在此处按照顺序添加IR pass
